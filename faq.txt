@@ -1,0 +1,39 @@
+	LAB3D/SDL FAQ
+	=============
+
+Q: Why does LAB3D/SDL crash immediately after starting on my Windows 95/98
+machine with a page fault in "OPENGL32.DLL" (and possibly "KERNEL32.DLL")?
+A: You are probably running Microsoft's slow, old and buggy software OpenGL
+implementation. Install display drivers with OpenGL support; your graphics
+card or chipset manufacturer should provide them (e.g. through their web
+site).
+
+Q: Why does LAB3D/SDL run slowly on my machine?
+A: There are several possible reasons for this. If you don't have a 3D
+accelerator, LAB3D/SDL will run very slowly. Similarly, if your system's
+OpenGL implementation is not accelerated, LAB3D/SDL will be unable to make use
+of 3D acceleration; updating your display drivers may fix this. Finally, you
+may be running LAB3D/SDL at an unnecessarily high graphics resolution; lower
+it to something like 800x600.
+
+Q: Why doesn't LAB3D/SDL have a fast software renderer like the original Ken's
+Labyrinth?
+A: Very few computers are sold nowadays without 3D acceleration and most games
+require 3D acceleration. Therefore, most people who would play LAB3D/SDL
+already have a 3D accelerator. To these people, software rendering is not of
+any use. The original Ken's Labyrinth software renderer is very fast but
+relies heavily on being able to access specific hardware directly (8086 or
+compatible with VGA) in a very specific manner (VGA Mode X, maximum resolution
+360x240). A rewritten software renderer may appear in future versions.
+
+Q: Why doesn't LAB3D/SDL support Direct3D?
+A: OpenGL is a more widely supported 3D graphics API than Microsoft's
+Direct3D. The only case in which Direct3D support would be of use is for users
+of graphics accelerators with Direct3D acceleration but no OpenGL
+acceleration. I suggest you pester your graphics card or chipset manufacturer
+to produce OpenGL drivers or buy a better supported graphics card. Future
+versions of LAB3D/SDL may support Direct3D, but don't count on it.
+
+Q: Why doesn't LAB3D/SDL have an automap like Doom, Blake Stone or Descent?
+A: Because Ken's Labyrinth doesn't have an automap. Besides, you're supposed
+to get lost in labyrinths.
