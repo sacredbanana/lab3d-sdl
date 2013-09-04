@@ -29,6 +29,9 @@ void oldmain(void)
     K_INT16 thvel, tsvel;
     char cheatkeysdown;
 
+    K_INT32 fwdvel=0, sidevel=0, standvel=0;
+    K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
+
     clockspd=0;
 
     glDrawBuffer(GL_BACK);
@@ -153,7 +156,7 @@ void oldmain(void)
         sortcnt = 0;
         SDL_LockMutex(soundmutex);
         SDL_LockMutex(timermutex);
-	
+        
         /* Speed cap at 2 ticks/frame (about 120 fps). */
         if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 2)) {
             SDL_UnlockMutex(soundmutex);
@@ -215,7 +218,7 @@ void oldmain(void)
                     if (vidmode == 1)
                     {
 /*			statusbar = statusbargoal;
-			linecompare(statusbar);*/
+                        linecompare(statusbar);*/
                         if (statusbar == 415)
                         {
                             scrsize = 18720;
@@ -404,7 +407,7 @@ void oldmain(void)
                                             if (mstat[k] == 109)
                                             {
                                                 oldwingame(mposx[k],mposy[k]);
-                                                setnewkeystatus(action_key[ACTION_MENU], 1);
+                                                quit();
                                                 l = 0;
                                             }
                                             if (mstat[k] == 66) scorecount += 100;
@@ -878,7 +881,7 @@ void oldmain(void)
             bstatus=0;
             if (joystat == 0)
             {
-                bstatus|=readjoystick(&mousx,&mousy);
+                /*bstatus|=readjoystick(&mousx,&mousy);*/
 
                 if (mousx < joyx2)
                     mousx = (K_INT16)((((K_INT32)(mousx-joyx2))<<6)/((K_INT32)(joyx2-joyx1)));
@@ -1790,14 +1793,13 @@ void oldmain(void)
                         PollInputs();
                         if (moustat == 0)
                             bstatus=readmouse(NULL, NULL);
-                        if (joystat == 0)
-                            bstatus|=readjoystick(NULL,NULL);
                         SDL_Delay(10);
                     }
                 }
-                setnewkeystatus(action_key[ACTION_MENU], 1);
+                quit();
+                /*setnewkeystatus(action_key[ACTION_MENU], 1);
                 death = 4094;
-                ototclock = 1;
+                ototclock = 1;*/
             }
         }
         if (death == 4095)
@@ -1833,7 +1835,7 @@ void oldmain(void)
         }
         if (!cheatkeysdown)
         {
-            if ((getkeydefstat(ACTION_CHEAT) > 0) && (death == 4095))
+            if ((getkeydefstat(ACTION_OLD_SAVE) > 0) && (death == 4095))
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1846,7 +1848,7 @@ void oldmain(void)
                 while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
                 {
                     PollInputs();
-	    
+            
                     if (newkeystatus(SDLK_1)) {
                         i=0;
                         m = 1;
@@ -1901,7 +1903,7 @@ void oldmain(void)
                 lastbarchange = 1;
                 picrot(posx,posy,posz,ang);
             }
-            if (getkeydefstat(ACTION_MUTE) > 0)
+            if (getkeydefstat(ACTION_OLD_LOAD) > 0)
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1911,11 +1913,11 @@ void oldmain(void)
                 pageoffset = j;
                 m = 0;
                 ototclock = totalclock;
-	
+        
                 while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
                 {
                     PollInputs();
-	    
+            
                     if (newkeystatus(SDLK_1)) {
                         oldloadgame(0);
                         m = 1;
@@ -2005,8 +2007,6 @@ void oldmain(void)
                     PollInputs();
                     if (moustat == 0)
                         bstatus=readmouse(NULL, NULL);
-                    if (joystat == 0)
-                        bstatus|=readjoystick(NULL,NULL);
                     SDL_Delay(10);
                 }
                 totalclock = ototclock;
@@ -2047,8 +2047,6 @@ void oldmain(void)
                 PollInputs();
                 if (moustat == 0)
                     bstatus=readmouse(NULL, NULL);
-                if (joystat == 0)
-                    bstatus|=readjoystick(NULL,NULL);
                 SDL_LockMutex(timermutex);
                 totalclock += clockspeed;
                 clockspeed = 0;
@@ -2061,7 +2059,7 @@ void oldmain(void)
                 fade(j);
                 ShowPartialOverlay(0,0,360,statusbaryoffset,0);
                 mixing=0;
-	
+        
                 fade(27);
 
                 SDL_GL_SwapWindow(mainwindow);
@@ -2150,7 +2148,7 @@ void oldmain(void)
                     lastbarchange = 1;
                 }
                 else
-                    setnewkeystatus(action_key[ACTION_MENU], 1);
+                    quit();
                 totalclock = ototclock;
                 clockspd = 0;
                 picrot(posx,posy,posz,ang);
@@ -2531,8 +2529,6 @@ K_INT16 oldintroduction(void)
         PollInputs();
         if (moustat == 0)
             bstatus=readmouse(NULL, NULL);
-        if (joystat == 0)
-            bstatus|=readjoystick(NULL,NULL);
         j = (((int)labs((totalclock%120)-60))>>3);
         SDL_LockMutex(timermutex);
         while(clockspeed<4) {
@@ -2872,8 +2868,6 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
         PollInputs();
         if (moustat == 0)
             bstatus=readmouse(NULL, NULL);
-        if (joystat == 0)
-            bstatus|=readjoystick(NULL,NULL);
 
         sortcnt = 0;
         if ((revtotalclock < 480) && (revtotalclock>0))

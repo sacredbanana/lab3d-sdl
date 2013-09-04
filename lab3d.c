@@ -20,7 +20,7 @@ void drawvolumebar(int vol,int type,float level) {
     gluOrtho2D(0.0, 360.0, -15+30*type, 225+30*type);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-	
+        
     glBegin(GL_QUADS);
     glColor4f(0,0,0,level);
     glVertex2s(96,110);
@@ -48,8 +48,8 @@ int main(int argc,char **argv)
     K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
     K_INT32 templong;
 
-    K_INT32 fwdvel, sidevel, standvel;
-    K_INT32 dfwdvel, dsidevel, dturnvel, dstandvel;
+    K_INT32 fwdvel=0, sidevel=0, standvel=0;
+    K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
 
     K_INT16 bx; /* Converted from asm. */
     K_UINT32 frames=0,timeused=0;
@@ -61,11 +61,9 @@ int main(int argc,char **argv)
 
     /* Initialisation... */
 
-    /* Initialise SDL; uncomment the NOPARACHUTE bit if the parachute
-       routine (which catches stuff like segfaults) gets in the way of your
-       debugging. */
+    /* Initialise SDL; */
 
-    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|/*SDL_INIT_NOPARACHUTE|*/
+    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|
              SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
@@ -271,7 +269,7 @@ int main(int argc,char **argv)
                     /* Game over, man! */
 
                     fade(0);
-		    
+                    
                     glClearColor(0,0,0,0);
                     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -397,7 +395,7 @@ int main(int argc,char **argv)
                     if (vidmode == 1)
                     {
 /*			statusbar = statusbargoal;
-			linecompare(statusbar);*/
+                        linecompare(statusbar);*/
                         if (statusbar == 415)
                         {
                             scrsize = 18720;
@@ -437,7 +435,7 @@ int main(int argc,char **argv)
         if ((death<4095)&&(lifevests == 0))
         {
 /*		for(i=lside;i<rside;i++)
-		height[i] = 0;*/
+                height[i] = 0;*/
 
             /* Draw GAME OVER sign... */
 
@@ -455,7 +453,7 @@ int main(int argc,char **argv)
         sortcnt = 0;
         SDL_LockMutex(soundmutex);
         SDL_LockMutex(timermutex);
-	
+        
         /* Speed cap at 2 ticks/frame (about 120 fps). */
         if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 2)) {
             SDL_UnlockMutex(soundmutex);
@@ -609,7 +607,7 @@ int main(int argc,char **argv)
             // y = (int)((clockspd*sintable[bulang[i]])>>13);
             y=(K_INT16)((clockspd*sintable[bulang[i]&1023])>>13);
             if (bulang[i]&1024) y=-y;
-	    
+            
             if (bulkind[i] == 15)
             {
                 x -= (x>>1);
@@ -1486,7 +1484,7 @@ int main(int argc,char **argv)
                     }
                 }
                 if (mstat[i] == monzor || mstat[i] == monke2 || mstat[i] == monan2) {
-		    
+                    
                     if (tempbuf[((mposx[i]>>10)<<6)|(mposy[i]>>10)]) {
                         mixing=1;
                         strcpy(textbuf,"BOSS:");
@@ -1495,7 +1493,7 @@ int main(int argc,char **argv)
                         drawmeter((mshot[i]<<8)/3,4096,175,2);
                         mixing=0;
                     }
-		    
+                    
                 }
                 if (mstat[i] == monzor)
                     if ((mshot[i] < 24) && (mshock[i] == 0) && ((rand()&1023) <= clockspd))
@@ -2219,7 +2217,7 @@ int main(int argc,char **argv)
                     ksay(2);
             }
         }
-	
+        
         /* In centre of square (used to check for falling down holes)? */
 
         i = (board[x][y]&1023);
@@ -2242,7 +2240,7 @@ int main(int argc,char **argv)
             cheatkeysdown=1;
         else	    
             cheatkeysdown = 0;
-	
+        
         /* Check for goodies... */
 
         if ((keystatus[19] > 0) && (cheatkeysdown == 1)) {
@@ -2511,7 +2509,7 @@ int main(int argc,char **argv)
         }
         else
             justwarped = 0;
-	
+        
         /* Fade... */
 
         if (death == 4095)
@@ -2936,10 +2934,6 @@ int main(int argc,char **argv)
                 {
                     bstatus=readmouse(NULL,NULL);
                 }
-                if (joystat == 0)
-                {
-                    bstatus|=readjoystick(NULL,NULL);
-                }
                 y = x;
                 x = getkeydefstat(ACTION_PAUSE);
                 SDL_Delay(10); /* Leave some CPU for the rest of us! */
@@ -2985,7 +2979,7 @@ int main(int argc,char **argv)
             mixing=1;
 
             loadstory(boardnum);
-	    
+            
             mixing=0;
 
             clearkeydefstat(ACTION_MENU);
@@ -3011,10 +3005,6 @@ int main(int argc,char **argv)
                 {
                     bstatus=readmouse(NULL, NULL);
                 }
-                if (joystat == 0)
-                {
-                    bstatus|=readjoystick(NULL,NULL);
-                }
                 SDL_LockMutex(timermutex);
                 totalclock += clockspeed;
                 clockspeed = 0;
@@ -3029,7 +3019,7 @@ int main(int argc,char **argv)
                 fade(j);
                 ShowPartialOverlay(0,0,360,statusbaryoffset,0);
                 mixing=0;
-		
+                
                 fade(27);
 
                 SDL_GL_SwapWindow(mainwindow);
@@ -3193,8 +3183,8 @@ int main(int argc,char **argv)
                             getname();
                             glDrawBuffer(GL_BACK);
                         }
-                        if (hiscorenamstat > 0)
-                            savegame(loadsavegameplace);
+                        /*if (hiscorenamstat > 0)*/
+                        savegame(loadsavegameplace);
                     }
                     clearkeydefstat(ACTION_MENU);
                     lastunlock = 1;
@@ -3269,7 +3259,7 @@ int main(int argc,char **argv)
             if (musicvolumevisible<0)
                 musicvolumevisible=0;
         }
-	    
+            
         if (ototclock <= 0)
             ototclock++;
         else

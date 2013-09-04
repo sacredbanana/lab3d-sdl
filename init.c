@@ -114,13 +114,8 @@ void initialize()
             "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
             realr,realg,realb,realz);
 
-    /* SDL on Windows does funny things if the specified window size or
-       fullscreen resolution is invalid. SDL on X fakes it seamlessly. The
-       documentation doesn't mention anything about this, so I assume that this
-       aspect of SDL is undefined. */
-
     largescreentexture = 1;
-							      
+                                                              
     if (largescreentexture) {
         /* One large 512x512 texture. */
 
@@ -237,7 +232,7 @@ void initialize()
         want.callback=AudioCallback;	
         soundbytespertick=(channels*want.freq*2)/240;
         soundtimerbytes=0;	
-	
+        
         SDL_OpenAudio(&want,NULL);
 
         reset_dsp();
@@ -342,7 +337,6 @@ void initialize()
         fade(63);
     }  
 
-    /*SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);*/
     SetVisibleScreenOffset(0);
     SDL_GL_SwapWindow(mainwindow);
 
@@ -364,10 +358,6 @@ void initialize()
         if (moustat == 0)
         {
             bstatus=readmouse(NULL, NULL);
-        }
-        if (joystat == 0)
-        {
-            bstatus|=readjoystick(NULL,NULL);
         }
         SDL_UnlockMutex(timermutex);
         SDL_Delay(10);
@@ -441,10 +431,6 @@ void initialize()
         if (moustat == 0)
         {
             bstatus=readmouse(NULL, NULL);
-        }
-        if (joystat == 0)
-        {
-            bstatus|=readjoystick(NULL,NULL);
         }
     }
     oclockspeed=clockspeed;

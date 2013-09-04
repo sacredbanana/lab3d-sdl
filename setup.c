@@ -11,6 +11,8 @@
 #endif
 #endif
 
+static void draw_mainmenu(void);
+
 #ifdef WIN32
 HRESULT CreateLink(LPCSTR lpszPathObj, 
                    LPSTR lpszPathLink, LPSTR lpszDesc,
@@ -25,7 +27,7 @@ HRESULT CreateLink(LPCSTR lpszPathObj,
                             (void *)&psl); 
     if (SUCCEEDED(hres)) { 
         IPersistFile* ppf; 
-	
+        
         GetCurrentDirectory(MAX_PATH, p);
         psl->lpVtbl->SetWorkingDirectory(psl, p); 
         hres=psl->lpVtbl->SetPath(psl, lpszPathObj); 
@@ -94,11 +96,11 @@ void createshortcut(void) {
 }
 #endif
 
-static int inputdevice=1, window_width=0, window_height=0, nearest=0;
+static int inputdevice=1, window_width=640, window_height=480, nearest=0;
 static int music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
 static int soundblock=0,timing=0,texturedepth=1,scaling=2;
 
-static char keynames[ACTION_LAST][30]={
+static char *keynames[ACTION_LAST]={
     "Move FORWARD",
     "Move BACKWARD",
     "Turn LEFT",
@@ -143,7 +145,19 @@ static char* action_enum_names[ACTION_LAST] = {
     "status",
     "pause",
     "mute",
-    "menu"
+    "menu",
+    "menu_up1",
+    "menu_up2",
+    "menu_down1",
+    "menu_down2",
+    "menu_left1",
+    "menu_left2",
+    "menu_right1",
+    "menu_right2",
+    "menu_select1",
+    "menu_select2",
+    "menu_select3",
+    "menu_cancel"
 };
 
 static int action_key_default[ACTION_LAST]={
@@ -249,7 +263,7 @@ static int action_controller_default[ACTION_LAST]={
     /* ACTION_MENU_RIGHT1  */  SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
     /* ACTION_MENU_RIGHT2  */  SDL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS,
     /* ACTION_MENU_SELECT1 */  SDL_CONTROLLER_BUTTON_A,
-    /* ACTION_MENU_SELECT2 */  ACTION_UNBOUND,
+    /* ACTION_MENU_SELECT2 */  SDL_CONTROLLER_AXIS_TRIGGERRIGHT | JOY_FLAG_AXIS,
     /* ACTION_MENU_SELECT3 */  ACTION_UNBOUND,
     /* ACTION_MENU_CANCEL  */  SDL_CONTROLLER_BUTTON_B
 };
@@ -300,10 +314,11 @@ static char configureinputmenu[4][30]={
     "Return to setup menu"
 };
 
-static char inputgroupsmenu[3][30]={
+static char inputgroupsmenu[4][30]={
     "Movement",
     "Weapons",
-    "Actions"
+    "Actions",
+    "Return to input menu"
 };
 
 static char fullscreenmenu[2][30]={
@@ -370,49 +385,48 @@ static char scalingtypemenu[4][30]={
     "Integer scale (square pixels)"
 };
 
-void selectionmenu(int alts,char titles[][30],int *value) {
+static void makeupper(char* txt) {
+    while (*txt) { *txt = toupper(*txt); txt++; }
+}
+
+int selectionmenu(int alts,char titles[][30],int *value, const char* menutitle) {
     int i;
     int j=12*alts+24;
+    int ofs = 0;
+    if (menutitle) {
+        ofs = 8;
+        j += 16;
+    }
 
     drawmenu(304,j,menu);
-    
+    if (menutitle) {
+        strcpy(textbuf, menutitle);
+        textprint(180-(strlen(textbuf)<<2), 112 - 6 * alts, 0);
+    }
     for(i=0;i<alts;i++) {
         strcpy(textbuf,titles[i]);
-        textprint(71,120-6*alts+12*i,lab3dversion?32:34);
+        textprint(71,120 - 6 * alts + 12 * i + ofs, lab3dversion?32:34);
     }
 
     finalisemenu();
 
     if (j>240)
-        i=getselection(28,97-6*alts,*value,alts);
+        i=getselection(28, 97 - 6*alts + ofs, *value, alts);
     else
-        i=getselection(28,99-6*alts,*value,alts);
+        i=getselection(28, 99 - 6*alts + ofs, *value, alts);
 
-    if (i>=0) *value=i;   
+    if (i>=0) *value=i;
+    return i;
 }
-
+/*
 int resolutionmenu(int alts,int start,char titles[][30],int def) {
     int i;
     int j=12*alts+24;
     char t[12];
 
-    if (start<0) {
-        for(i=0;i<alts;i++) {
-            if (def>=10000)
-                sprintf(t,"%dx%d",def/10000,def%10000);
-
-            if (!strcmp(t,titles[i]))
-                break;
-        }
-        if (i<alts)
-            def=i;
-        else
-            def=0;
-    } else {
-        def-=start;
-        if (def<0) def=0;
-        if (def>=alts) def=0;
-    }
+    def-=start;
+    if (def<0) def=0;
+    if (def>=alts) def=0;
 
     drawmenu(304,j,menu);
     
@@ -427,7 +441,7 @@ int resolutionmenu(int alts,int start,char titles[][30],int def) {
 
     if (i>=0) return i; else return -1;
 }
-
+*/
 int getnumber(void) {
     int ch, uni;
     char buf[10];
@@ -517,67 +531,65 @@ void customresolution(void) {
 }
 
 void setupinputdevices(void) {
-    selectionmenu(4,inputdevicemenu,&inputdevice);
-}
-
-int modecompare(const void *a, const void *b) {
-    SDL_Rect *c=*(SDL_Rect **)a;
-    SDL_Rect *d=*(SDL_Rect **)b;
-
-    return ((K_INT32)d->w*((K_INT32)d->h)-((K_INT32)c->w)*((K_INT32)c->h));
+    selectionmenu(4, inputdevicemenu, &inputdevice, "Select input devices");
 }
 
 void setupsetfullscreen(void) {
-    selectionmenu(2,fullscreenmenu,&fullscr);
+    selectionmenu(2, fullscreenmenu, &fullscr, NULL);
 }
 
 void setupsetfiltering(void) {
-    selectionmenu(3,filtermenu,&nearest);
+    selectionmenu(3,filtermenu,&nearest, "Filtering");
 }
 
 void setupsetmusic(void) {
-    selectionmenu(MUSIC_SOURCES,musicmenu,&music);
+    selectionmenu(MUSIC_SOURCES,musicmenu,&music, "Music");
 }
 
 void setupsetsound(void) {
-    selectionmenu(2,soundmenu,&sound);
+    selectionmenu(2,soundmenu,&sound, "Sound");
 }
 
 void setupcheatmenu(void) {
-    selectionmenu(3,cheatmenu,&cheat);
+    selectionmenu(3,cheatmenu,&cheat, "Cheat keys");
 }
 
 void setupsetsoundchannels(void) {
-    selectionmenu(2,channelmenu,&channel);
+    selectionmenu(2,channelmenu,&channel, "Sound channels");
 }
 
 void setupsetmusicchannels(void) {
-    selectionmenu(2,channelmenu,&musicchannel);
+    selectionmenu(2,channelmenu,&musicchannel, "Music channels");
 }
 
 void setupsoundblockmenu(void) {
-    selectionmenu(10,soundblockmenu,&soundblock);
+    selectionmenu(10,soundblockmenu,&soundblock, "Sound buffer");
 }
 
 void setuptimingmenu(void) {
-    selectionmenu(2,timingmenu,&timing);
+    selectionmenu(2,timingmenu,&timing, "Timing");
 }
 
 void setuptexturedepthmenu(void) {
-    selectionmenu(3,texturedepthmenu,&texturedepth);
+    selectionmenu(3,texturedepthmenu,&texturedepth, "Texture depth");
 }
 
 void setupscalingmodemenu(void) {
-    selectionmenu(4,scalingtypemenu,&scaling);
+    selectionmenu(4,scalingtypemenu,&scaling, "Scaling");
 }
 
-static void getkeyaction(char* txt, int len, int action) {
+typedef struct {
+    const char* title;
+    void(*get_action_name)(char* txt, int len, int action);
+    int (*select)(SDL_Event* e, int action);
+    void (*draw_instructions)(const char* txt);
+} input_configuration_method;
+
+static void key_get_action_name(char* txt, int len, int action) {
     strncpy(txt, SDL_GetKeyName(action_key[action]), len);
 }
 
-static void setupselectkey(int action) {}
-
-static int selectkey(SDL_Event* event, int action) {
+static int key_select(SDL_Event* event, int action) {
     switch(event->type) {
         case SDL_KEYDOWN:
             action_key[action] = event->key.keysym.sym;
@@ -588,7 +600,7 @@ static int selectkey(SDL_Event* event, int action) {
     return 0;
 }
 
-static void getjoyaction(char* txt, int len, int action) {
+static void joy_get_action_name(char* txt, int len, int action) {
     int def = action_joystick[action];
     if (def == ACTION_UNBOUND) {
         strncpy(txt, "None", len);
@@ -607,7 +619,7 @@ static void getjoyaction(char* txt, int len, int action) {
     }
 }
 
-static int selectjoy(SDL_Event* event, int action) {
+static int joy_select(SDL_Event* event, int action) {
     switch(event->type) {
         case SDL_JOYBUTTONDOWN:
             if (event->jbutton.which == cur_joystick_index) {
@@ -638,11 +650,7 @@ static int selectjoy(SDL_Event* event, int action) {
     return 0;
 }
 
-static void makeupper(char* txt) {
-    while (*txt) { *txt = toupper(*txt); txt++; }
-}
-
-static void getgamepadaction(char* txt, int len, int action) {
+static void ctrl_get_action_name(char* txt, int len, int action) {
     int def = action_controller[action];
     const char* cptext;
     if (def == ACTION_UNBOUND) {
@@ -668,7 +676,7 @@ static void getgamepadaction(char* txt, int len, int action) {
     }
 }
 
-static int selectgamepad(SDL_Event* event, int action) {
+static int ctrl_select(SDL_Event* event, int action) {
     switch(event->type) {
         case SDL_CONTROLLERBUTTONDOWN:
             if (event->jbutton.which == cur_controller_index) {
@@ -699,7 +707,56 @@ static int selectgamepad(SDL_Event* event, int action) {
     return 0;
 }
 
-void setupsetinputgroup(int *group, void(*getaction)(char* txt, int len, int action), int (*select)(SDL_Event* e, int action)) {
+static void key_instruction(const char* inst) {
+    drawmenu(304,72,menu);
+    strcpy(textbuf,"Move joystick in");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
+    strcpy(textbuf,inst);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
+    strcpy(textbuf,"direction, or press");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
+    
+    strcpy(textbuf,"any key to delete");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
+    finalisemenu();
+    glFlush();
+}
+
+static void joy_instruction(const char* inst) {
+    drawmenu(304,72,menu);
+    strcpy(textbuf,"Select button or axis for");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
+    strcpy(textbuf,inst);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
+    strcpy(textbuf,"or press any key to cancel;");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
+    
+    strcpy(textbuf,"press BACKSPACE to delete");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
+    finalisemenu();
+    glFlush();
+}
+
+static void ctrl_instruction(const char* inst) {
+    drawmenu(304,72,menu);
+    strcpy(textbuf,"Select button or stick for");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
+    strcpy(textbuf,inst);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
+    strcpy(textbuf,"or press any key to cancel;");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
+    
+    strcpy(textbuf,"press BACKSPACE to delete");
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
+    finalisemenu();
+    glFlush();
+}
+
+input_configuration_method icm_key = { "Configure Keyboard", key_get_action_name, key_select, key_instruction };
+input_configuration_method icm_joy = { "Configure Joystick", joy_get_action_name, joy_select, joy_instruction };
+input_configuration_method icm_ctrl = { "Configure Controller", ctrl_get_action_name, ctrl_select, ctrl_instruction };
+
+void setupsetinputgroup(int *group, input_configuration_method* meth) {
     int i = 0, j, quitf = 0, sk;
     SDL_Event event;
     int cnt;
@@ -710,24 +767,32 @@ void setupsetinputgroup(int *group, void(*getaction)(char* txt, int len, int act
         for(j = 0; group[j] != -1; j++) {
             strcpy(textbuf, keynames[group[j]]);
             textprint(31, 13 + 12 * j, lab3dversion ? 32 : 34);
-            getaction(textbuf, 11, group[j]);
+            meth->get_action_name(textbuf, 11, group[j]);
             textbuf[11] = 0;
             textprint(261, 13 + 12 * j, lab3dversion ? 32 : 34);
             cnt++;
         }
+        strcpy(textbuf, "Return");
+        textprint(31, 13 + 12 * j, lab3dversion ? 32 : 34);
     
+        strcpy(textbuf,"Use cursor keys / left stick to select.");
+        textprint(23,208,lab3dversion?32:34);
+
+        strcpy(textbuf,"Enter/A btn to change, ESC/B to return.");
+        textprint(23,220,lab3dversion?32:34);
         finalisemenu();
-        i = getselection(-12, -9, i, cnt);
+        i = getselection(-12, -9, i, cnt + 1);
         if (i<0) quitf=1;
         else if (i>=cnt) quitf=1;
         else {
+            meth->draw_instructions(keynames[group[i]]);
             j = 1;
             while(j) {
                 while(SDL_PollEvent(&event))
                 {
                     ProcessEvent(&event);
                     if (quitgame) quit();
-                    if (select(&event, group[i])) {
+                    if (meth->select(&event, group[i])) {
                         j = 0;
                         break;
                     }
@@ -736,20 +801,22 @@ void setupsetinputgroup(int *group, void(*getaction)(char* txt, int len, int act
             }
         }
     }
+    draw_mainmenu();
 }
-void setupsetinput(void(*getaction)(char* txt, int len, int action), int (*select)(SDL_Event* e, int action)) {
+
+void setupsetinput(input_configuration_method* meth) {
     int a=0, quit=0;
     while (!quit) {
-        a=resolutionmenu(3,0,inputgroupsmenu,a);
+        a = selectionmenu(4,inputgroupsmenu,&a, meth->title);
         switch(a) {
             case 0:
-                setupsetinputgroup(action_group_movement, getaction, select);
+                setupsetinputgroup(action_group_movement, meth);
                 break;
             case 1:
-                setupsetinputgroup(action_group_weapons, getaction, select);
+                setupsetinputgroup(action_group_weapons, meth);
                 break;
             case 2:
-                setupsetinputgroup(action_group_actions, getaction, select);
+                setupsetinputgroup(action_group_actions, meth);
                 break;
             default:
                 quit=1;
@@ -758,268 +825,99 @@ void setupsetinput(void(*getaction)(char* txt, int len, int action), int (*selec
     }
 
 }
-/*
-void setupsetkeys(void) {
-    int i=0,j,quit=0,sk;
-    SDL_Event event;
 
-    i=0;
-    while(!quit) {
-        drawmenu(360,240,menu);
-    
-        for(j=0;j<ACTION_LAST;j++) {
-            strcpy(textbuf,keynames[j]);
-            textprint(31,13+12*j,lab3dversion?32:34);
-            strncpy(textbuf,SDL_GetKeyName(action_key[j]),11);
-            textbuf[11]=0;
-            textprint(261,13+12*j,lab3dversion?32:34);
-        }
-    
-        finalisemenu();
-        i=getselection(-12,-9,i,ACTION_LAST);
-        if (i<0) quit=1;
-        else if (i>=ACTION_LAST) quit=1;
-        else {
-            j=-1;
-            while(j<0) {
-                while(SDL_PollEvent(&event))
-                {
-                    switch(event.type)
-                    {	      
-                        case SDL_KEYDOWN:
-                            j=event.key.keysym.sym;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                SDL_Delay(10);
-            }
-            action_key[i]=j;
-        }
-    }
-}
-void setupsetbuttons(void) {
-    int i=0,j,quit=0,sk,cb;
-    SDL_Event event;
-
-    i=0;
-    while(!quit) {
-        drawmenu(360,240,menu);
-    
-        for(j=0;j<ACTION_LAST;j++) {
-            strcpy(textbuf,keynames[j]);
-            textprint(31,13+12*j,lab3dversion?32:34);
-            cb=buttondefs[j];
-            if (cb==-1) {
-                strcpy(textbuf,"None");
-            } else {
-                sprintf(textbuf,"Button %d",cb+1);
-            }
-            textbuf[11]=0;
-            textprint(261,13+12*j,lab3dversion?32:34);
-        }
-    
-        finalisemenu();
-        i=getselection(-12,-9,i,ACTION_LAST);
-        if (i<0) quit=1;
-        else if (i>=ACTION_LAST) quit=1;
-        else {
-            j=-2;
-            while(j<-1) {
-                while(SDL_PollEvent(&event))
-                {
-                    switch(event.type)
-                    {	      
-                        case SDL_JOYBUTTONDOWN:
-                            sk=event.jbutton.button;
-                            if (sk<numjoybuttons) {
-                                j=sk;
-                            }
-                            break;
-                        case SDL_KEYDOWN:
-                            j=-1;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                SDL_Delay(10);
-            }
-            buttondefs[i]=j;
-        }
-    }
-}
-*/
-/*
-#define AXIS_NOVALUE (~0)
-void setupsetaxes(void) {
-    int i=0,j,quit=0,jdone=0,sk,cb;
-    int axisvalues[numjoyaxes];
-    SDL_Event event;
-
-    for (i=0;i<numjoyaxes;i++) {
-        axisvalues[i]=AXIS_NOVALUE;
-    }
-
-    i=0;
-    while(!quit) {
-        drawmenu(360,240,menu);
-    
-        for(j=0;j<numaxes;j++) {
-            strcpy(textbuf,axisnames[j]);
-            textprint(31,13+12*j,lab3dversion?32:34);
-            cb=axisdefs[j];
-            if (cb==0) {
-                strcpy(textbuf,"None");
-            } else {
-                strncpy(textbuf,jaxisnames[abs(cb)-1],11);
-            }
-            textbuf[11]=0;
-            if (cb < 0)
-                strcat(textbuf," INV");
-            textbuf[11]=0;
-            textprint(261,13+12*j,lab3dversion?32:34);
-        }
-    
-        finalisemenu();
-        i=getselection(-12,-9,i,numaxes);
-        if (i<0) quit=1;
-        else if (i>=numaxes) quit=1;
-        else {
-            drawmenu(304,72,menu);
-            strcpy(textbuf,"Move joystick in");
-            textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
-            strcpy(textbuf,axisinst[i]);
-            textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
-            strcpy(textbuf,"direction, or press");
-            textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
-
-            strcpy(textbuf,"any key to delete");
-            textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
-            finalisemenu();
-            glFlush();
-            jdone=0;
-            while(!jdone) {
-                while(SDL_PollEvent(&event))
-                {
-                    switch(event.type)
-                    {	      
-                        case SDL_JOYAXISMOTION:
-                            sk=event.jaxis.axis;
-                            if (sk<numjoyaxes) {
-                                if (axisvalues[sk]!=AXIS_NOVALUE) {
-                                    int diff=event.jaxis.value-axisvalues[sk];
-                                    if (diff>8192) {
-                                        j=-sk-1;
-                                        jdone=1;
-                                    }
-                                    if (diff<-8192) {
-                                        j=sk+1;
-                                        jdone=1;
-                                    }
-                                } else axisvalues[sk]=event.jaxis.value;
-                            }
-                            break;
-                        case SDL_KEYDOWN:
-                            j=0;
-                            jdone=1;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                SDL_Delay(10);
-            }
-            axisdefs[i]=j;
-        }
-    }
-}
-*/
 void setupconfigureinput(void) {
-    int a,quit=0;
+    int a=0, quit=0;
     while (!quit) {
-        a=resolutionmenu(4,0,configureinputmenu,0);
+        a = selectionmenu(4,configureinputmenu,&a, "Configure input devices");
         switch(a) {
             case 0:
-                setupsetinput(getkeyaction, selectkey);
+                setupsetinput(&icm_key);
                 break;
             case 1:
-                setupsetinput(getjoyaction, selectjoy);
+                setupsetinput(&icm_joy);
                 break;
             case 2:
-                setupsetinput(getgamepadaction, selectgamepad);
+                setupsetinput(&icm_ctrl);
                 break;
             default:
                 quit=1;
                 break;
         }
     }
+}
+
+static void draw_mainmenu(void) {
+    drawmenu(360,240,menu);
+
+    strcpy(textbuf,"LAB3D/SDL setup menu");
+    textprint(81,22,126);
+
+    strcpy(textbuf,"Input: ");
+    strcat(textbuf,inputdevicemenu[inputdevice]);
+    textprint(51,36,lab3dversion?32:34);
+    strcpy(textbuf,"Configure Input");
+    textprint(51,48,lab3dversion?32:34);
+    strcpy(textbuf,"Window size: ");
+    sprintf(textbuf,"Window size: %dx%d", window_width,
+            window_height);
+    textprint(51,60,64);
+    strcpy(textbuf,"Display type: ");
+    strcat(textbuf,fullscreenmenu[fullscr]);
+    textprint(51,72,64);
+    strcpy(textbuf,"Filtering: ");
+    strcat(textbuf,filtermenu[nearest]);
+    textprint(51,84,64);
+    strcpy(textbuf,"Music: ");
+    strcat(textbuf,musicmenu[music]);
+    textprint(51,96,96);
+    strcpy(textbuf,"Effects: ");
+    strcat(textbuf,soundmenu[sound]);
+    textprint(51,108,96);
+    strcpy(textbuf,"Sound channels: ");
+    strcat(textbuf,channelmenu[channel]);
+    textprint(51,120,96);
+    strcpy(textbuf,"Music channels: ");
+    strcat(textbuf,channelmenu[musicchannel]);
+    textprint(51,132,96);
+    strcpy(textbuf,"Cheats: ");
+    strcat(textbuf,cheatmenu[cheat]);
+    textprint(51,144,96);
+    strcpy(textbuf,"Sound block size: ");
+    strcat(textbuf,soundblockmenu[soundblock]);
+    textprint(51,156,lab3dversion?32:34);
+    strcpy(textbuf,"Texture colour depth: ");
+    strcat(textbuf,texturedepthmenu[texturedepth]);
+    textprint(51,168,lab3dversion?32:34);
+    strcpy(textbuf,"View: ");
+    strcat(textbuf,scalingtypemenu[scaling]);
+    textprint(51,180,lab3dversion?32:34);
+    strcpy(textbuf,"Exit setup");
+    textprint(51,192,lab3dversion?128:130);
+#ifdef WIN32
+    strcpy(textbuf,"Create desktop shortcuts");
+    textprint(51,204,96);
+#endif
+
+    strcpy(textbuf,"Use cursor keys / left stick to select.");
+    textprint(31,220,lab3dversion?32:34);
+
+    finalisemenu();
+}
+
+static void pushmenu(void (*draw)(void)) {
+    
 }
 
 void setupmenu(void) {
     int quit=0,sel=0;
 
     while(!quit) {
-        drawmenu(360,240,menu);
-
-        strcpy(textbuf,"LAB3D/SDL setup menu");
-        textprint(81,22,126);
-
-        strcpy(textbuf,"Input: ");
-        strcat(textbuf,inputdevicemenu[inputdevice]);
-        textprint(51,36,lab3dversion?32:34);
-        strcpy(textbuf,"Configure Input");
-        textprint(51,48,lab3dversion?32:34);
-        strcpy(textbuf,"Window size: ");
-        sprintf(textbuf,"Window size: %dx%d", window_width,
-                     window_height);
-        textprint(51,60,64);
-    	strcpy(textbuf,"Display type: ");
-        strcat(textbuf,fullscreenmenu[fullscr]);
-        textprint(51,72,64);
-    	strcpy(textbuf,"Filtering: ");
-        strcat(textbuf,filtermenu[nearest]);
-        textprint(51,84,64);
-    	strcpy(textbuf,"Music: ");
-        strcat(textbuf,musicmenu[music]);
-        textprint(51,96,96);
-    	strcpy(textbuf,"Effects: ");
-        strcat(textbuf,soundmenu[sound]);
-        textprint(51,108,96);
-    	strcpy(textbuf,"Sound channels: ");
-        strcat(textbuf,channelmenu[channel]);
-        textprint(51,120,96);
-    	strcpy(textbuf,"Music channels: ");
-        strcat(textbuf,channelmenu[musicchannel]);
-        textprint(51,132,96);
-    	strcpy(textbuf,"Cheats: ");
-        strcat(textbuf,cheatmenu[cheat]);
-        textprint(51,144,96);
-    	strcpy(textbuf,"Sound block size: ");
-        strcat(textbuf,soundblockmenu[soundblock]);
-        textprint(51,156,lab3dversion?32:34);
-    	strcpy(textbuf,"Texture colour depth: ");
-        strcat(textbuf,texturedepthmenu[texturedepth]);
-        textprint(51,168,lab3dversion?32:34);
-    	strcpy(textbuf,"View: ");
-        strcat(textbuf,scalingtypemenu[scaling]);
-        textprint(51,180,lab3dversion?32:34);
-    	strcpy(textbuf,"Exit setup");
-        textprint(51,192,lab3dversion?128:130);
-#ifdef WIN32
-    	strcpy(textbuf,"Create desktop shortcuts");
-        textprint(51,204,96);
-#endif
-
-        strcpy(textbuf,"Use cursor keys and Return to select.");
-        textprint(31,220,lab3dversion?32:34);
-
-        finalisemenu();
+        draw_mainmenu();
 #ifdef WIN32
         if ((sel = getselection(12,15,sel,15)) < 0)
 #else
-            if ((sel = getselection(12,15,sel,14)) < 0)
+        if ((sel = getselection(12,15,sel,14)) < 0)
 #endif
                 quit=1;
             else {
@@ -1187,69 +1085,9 @@ void load_default_settings(void) {
     }
 
     if (lab3dversion) {
-        action_key[16]=SDLK_l;
-        action_key[13]=SDLK_s;
+        action_key[ACTION_OLD_LOAD]=SDLK_l;
+        action_key[ACTION_OLD_SAVE]=SDLK_s;
     }
-}
-
-void old_loadsettings(FILE* file) {
-    int i,versflag,version;
-    int resolutionnumber;
-    SDL_Rect **modes;
-
-    i=fscanf(file,"%d",&versflag);
-    if (versflag==-1) {
-        i=fscanf(file,"%d",&version);
-        i=fscanf(file,"%d",&inputdevice);
-    } else {
-        version=0;
-        inputdevice=versflag;
-    }
-    //printf("%d %d\n",versflag,version);
-    i=fscanf(file,"%d %d %d %d %d",&resolutionnumber,&fullscr,
-             &nearest,&music,&sound); /* Non-existent set to defaults. */
-    if (resolutionnumber < 19) {
-        window_width = 640;
-        window_height = 480;
-    } else {
-        window_width = resolutionnumber / 10000;
-        window_height = resolutionnumber % 10000;
-    }
-    if (i==5) {
-        int dummy;
-        for(i=0;i<ACTION_LAST;i++)
-            if (fscanf(file,"%d\n",action_key+i)!=1) break;
-	
-        if (version>0) {
-            for(i=0;i<ACTION_LAST;i++)
-                if (fscanf(file,"%d\n", &dummy)!=1) break;
-            for(i=0;i<numaxes;i++)
-                if (fscanf(file,"%d\n", &dummy)!=1) break;
-        }
-    }
-    if (i>0) {
-        i=fscanf(file,"%d %d\n",&soundvolume,&musicvolume);
-    } else i=0;
-    
-    
-    if (i==2) {
-        i=fscanf(file,"%d\n",&cheat);
-    } else i=0;
-
-    if (i) i=fscanf(file,"%d\n",&channel);
-
-    if (i) i=fscanf(file,"%lf\n",&gammalevel);
-
-    if (i) i=fscanf(file,"%d\n",&soundblock);
-
-    if (i) i=fscanf(file,"%d\n",&timing); /* Left in case I put it back. */
-
-    if (i) i=fscanf(file,"%d\n",&texturedepth);
-
-    if (i) i=fscanf(file,"%d\n",&musicchannel);
-
-    if (i) i=fscanf(file,"%d\n",&scaling);
-
 }
 
 typedef struct {
@@ -1261,8 +1099,8 @@ typedef struct _setting_t {
     const char* name;
     int(*load)(const char* key, char* val, struct _setting_t* set);
     int(*save)(const char* key, FILE* f, struct _setting_t* set);
-    void* p1;
-    void* p2;
+    void *p1, *p2;
+    int i1, i2;
 } setting_t;
 
 typedef struct {
@@ -1342,7 +1180,7 @@ static int _string_or_int(char* val, char** strval, int* ival) {
 static int _load_key(const char* key, char* val, setting_t* set) {
     char *strval;
     int keycode;
-    int action = (int)set->p1;
+    int action = set->i1;
     switch (_string_or_int(val, &strval, &keycode)) {
         case 0:
             return 1;
@@ -1358,7 +1196,7 @@ static int _load_key(const char* key, char* val, setting_t* set) {
 }
 
 static int _save_key(const char* key, FILE* f, setting_t* set) {
-    int action = (int)set->p1;
+    int action = set->i1;
     int keycode = action_key[action];
     const char *txt;
     if (keycode == -1) {
@@ -1376,8 +1214,8 @@ static int _save_key(const char* key, FILE* f, setting_t* set) {
 static int _load_joyaction(const char* key, char* val, setting_t* set) {
     char *strval;
     int flags = 0, which = 0, aval = ACTION_UNBOUND;
-    int action = (int)set->p1;
-    int gamepad = (int)set->p2;
+    int action = set->i1;
+    int controller = set->i2;
     switch (_string_or_int(val, &strval, &which)) {
         case 0:
             return 1;
@@ -1392,14 +1230,14 @@ static int _load_joyaction(const char* key, char* val, setting_t* set) {
                 }
                 if (flags) {
                     which = SDL_CONTROLLER_AXIS_INVALID;
-                    if (gamepad)
+                    if (controller)
                         which = SDL_GameControllerGetAxisFromString(strval + 2);
                     if (which == SDL_CONTROLLER_AXIS_INVALID)
                         if (_parse_int(strval + 2, &which) != 0)
                             return 1;
                 } else {
                     which = SDL_CONTROLLER_BUTTON_INVALID;
-                    if (gamepad)
+                    if (controller)
                         which = SDL_GameControllerGetButtonFromString(strval);
                     if (which == SDL_CONTROLLER_BUTTON_INVALID)
                         if (_parse_int(strval, &which) != 0)
@@ -1415,7 +1253,7 @@ static int _load_joyaction(const char* key, char* val, setting_t* set) {
         case 2:
             break;
     }
-    if (gamepad) {
+    if (controller) {
         action_controller[action] = aval;
     } else {
         action_joystick[action] = aval;
@@ -1424,13 +1262,13 @@ static int _load_joyaction(const char* key, char* val, setting_t* set) {
 }
 
 static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
-    int action = (int)set->p1;
-    int gamepad = (int)set->p2;
+    int action = set->i1;
+    int controller = set->i2;
     int val, which;
     const char *txt = NULL;
     char txtbuf[32];
 
-    val = gamepad ? action_controller[action] : action_joystick[action];
+    val = controller ? action_controller[action] : action_joystick[action];
     which = val & JOY_MASK;
 
     if (val == ACTION_UNBOUND) {
@@ -1438,7 +1276,7 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
     } else {
         if (val & JOY_FLAG_AXIS) {
             char neg = val & JOY_FLAG_NEG ? '-' : '+';
-            if (gamepad) {
+            if (controller) {
                 txt = SDL_GameControllerGetStringForAxis(which);
                 if (txt && *txt) {
                     snprintf(txtbuf, 32, "\"A%c%s\"", neg, txt);
@@ -1448,7 +1286,7 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
                 snprintf(txtbuf, 32, "\"A%c%d\"", neg, which);
             }
         } else {
-            if (gamepad) {
+            if (controller) {
                 txt = SDL_GameControllerGetStringForButton(which);
                 if (txt && *txt) {
                     snprintf(txtbuf, 32, "\"%s\"", txt);
@@ -1472,9 +1310,6 @@ static int _save_blankline(const char* key, FILE* f, setting_t* set) {
 #define XINTSETTING(name, gvar) { #name, _load_int, NULL, &gvar }
 #define FLOATSETTING(name, gvar) { #name, _load_float, _save_float, &gvar }
 #define ENUMSETTING(name, values, gvar) { #name, _load_enum, _save_enum, &gvar, values }
-#define KEYSETTING(name, idx) { #name, _load_key, _save_key, (void*)idx }
-#define JOYSETTING(name, idx) { #name, _load_joyaction, _save_joyaction, (void*)idx, (void*)0 }
-#define CTRLSETTING(name, idx) { #name, _load_joyaction, _save_joyaction, (void*)idx, (void*)1 }
 
 static setting_t video_settings[] = {
     INTSETTING(width, window_width),
@@ -1507,9 +1342,9 @@ static setting_t input_settings[] = {
     { NULL }
 };
 
-static setting_t key_settings[ACTION_CONFIG_LAST+1];
-static setting_t joystick_settings[ACTION_CONFIG_LAST+1];
-static setting_t gamepad_settings[ACTION_CONFIG_LAST+1];
+static setting_t key_settings[ACTION_LAST+1];
+static setting_t joystick_settings[ACTION_LAST+1];
+static setting_t controller_settings[ACTION_LAST+1];
 
 static setting_section_t sections[] = {
     { "Video", video_settings },
@@ -1518,7 +1353,7 @@ static setting_section_t sections[] = {
     { "Input", input_settings },
     { "Keyboard", key_settings },
     { "Joystick", joystick_settings },
-    { "Controller", gamepad_settings },
+    { "Controller", controller_settings },
     { NULL }
 };
 
@@ -1533,28 +1368,27 @@ void loadsettings(void) {
     setting_section_t* cursection = NULL;
     setting_t* cursetting = NULL;
 
+    load_default_settings();
+
     input = fopen(filename, "r");
 
     if (input == NULL)
         setup();
 
-    load_default_settings();
     if (!key_settings[0].name) {
         int i;
-        for (i = 0; i < ACTION_CONFIG_LAST; i++) {
-            key_settings[i].name = action_enum_names[i];
+        for (i = 0; i < ACTION_LAST; i++) {
+            key_settings[i].name = joystick_settings[i].name = 
+                controller_settings[i].name = action_enum_names[i];
+            key_settings[i].i1 = joystick_settings[i].i1 = 
+                controller_settings[i].i1 = i;
             key_settings[i].load = _load_key;
             key_settings[i].save = _save_key;
-            key_settings[i].p1 = (void*)i;
-            joystick_settings[i].name = action_enum_names[i];
             joystick_settings[i].load = _load_joyaction;
             joystick_settings[i].save = _save_joyaction;
-            joystick_settings[i].p1 = (void*)i;
-            gamepad_settings[i].name = action_enum_names[i];
-            gamepad_settings[i].load = _load_joyaction;
-            gamepad_settings[i].save = _save_joyaction;
-            gamepad_settings[i].p1 = (void*)i;
-            gamepad_settings[i].p2 = (void*)1;
+            controller_settings[i].load = _load_joyaction;
+            controller_settings[i].save = _save_joyaction;
+            controller_settings[i].i2 = 1;
         }
     }
     while (read_ini(input, buf, sizeof(buf), &key, &val, &curline)) {
@@ -1591,8 +1425,7 @@ void loadsettings(void) {
         }
     }
     if (!newformat) {
-        rewind(input);
-        old_loadsettings(input);
+        setup();
     }
     fclose(input);
 }
@@ -1624,19 +1457,18 @@ void setup(void) {
     K_UINT16 l;
     char *v;
     SDL_Surface *screen, *icon;
+    SDL_Rect displaybounds;
 
     configure();
     statusbaryoffset=250;
 
-    /* Initialise SDL; uncomment the NOPARACHUTE bit if the parachute
-       routine (which catches stuff like segfaults) gets in the way of your
-       debugging. */
-
     /* Display accuracy not important in setup... */
 
-    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO/*|SDL_INIT_NOPARACHUTE*/|
-             SDL_INIT_JOYSTICK);
-    SDL_JoystickOpen(0);
+    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|
+             SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
+
+    SDL_GetDisplayBounds(0, &displaybounds);
+
     SDL_JoystickEventState(1);
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,5);
@@ -1652,7 +1484,11 @@ void setup(void) {
 
     fprintf(stderr,"Activating video...\n");
 
-    screenwidth=360; screenheight=240;
+    if (displaybounds.w >= 800 && displaybounds.h >= 640) {
+        screenwidth=720; screenheight=480;
+    } else {
+        screenwidth=360; screenheight=240;
+    }
 
     icon = SDL_LoadBMP("ken.bmp");
     if (icon == NULL) {
@@ -1685,7 +1521,7 @@ void setup(void) {
     virtualscreenheight=240;
 
     largescreentexture=0;
-							      
+                                                              
     if (largescreentexture) {
         /* One large 512x512 texture. */
 
@@ -1798,14 +1634,14 @@ void setup(void) {
                 palette[k++] = (opaldef[i][2]*j)/17;
             }
         settransferpalette();
-        strcpy(keynames[16], "LOAD game");
-        strcpy(keynames[13], "SAVE game");
+        keynames[ACTION_OLD_LOAD] = "LOAD game";
+        keynames[ACTION_OLD_SAVE] = "SAVE game";
 
     } else {
         /* The ingame palette is stored in this GIF! */
         kgif(1);
         memcpy(spritepalette,palette,768);
-	
+        
         kgif(0);
         settransferpalette();
         fprintf(stderr,"Loading graphics...\n");
