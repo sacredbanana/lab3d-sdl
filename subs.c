@@ -343,14 +343,14 @@ void loadboard()
             for(i=0;i<(boardnum<<1);i++)
                 templong += ((long)(boleng[i]+2));
             lseek(fil, templong, SEEK_SET);
-	
+        
             for(i=1;i<=256;i++) {
                 lzwbuf[i]=i&255;
                 lzwbuf2[i]=i;
             }
             lzwbuf2[0]=0;
             lzwbuf[0]=0;
-	
+        
             for(i=0;i<2;i++)
             {
                 unsigned char* boardp = ((unsigned char*)(board)) + (i << 12);
@@ -358,7 +358,7 @@ void loadboard()
                 compleng = boleng[(boardnum<<1)+i];
                 readLE16(fil, &strtot, 2);
                 read(fil, &tempbuf[0], compleng);
-		
+                
                 if (strtot > 0)
                 {
                     tempbuf[compleng] = 0;
@@ -375,41 +375,41 @@ void loadboard()
                         dat=(((tempbuf[bytecnt2])|
                               ((K_UINT16)(tempbuf[bytecnt2+1]))<<8)>>bitcnt)&
                             ((1<<numbits)-1);
-			
+                        
 /*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
-		    >>bitcnt)&
-		    ((1<<numbits)-1);*/
+                    >>bitcnt)&
+                    ((1<<numbits)-1);*/
                         if (bitcnt+numbits>16) {
                             dat+=(((K_UINT16)tempbuf[bytecnt2+2])&
                                   ((1<<((bitcnt+numbits)&15))-1))<<
                                 (16-bitcnt);
                         }
-			
+                        
                         bitcnt+=numbits;
                         bytecnt2+=bitcnt>>3;
                         bitcnt&=7;
-			
+                        
                         lzwbuf2[currstr]=dat;
-			
+                        
                         while(dat>=256) {
                             stack[stackp++]=lzwbuf[dat];
-			
+                        
                             dat=lzwbuf2[dat];
                         }
-			
+                        
                         lzwbuf[currstr-1]=dat;
                         lzwbuf[currstr]=dat;
-			
+                        
                         dat=lzwbuf2[dat];
                         stack[stackp++]=dat;
-			
+                        
                         while(stackp>0) {
                             stackp--;
                             if (bytecnt1<4096)
                                 boardp[bytecnt1++]=
                                     stack[stackp];
                         }
-			
+                        
                         currstr++;
                         if (currstr == goalstr)
                         {
@@ -447,7 +447,7 @@ void loadboard()
     }
     glBindTexture(GL_TEXTURE_2D, texName[map-1]);
     checkGLStatus();
-	
+        
     TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -631,14 +631,14 @@ void loadtables()
         readLE32(fil, &tantable[0], 4096);
         readLE16(fil, &radarang[0], 720);
 /*	read(fil, &option[0], numoptions);
-	read(fil, &keydefs[0], numkeys);
-	readLE16(fil, &joyx1, 2);
-	readLE16(fil, &joyy1, 2);
-	readLE16(fil, &joyx2, 2);
-	readLE16(fil, &joyy2, 2);
-	readLE16(fil, &joyx3, 2);
-	readLE16(fil, &joyy3, 2);
-	readLE16(fil, &ksayfreq, 2);*/
+        read(fil, &keydefs[0], numkeys);
+        readLE16(fil, &joyx1, 2);
+        readLE16(fil, &joyy1, 2);
+        readLE16(fil, &joyx2, 2);
+        readLE16(fil, &joyy2, 2);
+        readLE16(fil, &joyx3, 2);
+        readLE16(fil, &joyy3, 2);
+        readLE16(fil, &ksayfreq, 2);*/
         close(fil);
 
         /* Override joystick values with SDL limits... */
@@ -675,7 +675,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan) {
 
     sndfiloffs=readlong(SoundFile+(2+filenum*6));
     leng=readshort(SoundFile+(6+filenum*6));
-	
+        
     DumpSound(SoundFile+sndfiloffs, leng, ((FeedPoint+blocksize)&65535), pan);
     SDL_UnlockMutex(soundmutex);
     return 0;
@@ -923,24 +923,24 @@ void checkobj(K_UINT16 x, K_UINT16 y, K_UINT16 posxs, K_UINT16 posys,
     }
     siz = (int)(((((long)x-(long)posxs)>>2)*sintable[(angs+512)&2047]+(((long)y-(long)posys)>>2)*sintable[angs])>>16);
     if (siz != 0)
-	{
-	    ysiz = (int)(((((long)x-(long)posxs)>>2)*sintable[angs]-(((long)y-(long)posys)>>2)*sintable[(angs+512)&2047])>>16);
-	    angle = (K_INT16)(180.0-((180.0*(double)ysiz)/(double)siz/aspw));
-	    siz = (int)(163840L/((long)siz));
-	    sortx[sortcnt] = x;
-	    sorty[sortcnt] = y;
-	    if (bmpkind[num&1023]==5) {
+        {
+            ysiz = (int)(((((long)x-(long)posxs)>>2)*sintable[angs]-(((long)y-(long)posys)>>2)*sintable[(angs+512)&2047])>>16);
+            angle = (K_INT16)(180.0-((180.0*(double)ysiz)/(double)siz/aspw));
+            siz = (int)(163840L/((long)siz));
+            sortx[sortcnt] = x;
+            sorty[sortcnt] = y;
+            if (bmpkind[num&1023]==5) {
             sorti[sortcnt]=0;
-	    } else {
+            } else {
             sorti[sortcnt]=163840L/sqrt((((long)x-(long)posxs)*
                                          ((long)x-(long)posxs))+
                                         (((long)y-(long)posys)*
                                          ((long)y-(long)posys)))*4;
-	    }
-	    sortbnum[sortcnt] = (num&1023);
-	    if (((angle+(siz>>3)) >= -2) && ((angle-(siz>>3)) <= 362) && ((siz&0xc000) == 0))
+            }
+            sortbnum[sortcnt] = (num&1023);
+            if (((angle+(siz>>3)) >= -2) && ((angle-(siz>>3)) <= 362) && ((siz&0xc000) == 0))
             sortcnt++;
-	}
+        }
 }
 
 void addexplosion(K_UINT16 x, K_UINT16 y, K_UINT16 stat) {
@@ -1478,7 +1478,7 @@ void loadwalls(int replace)
                     fatal_error("wallparams.ini:%d: Invalid key: %s", curline, key);
                 }
                 //printf("key='%s' val='%s'\n", key, val);
-		
+                
             }
         }
         fclose(params);
@@ -1539,18 +1539,18 @@ void loadwalls(int replace)
                           ((K_UINT16)(tempbuf[bytecnt2+1]))<<8)>>bitcnt)&
                         ((1<<numbits)-1);
 /*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
-		    >>bitcnt)&
-		    ((1<<numbits)-1);*/
+                    >>bitcnt)&
+                    ((1<<numbits)-1);*/
                     if (bitcnt+numbits>16) {
                         dat+=(((K_UINT16)tempbuf[bytecnt2+2])&
                               ((1<<((bitcnt+numbits)&15))-1))<<
                             (16-bitcnt);
                     }
-				
+                                
                     bitcnt+=numbits;
                     bytecnt2+=bitcnt>>3;
                     bitcnt&=7;
-				
+                                
                     lzwbuf2[currstr]=dat;
 
                     while(dat>=256) {
@@ -1558,13 +1558,13 @@ void loadwalls(int replace)
 
                         dat=lzwbuf2[dat];
                     }
-				
+                                
                     lzwbuf[currstr-1]=dat;
                     lzwbuf[currstr]=dat;
-				
+                                
                     dat=lzwbuf2[dat];
                     stack[stackp++]=dat;
-				
+                                
                     while(stackp>0) {
                         stackp--;
                         if (bytecnt1<4096)
@@ -1610,7 +1610,7 @@ void loadwalls(int replace)
                     fprintf(stderr, "Screen buffer draw OK.\n");
             } else {
                 glDrawBuffer(GL_FRONT);
-		
+                
                 if (i==128) {
                     fade(63);
                 }
@@ -1688,10 +1688,10 @@ void loadwalls(int replace)
                 walltexcoord[i][1]=1.0;
 
                 glGenTextures(1, &texName[i]);
-		
+                
                 glBindTexture(GL_TEXTURE_2D, texName[i]);
                 checkGLStatus();
-		
+                
                 if (wrapmode) {
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
                 } else {
@@ -1701,14 +1701,14 @@ void loadwalls(int replace)
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilt);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);	
                 checkGLStatus();
-		
+                
                 glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
                 checkGLStatus();
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 checkGLStatus();
-		
+                
                 /* Replace door1 with colour test image. */
-		
+                
 #ifdef COLOURTEST	
                 if (i==door1-1) {
                     for(j=0;j<64;j++)
@@ -1716,24 +1716,24 @@ void loadwalls(int replace)
                             walsegg[j*64+k]=((j>>2)<<4)|(k>>2);
                 }
 #endif
-		
+                
                 TextureConvert(walsegg, RGBATexture, bmpkind[i+1]);
-		
+                
                 if (debugmode)
                     fprintf(stderr, "Trying to upload texture.\n");
-		
+                
                 if (anisotropic)
                     SetAnisotropic();
                 BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
-		
+                
                 if (debugmode)
                     fprintf(stderr, "Upload texture complete.\n");
-		
+                
                 if (i==gameover-1) {
                     /* Keep two copies of this; one for walls, the other for spinning
                        overlay text. */
                     glGenTextures(1, &gameoversprite);
-		
+                
                     glBindTexture(GL_TEXTURE_2D, gameoversprite);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -1741,14 +1741,14 @@ void loadwalls(int replace)
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                                     fullfilter);
                     TextureConvert(walsegg, RGBATexture, 4);
-		
+                
                     if (anisotropic)
                         SetAnisotropic();
                     BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
                 }
-	
+        
                 checkGLStatus();
-	
+        
                 /*	    printf("Wall number %d:\n", i);
 
                         for(k=0;k<64;k++) {
@@ -1800,9 +1800,9 @@ pressakey();
         TransitionTexture(2, 3, 0);
         TransitionTexture(6, 7, 8);
         TransitionTexture(8, 9, 6);
-	
+        
         /* Set up end of game rainbow. */
-	
+        
         TransitionTexture(424, 425, 426);
         TransitionTexture(47, 424, 425);
         TransitionTexture(425, 426, 47);
@@ -1849,7 +1849,7 @@ void TransitionTexture(int left, int texture, int right) {
     for(x=0;x<2;x++) {
 
         glGenTextures(1, &splitTexName[texnum][x]);
-	
+        
         glBindTexture(GL_TEXTURE_2D, splitTexName[texnum][x]);
         checkGLStatus();
 
@@ -1871,9 +1871,9 @@ void TransitionTexture(int left, int texture, int right) {
         glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
         glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-	
+        
         BuildMipmaps((Uint32*)(texdata+x*512), 64, 64, 1, 10);
-	
+        
         checkGLStatus();
     }
     splitTexNum[texnum++]=texture;
@@ -2346,9 +2346,9 @@ void drawintroduction() {
         if (pickskiltime < 0)
         {
             SetVisibleScreenOffset(introplc);
-	
+        
 /*	    if (dalasti < 424)
-	    {*/
+            {*/
             wipeoverlay(0, 174, 361, 20);
             if (vidmode == 0)
                 m = 20;
@@ -2377,7 +2377,7 @@ void drawintroduction() {
             SetVisibleScreenOffset(introplc);
 
 /*	    if (dalasti < pickskiltime+128)
-	    {*/
+            {*/
             wipeoverlay(0, 174, 361, 8);
             strcpy(&textbuf[0], "Select Difficulty");
             textprint(112, 112, (char)96);
@@ -2960,7 +2960,7 @@ void updateclock(void) {
         lastTick+=4+(tickFrac==0);
         tickFrac++;
         if (tickFrac==6) tickFrac=0;
-	}
+        }
 }
 
 Uint32 tickhandler(Uint32 interval, void *param) {
@@ -3213,9 +3213,9 @@ void setmidiinsts()
         SEQ_CONTROL(nrmidis-1, i, 32, 0);
         SEQ_MIDIOUT(nrmidis-1, MIDI_PGM_CHANGE + i);
 /*	if (i<numchans) {
-	printf("Channel %d: KSM inst %d -> GM inst %d.\n", i,
-	trinst[chantrack[i]], gminst[trinst[chantrack[i]]]);
-	}*/
+        printf("Channel %d: KSM inst %d -> GM inst %d.\n", i,
+        trinst[chantrack[i]], gminst[trinst[chantrack[i]]]);
+        }*/
         SEQ_MIDIOUT(nrmidis-1, (i<numchans)?gminst[trinst[chantrack[i]]]:0);
     }
     SEQ_DUMPBUF();
@@ -3304,7 +3304,7 @@ void checkhitwall(K_UINT16 oposx, K_UINT16 oposy, K_UINT16 posix,
             if (tempbuf[((xpos+xdir)>>8)+((ypos&0xff00)>>2)]==0)
                 xpos+=xdir;
         }
-	
+        
         cnty+=yinc;
         j=cnty>>8;
         cnty&=255;
@@ -3405,10 +3405,6 @@ void wingame(K_INT16 episode)
         if (moustat == 0)
         {
             bstatus=readmouse(NULL, NULL);
-        }
-        if (joystat == 0)
-        {
-            bstatus|=readjoystick(NULL, NULL);
         }
         if (death != 4096)
         {
@@ -3595,10 +3591,6 @@ void winallgame()
         bstatus = 0;
         if (moustat == 0) {
             bstatus=readmouse(NULL, NULL);
-        }
-        if (joystat == 0)
-        {
-            bstatus|=readjoystick(NULL, NULL);
         }
         if (revtotalclock < 3260)
         {
@@ -3896,7 +3888,7 @@ K_INT16 kgif(K_INT16 filenum)
             numpals = numcols+numcols+numcols;
             for(j=0;j<numpals;j++)
                 palette[j]=tempbuf[j+gifdatacnt];
-			
+                        
             gifdatacnt += numpals;
         }
         gifdatacnt++;
@@ -3931,18 +3923,18 @@ K_INT16 kgif(K_INT16 filenum)
                   ((K_UINT16)(((unsigned char *)lincalc)[bytecnt+1]))<<8)>>bitcnt)&
                 ((1<<numbits)-1);
 /*	    dat=((*((K_UINT16 *)(((unsigned char *)lincalc)+bytecnt)))
-	    >>bitcnt)&
-	    ((1<<numbits)-1);*/
+            >>bitcnt)&
+            ((1<<numbits)-1);*/
             if (bitcnt+numbits>16) {
                 dat+=(((K_UINT16)((unsigned char *)lincalc)[bytecnt+2])&
                       ((1<<((bitcnt+numbits)&15))-1))<<
                     (16-bitcnt);
             }
-		
+                
             bitcnt+=numbits;
             bytecnt+=bitcnt>>3;
             bitcnt&=7;
-		
+                
             if (bytecnt > blocklen-3)
             {
                 writeshort((unsigned char *)lincalc,
@@ -3971,7 +3963,7 @@ K_INT16 kgif(K_INT16 filenum)
                     memcpy(((unsigned char *)lincalc)+i+k,
                            tempbuf,
                            ((gifdatacnt=blocklen-k)+1)&~1);
-					
+                                        
                 }
                 bytecnt = 0;
                 blocklen += i;
@@ -3996,13 +3988,13 @@ K_INT16 kgif(K_INT16 filenum)
 
                     dat=lzwbuf2[dat];
                 }
-				
+                                
                 lzwbuf[currstr-1]=dat&255;
                 lzwbuf[currstr]=dat&255;
-				
+                                
                 dat=lzwbuf2[dat];
                 stack[stackp++]=dat;
-				
+                                
                 while(stackp>0) {
                     stackp--;
 
@@ -4083,14 +4075,32 @@ void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 }
 
+int ClipToBuffer(int *sx, int *sy, int *w, int *h) {
+    SDL_Rect scn, param, out;
+
+    scn.x = 0; scn.y = 0; scn.w = screenbufferwidth; scn.h = screenbufferheight;
+    param.x = *sx; param.y = *sy; param.w = *w; param.h = *h;
+    if (!SDL_IntersectRect(&scn, &param, &out))
+        return 0;
+    *sx = out.x; *sy = out.y; *w = out.w; *h = out.h;
+    return 1;
+}
+
 void ConvertPartialOverlay(int sx, int sy, int w, int h) {
+    SDL_Rect scn, param, out;
 
-
-    unsigned char *f=&screenbuffer[sx+screenbufferwidth*sy], *t=(unsigned char*)&screenbuffer32[sx+screenbufferwidth*sy];
+    unsigned char *f, *t;
 
     int x, y;
-    int skip=screenbufferwidth-w;
+    int skip;
 
+    if (!ClipToBuffer(&sx, &sy, &w, &h))
+        return;
+
+    f=&screenbuffer[sx+screenbufferwidth*sy];
+    t=(unsigned char*)&screenbuffer32[sx+screenbufferwidth*sy];
+
+    skip=screenbufferwidth-w;
     //printf("sx=%d, sy=%d, w=%d, h=%d, spos=%d skip=%d\n", sx, sy, w, h, sx+screenbufferwidth*sy, skip);
     for(y=0;y<h;y++, f+=skip, t+=(skip*4))
         for(x=0;x<w;x++) {
@@ -4116,6 +4126,9 @@ void ConvertPartialOverlay(int sx, int sy, int w, int h) {
 void UploadPartialOverlay(int x, int y, int w, int h) {
     int left, right, top, bottom, i, j;
     int lr, rr, tr, br;
+
+    if (!ClipToBuffer(&x, &y, &w, &h))
+        return;
 
     ConvertPartialOverlay(x, y, w, h);
     if (menuing) return;
@@ -4145,7 +4158,7 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
                 rr=lr+w-1;
                 tr=y-62*i;
                 br=tr+h-1;
-		
+                
                 if (rr<0) continue;
                 if (lr>63) continue;
                 if (br<0) continue;
@@ -4161,7 +4174,8 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
                                               screenbuffertextures[i*6+j], 0);
             }
     }
-    ShowPartialOverlay(0, 0, virtualscreenwidth, virtualscreenheight, 0);
+    ShowPartialOverlay(x-1,y-1,w+2,h+2,0);
+    /*ShowPartialOverlay(0, 0, virtualscreenwidth, virtualscreenheight, 0);*/
 }
 
 /* Upload entire overlay from memory to texture (creates textures)... */
@@ -4242,16 +4256,16 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-	
+        
     if (largescreentexture) {
         tx1=((float)x)/(float)(screenbufferwidth);
         tx2=((float)(x+w))/(float)screenbufferwidth;
-	
+        
         ty1=((float)y)/(float)(screenbufferheight);
         ty2=((float)(y+h))/(float)screenbufferheight;
 
         y-=visiblescreenyoffset;
-	
+        
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
         glBegin(GL_QUADS);
         glColor3f(redfactor, greenfactor, bluefactor);
@@ -4283,7 +4297,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
                 rr=lr+w-1;
                 tr=y-62*i;
                 br=tr+h-1;
-		
+                
                 if (rr<(j>0)) continue;
                 if (lr>(63-(j<5))) continue;
                 if (br<(i>0)) continue;
@@ -4296,7 +4310,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
                 tx1=((float)lr)/64.0;
                 tx2=((float)(rr+1))/64.0;
-		
+                
                 ty1=((float)tr)/64.0;
                 ty2=((float)(br+1))/64.0;
 
@@ -4458,6 +4472,7 @@ K_INT16 loadstory(K_INT16 boardnume)
 
 K_INT16 setupmouse()
 {
+    SDL_SetRelativeMouseMode(1);
     return(0); /* Assume mouse always exists. */
 }
 
@@ -4987,7 +5002,7 @@ void getname()
     {
         while ((uni=getkeypress(&ch)) == 0)
         {
-            if (getkeydefstatlock(ACTION_MENU_CANCEL) == 0 && getkeydefstatlock(ACTION_MENU) == 0) {
+            if (getkeydefstatlock(ACTION_MENU_CANCEL) || getkeydefstatlock(ACTION_MENU)) {
                 ch = 27;
                 break;
             }
@@ -5124,7 +5139,7 @@ unsigned char BMPHeader[54]={0x42, 0x4d, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0, 0, 0};
 
 /* Write a DWORD (32-bit int) to BMP header. */
-			
+                        
 void bmpheaderwrite(int offset, K_UINT32 value) {
     int a;
 
@@ -5156,7 +5171,7 @@ void screencapture()
 
     bmpheaderwrite(0x12, screenwidth);
     bmpheaderwrite(0x16, screenheight);
-	
+        
     if (screen!=NULL) {
         glReadPixels(0, 0, screenwidth, screenheight, GL_BGR, GL_UNSIGNED_BYTE,
                      screen);
@@ -5342,8 +5357,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
     K_INT16 animater6, n, esckeystate;
     int mousx, mousy;
     K_INT16 bstatus, obstatus;
-    int up_press, down_press;
-    int rpstart = 300, rpcont = 100;
+
     glDrawBuffer(GL_FRONT);
     if (vidmode == 0)
         n = 0;
@@ -5386,7 +5400,6 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         if (moustat == 0) {
             bstatus=readmouse(&mousx, &mousy);
         }
-        up_press = 0;
 
         if (repeatkeydef(ACTION_MENU_UP1) || repeatkeydef(ACTION_MENU_UP2) || (mousy < -128))
         {
@@ -5484,7 +5497,7 @@ void drawmenu(K_INT16 xsiz, K_INT16 ysiz, K_INT16 walnume)
         for(i=0;i<menuwidth;i++)
             *(buf+=screenbufferwidth)=239;
         UploadPartialOverlay(menuleft, menutop, menuwidth, menuheight);
-	
+        
         return;
     }
 
@@ -6228,20 +6241,10 @@ void ProcessEvent(SDL_Event* event) {
                 window_in_focus = 1;
             } else if (event->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
                 window_in_focus = 0;
-            }
-            break;
-        case SDL_JOYBUTTONDOWN:
-        case SDL_JOYBUTTONUP:
-            if (event->jbutton.which == cur_joystick_index) {
-                sk=event->jbutton.button;
-                if (sk<numjoybuttons) {
-                    buttonstatus[sk]=(event->jbutton.state==SDL_PRESSED?1:0);
-                }
-            }
-            break;
-        case SDL_JOYAXISMOTION:
-            if (event->jaxis.which == cur_joystick_index) {
-                sk=event->jaxis.axis;
+            } else if (event->window.event == SDL_WINDOWEVENT_EXPOSED) {
+                glClearColor(0, 0, 0, 0);
+                glClear(GL_COLOR_BUFFER_BIT);
+                ShowPartialOverlay(0, 0, screenbufferwidth, screenbufferheight, 0);
             }
             break;
         case SDL_JOYDEVICEADDED:
@@ -6308,12 +6311,6 @@ unsigned char readmouse(int *x, int *y) {
     if (y!=NULL) *y+=5*ty;
 
     return ((bstatus&4)>>1)|(bstatus&1)|(bstatus&2)<<1;
-}
-
-/* Read joystick position (into x and y; NULL to ignore) and return buttons
-   (1=button 0, 2=button 1). */
-
-unsigned char readjoystick(int *x, int *y) {
 }
 
 void quit() {

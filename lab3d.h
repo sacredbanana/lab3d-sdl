@@ -75,11 +75,6 @@ typedef Sint16 K_INT16;
 
 #define numwalls 448
 #define numoptions 4
-#define numkeys ACTION_LAST
-
-#define numaxes 4
-#define numjoybuttons 32
-#define numjoyaxes 16
 
 #define initialwalls 0
 #define gifbuflen 4096
@@ -239,9 +234,11 @@ enum {
     ACTION_HEAT,
     ACTION_USE,
     ACTION_CHEAT,
+    ACTION_OLD_SAVE=ACTION_CHEAT,
     ACTION_STATUS,
     ACTION_PAUSE,
     ACTION_MUTE,
+    ACTION_OLD_LOAD=ACTION_MUTE,
     ACTION_MENU,
     ACTION_MENU_UP1,
     ACTION_MENU_UP2,
@@ -277,13 +274,13 @@ enum {
 
 #ifdef MAIN
 EXTERN unsigned char bultype[26] =
-	{0,1,1,1,1,2,1,2,1,2,1,2,1,2,1,2,2,2,2,2,2,2,2,1,2,1};
+        {0,1,1,1,1,2,1,2,1,2,1,2,1,2,1,2,2,2,2,2,2,2,2,1,2,1};
 EXTERN unsigned char paldef[16][3] =
 {
-	{0,30,63},{28,34,60},{0,50,20},{41,52,28},{63,63,25},{63,63,63},
-	{63,20,20},{63,0,63},
-	{63,48,27},{63,40,25},{63,48,48},{45,63,45},{55,55,63},{63,40,63},
-	{63,30,20},{55,25,30}
+        {0,30,63},{28,34,60},{0,50,20},{41,52,28},{63,63,25},{63,63,63},
+        {63,20,20},{63,0,63},
+        {63,48,27},{63,40,25},{63,48,48},{45,63,45},{55,55,63},{63,40,63},
+        {63,30,20},{55,25,30}
 };
 
 EXTERN unsigned char opaldef[16][3] =
@@ -296,23 +293,23 @@ EXTERN unsigned char opaldef[16][3] =
 
 EXTERN K_UINT16 pcfreq[63] =
 {
-	0,
-	65,69,73,78,82,87,92,98,104,110,117,123,
-	131,139,147,156,165,175,185,196,208,220,233,247,
-	262,277,294,311,330,349,370,392,415,440,466,494,
-	523,554,587,622,659,698,740,784,831,880,932,988,
-	1047,1109,1175,1245,1319,1397,1480,1568,1661,1760,1864,1976,
-	2094
+        0,
+        65,69,73,78,82,87,92,98,104,110,117,123,
+        131,139,147,156,165,175,185,196,208,220,233,247,
+        262,277,294,311,330,349,370,392,415,440,466,494,
+        523,554,587,622,659,698,740,784,831,880,932,988,
+        1047,1109,1175,1245,1319,1397,1480,1568,1661,1760,1864,1976,
+        2094
 };
 EXTERN K_UINT16 adlibfreq[63] =
 {
-	0,
-	2390,2411,2434,2456,2480,2506,2533,2562,2592,2625,2659,2695,
-	3414,3435,3458,3480,3504,3530,3557,3586,3616,3649,3683,3719,
-	4438,4459,4482,4504,4528,4554,4581,4610,4640,4673,4707,4743,
-	5462,5483,5506,5528,5552,5578,5605,5634,5664,5697,5731,5767,
-	6486,6507,6530,6552,6576,6602,6629,6658,6688,6721,6755,6791,
-	7510
+        0,
+        2390,2411,2434,2456,2480,2506,2533,2562,2592,2625,2659,2695,
+        3414,3435,3458,3480,3504,3530,3557,3586,3616,3649,3683,3719,
+        4438,4459,4482,4504,4528,4554,4581,4610,4640,4673,4707,4743,
+        5462,5483,5506,5528,5552,5578,5605,5634,5664,5697,5731,5767,
+        6486,6507,6530,6552,6576,6602,6629,6658,6688,6721,6755,6791,
+        7510
 };
 EXTERN K_UINT16 firstime = 1, quitgame = 0;
 EXTERN K_INT16 midiinst = 0, cheatenable = 0, capturecount = 0;
@@ -455,9 +452,9 @@ void picrot(K_UINT16, K_UINT16, K_INT16, K_INT16);
 void spridraw(K_INT16, K_INT16, K_INT16, K_INT16);
 void pictur(K_INT16, K_INT16, K_INT16, K_INT16, K_INT16);
 void doordraw(K_UINT16 x,K_UINT16 y,K_INT16 walnume,K_UINT16 posxs,
-	      K_UINT16 posys);
+              K_UINT16 posys);
 void statusbardraw(K_UINT16, K_UINT16, K_UINT16, K_UINT16, K_UINT16,
-		   K_UINT16, K_INT16);
+                   K_UINT16, K_INT16);
 void loadboard();
 void loadtables();
 K_INT16 ksay(K_UINT16);
@@ -475,9 +472,9 @@ void outdata(unsigned char, unsigned char, unsigned char);
 void musicon();
 void musicoff();
 void setinst(unsigned char, K_INT16, unsigned char, unsigned char, 
-	     unsigned char, unsigned char, unsigned char, unsigned char,
-	     unsigned char, unsigned char,
-	     unsigned char, unsigned char, unsigned char);
+             unsigned char, unsigned char, unsigned char, unsigned char,
+             unsigned char, unsigned char,
+             unsigned char, unsigned char, unsigned char);
 void setmidiinsts();
 void checkhitwall(K_UINT16, K_UINT16, K_UINT16, K_UINT16);
 void fade(K_INT16);
@@ -514,13 +511,14 @@ void sodamenu();
 Uint32 tickhandler(Uint32 interval, void *param);
 void ksmhandler();
 void SetVisibleScreenOffset(K_UINT16 offset);
+int ClipToBuffer(int *sx, int *sy, int *w, int *h);
 void ShowPartialOverlay(int x,int y,int w,int h,int statusbar);
 void PollInputs();
 void ProcessEvent(SDL_Event* event);
 void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
-		K_INT16 walnume);
+                K_INT16 walnume);
 
 typedef struct {
     SDL_Keycode key;
@@ -711,9 +709,9 @@ void DumpSound(unsigned char *sound, K_UINT16 leng,K_UINT32 playpoint,int pos);
 void AudioCallback(void *userdata, Uint8 *stream, int len);
 void TextureConvert(unsigned char *from, unsigned char *to, K_INT16 type);
 Uint16 getkeypress();
-void drawtooverlay(K_UINT16 picx, K_UINT16 picy, K_UINT16 w,
-		   K_UINT16 h, K_UINT16 x, K_UINT16 y, K_INT16 walnum,
-		   unsigned char coloff);
+void drawtooverlay(K_UINT16 picx, K_UINT16 picy, int w,
+                   int h, int x, int y, K_INT16 walnum,
+                   unsigned char coloff);
 void wipeoverlay(K_UINT16 x,K_UINT16 y,K_UINT16 w, K_UINT16 h);
 void settransferpalette();
 void setdarkenedpalette();
@@ -722,7 +720,6 @@ void TransitionTexture(int left,int texture,int right);
 
 void process_sdl_event(SDL_Event* e);
 unsigned char readmouse(int *x,int *y);
-unsigned char readjoystick(int *x, int *y);
 void quit();
 void loadsettings();
 void savesettings();
@@ -742,6 +739,7 @@ void setnewkeystatus(int key, int val);
 int get_pckey(SDL_Keycode key);
 int read_ini(FILE* input, char* buf, int buflen, char **keyp, char **valp, int *linep);
 int get_enum(char* str, enumpair* cur);
+int smooth_input(int, int, int, int);
 
 SDL_mutex *soundmutex,*timermutex;
 
@@ -755,8 +753,6 @@ EXTERN int action_joystick[ACTION_LAST];
 EXTERN int action_controller[ACTION_LAST];
 
 EXTERN K_UINT32 action_repeat_lock[ACTION_LAST];
-
-EXTERN int buttonstatus[numjoybuttons];
 
 EXTERN int numkeyspressed;
 EXTERN int keyspressed[128];
