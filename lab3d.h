@@ -536,13 +536,15 @@ void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
                 K_INT16 walnume);
 
-demorec* demo_start_record(const char* filename);
+demorec* demo_start_record(const char* filename, int format);
 void demo_close_record(demorec*);
-void demo_update(demorec*);
+void demo_update(demorec*, int);
+void demo_sound(demorec* d, int which, int pan);
+void demo_time_jump(demorec*, int);
 
 demoplay* demo_start_play(const char* filename);
 void demo_close_play(demoplay*);
-int demo_update_play(demoplay*);
+int demo_update_play(demoplay*, int);
 void demo_set_soundfunc(demoplay*, soundfunc);
 
 typedef struct {
