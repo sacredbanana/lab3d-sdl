@@ -2560,14 +2560,14 @@ void introduction(K_INT16 songnum)
             spriteyoffset=20;
             saidwelcome = 1;
             sortcnt = 0;
-            if ((j == 0) && (newgameplace >= 0))
+            if ((j == MAINMENU_NEWGAME) && (newgameplace >= 0))
             {
                 if (newgameplace == 0) boardnum = 0, newgamepisode = 1;
                 if (newgameplace == 1) boardnum = 10, newgamepisode = 2;
                 if (newgameplace == 2) boardnum = 20, newgamepisode = 3;
                 leaveintro = 1;
             }
-            if ((j == 1) && (loadsavegameplace >= 0))
+            if ((j == MAINMENU_LOADGAME) && (loadsavegameplace >= 0))
             {
                 musicoff();
                 setgamevideomode();
@@ -2592,7 +2592,7 @@ void introduction(K_INT16 songnum)
                 fade(63);		
                 return;
             }
-            if (j == 8)
+            if (j == MAINMENU_EXIT)
             {
                 newgamepisode = 1;
                 leaveintro = 1;
@@ -5232,25 +5232,29 @@ void drawmainmenu() {
     else
         n = 20;
 
-    drawmenu(192, 128, menu);
+    n += 30;
+
+    drawmenu(192, 140, menu);
     strcpy(&textbuf[0], "New game");
-    textprint(131, 47+n+1, 32);
+    n += 12; textprint(131, n, 32);
     strcpy(&textbuf[0], "Load game");
-    textprint(131, 59+n+1, 32);
+    n += 12; textprint(131, n, 32);
     strcpy(&textbuf[0], "Save game");
-    textprint(131, 71+n+1, 32);
+    n += 12; textprint(131, n, 32);
     strcpy(&textbuf[0], "Return to game");
-    textprint(131, 83+n+1, 32);
+    n += 12; textprint(131, n, 32);
+    strcpy(&textbuf[0], "Setup");
+    n += 12; textprint(131, n, 126);
     strcpy(&textbuf[0], "Help");
-    textprint(131, 95+n+1, 126);
+    n += 12; textprint(131, n, 126);
     strcpy(&textbuf[0], "Story");
-    textprint(131, 107+n+1, 126);
+    n += 12; textprint(131, n, 126);
     strcpy(&textbuf[0], "Copyright notice");
-    textprint(131, 119+n+1, 126);
+    n += 12; textprint(131, n, 126);
     strcpy(&textbuf[0], "Credits");
-    textprint(131, 131+n+1, 126);
+    n += 12; textprint(131, n, 126);
     strcpy(&textbuf[0], "Exit");
-    textprint(131, 143+n+1, 126);
+    n += 12; textprint(131, n, 126);
     finalisemenu();
 }
 
@@ -5294,9 +5298,9 @@ K_INT16 mainmenu()
 
     while ((mainmenuplace >= 0) && (done == 0))
     {
-        if ((mainmenuplace = getselection(88, 47, mainmenuplace, 9)) >= 0)
+        if ((mainmenuplace = getselection(88, 41, mainmenuplace, 10)) >= 0)
         {
-            if (mainmenuplace == 0)
+            if (mainmenuplace == MAINMENU_NEWGAME)
                 if ((k = newgamemenu()) >= 0)
                 {
                     done = 1;
@@ -5311,10 +5315,10 @@ K_INT16 mainmenu()
                         done = 0;
                     }
                 }
-            if (mainmenuplace == 1)
+            if (mainmenuplace == MAINMENU_LOADGAME)
                 if (loadsavegamemenu(1) >= 0)
                     done = 1;
-            if (mainmenuplace == 2)
+            if (mainmenuplace == MAINMENU_SAVEGAME)
             {
                 if (sortcnt == -1)
                     ksayui(12);
@@ -5324,13 +5328,17 @@ K_INT16 mainmenu()
                         done = 1;
                 }
             }
-            if (mainmenuplace == 3)
+            if (mainmenuplace == MAINMENU_RETURN)
                 mainmenuplace = (-mainmenuplace)-1;
-            if (mainmenuplace == 4) helpmenu();
-            if (mainmenuplace == 5) bigstorymenu();
-            if (mainmenuplace == 6) orderinfomenu();
-            if (mainmenuplace == 7) creditsmenu();
-            if (mainmenuplace == 8) done = areyousure();
+            if (mainmenuplace == MAINMENU_SETUP) {
+                setupmenu(1);
+                savesettings();
+            }
+            if (mainmenuplace == MAINMENU_HELP) helpmenu();
+            if (mainmenuplace == MAINMENU_STORY) bigstorymenu();
+            if (mainmenuplace == MAINMENU_COPYRIGHT) orderinfomenu();
+            if (mainmenuplace == MAINMENU_CREDITS) creditsmenu();
+            if (mainmenuplace == MAINMENU_EXIT) done = areyousure();
             if (done == 0)
             {
                 /* Redraw whatever was beneath the menu. Double buffer to
