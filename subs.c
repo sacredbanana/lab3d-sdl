@@ -2147,21 +2147,13 @@ K_INT16 savegame(K_INT16 gamenum)
     char filename[20];
     int i, fil;
 
-    /* If we have a lower case copy of this save game, destroy it. */
+    /* If we have an upper case copy of this save game, destroy it. */
 
-    filename[0] = 's', filename[1] = 'a', filename[2] = 'v';
-    filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
-    filename[6] = 'e', filename[7] = gamenum+48;
-    filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-    filename[11] = 't', filename[12] = 0;	
+    sprintf(filename, "SAVGAME%d.DAT", gamenum);
 
     unlink(filename);
 
-    filename[0] = 'S', filename[1] = 'A', filename[2] = 'V';
-    filename[3] = 'G', filename[4] = 'A', filename[5] = 'M';
-    filename[6] = 'E', filename[7] = gamenum+48;
-    filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
-    filename[11] = 'T', filename[12] = 0;
+    sprintf(filename, "savgame%d.dat", gamenum);
     if((fil=open(filename, O_CREAT|O_WRONLY|O_BINARY,
                  S_IWRITE|S_IREAD|S_IRGRP|S_IROTH))==-1) {
         return(-1);
@@ -4516,24 +4508,19 @@ void statusbaralldraw()
     statusbardraw(32, 0, 32, 32, 288, 0+statusbaryoffset, statusbarback);
     for(i=32;i<288;i+=32)
         statusbardraw(16, 0, 32, 32, i, 0+statusbaryoffset, statusbarback);
-    textbuf[0] = 'S', textbuf[1] = 'C', textbuf[2] = 'O';
-    textbuf[3] = 'R', textbuf[4] = 'E', textbuf[5] = 0;
+    strcpy(textbuf, "SCORE");
     textprint(3, 4+statusbaryoffset, (char)176);
-    textbuf[0] = 'T', textbuf[1] = 'I', textbuf[2] = 'M';
-    textbuf[3] = 'E', textbuf[4] = 0;
+    strcpy(textbuf, "TIME");
     textprint(3, 12+statusbaryoffset, (char)176);
-    textbuf[0] = 'B', textbuf[1] = 'O', textbuf[2] = 'A';
-    textbuf[3] = 'R', textbuf[4] = 'D', textbuf[5] = 0;
+    strcpy(textbuf, "BOARD");
     textprint(3, 20+statusbaryoffset, (char)176);
     textbuf[0] = ':', textbuf[1] = 0;
     textprint(41, 4+statusbaryoffset, (char)176);
     textprint(33, 12+statusbaryoffset, (char)176);
     textprint(41, 20+statusbaryoffset, (char)176);
-    textbuf[0] = 'L', textbuf[1] = 'I', textbuf[2] = 'F';
-    textbuf[3] = 'E', textbuf[4] = 0;
+    strcpy(textbuf, "LIFE");
     textprint(96, 4+statusbaryoffset, (char)176);
-    textbuf[0] = 'W', textbuf[1] = 'E', textbuf[2] = 'A';
-    textbuf[3] = 'P', textbuf[4] = 'O', textbuf[5] = 'N';
+    strcpy(textbuf, "WEAPON");
     textbuf[6] = 0;
     textprint(272, 3+statusbaryoffset, (char)176);
     if (hiscorenamstat == 1)
@@ -5962,12 +5949,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
     {
         for(j=0;j<8;j++)
         {
-            filename[0] = 'S', filename[1] = 'A', filename[2] = 'V';
-            filename[3] = 'G', filename[4] = 'A', filename[5] = 'M';
-            filename[6] = 'E', filename[7] = j+48;
-            filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
-            filename[11] = 'T', filename[12] = 0;
-
+            sprintf(filename, "SAVGAME%d.DAT", j);
             if((fil=open(filename, O_RDONLY|O_BINARY, 0))!=-1)
             {
                 gamexist[j] = 1;
@@ -5975,11 +5957,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
                 close(fil);
             }
             else {
-                filename[0] = 's', filename[1] = 'a', filename[2] = 'v';
-                filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
-                filename[6] = 'e', filename[7] = j+48;
-                filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-                filename[11] = 't', filename[12] = 0;	
+                sprintf(filename, "savgame%d.dat", j);
                 if((fil=open(filename, O_RDONLY|O_BINARY, 0))!=-1)
                 {
                     gamexist[j] = 1;

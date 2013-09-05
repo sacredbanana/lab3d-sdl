@@ -10,59 +10,55 @@ if [ -z "$DATE" ]; then
 fi
 
 makezip() {
-    zipname=$1
+    fmt=$1
+    zipname=LAB3D-SDL-$VERS-$2
     zpath=$XPATH/$zipname
-    (cd $zpath && rm -f ../$zipname.zip && zip ../$zipname.zip -r .)
+    cpath=$zpath/LAB3D-SDL-$VERS
+    mkdir -p $cpath
+    
+    shift; shift
+    for j; do
+        "copy_$j" $cpath;
+    done
+    if [ $fmt = tar ]; then
+        tar zcfvC $XPATH/$zipname.tar.gz $zpath LAB3D-SDL-$VERS
+    else
+        (cd $zpath && rm -f ../$zipname.zip && zip ../$zipname.zip -r .)
+    fi
+    rm -rf $zpath
 }
 
 copy_tex() {
-    cpath=$1
-    mkdir -p $cpath
-    cp -a wallparams.ini hires $cpath
+    cp -a wallparams.ini hires $1
 }
 
 copy_winbin() {
+    cp ken.exe setup.bat $1
+    cp dist/winlibs-sdl2/* $1
+}
+
+copy_linbin32() {
+    cp ken $1
+    cp ken.bin.i686 $1/ken.bin
+    cp -a dist/linlibs32 $1/libs
+}
+
+copy_linbin64() {
+   cp ken $1
+   cp ken.bin $1/ken.bin
+    cp -a dist/linlibs64 $1/libs
+}
+
+copy_data() {
     cpath=$1
     mkdir -p $cpath
-    cp ken.bmp ken.ico ken.exe $cpath
+    cp ken.bmp ken.ico $cpath
     cp dist/data-files/* $cpath
-    cp dist/winlibs-sdl2/* $cpath
 }
 
-make_tex() {
-    zipname=LAB3D-SDL-$VERS-tex
-    zpath=$XPATH/$zipname
-
-    copy_tex $zpath/LAB3D-SDL-$VERS
-    cp -a wallparams.ini hires-tex-install.txt hires-tex-readme.txt $zpath/LAB3D-SDL-$VERS
-
-    makezip $zipname
-    rm -rf $zpath
-}
-
-make_winbin() {
-    zipname=LAB3D-SDL-$VERS-win32
-    zpath=$XPATH/$zipname
-
-    copy_winbin $zpath/LAB3D-SDL-$VERS
-
-    makezip $zipname
-    rm -rf $zpath
-}
-
-make_winall() {
-    zipname=LAB3D-SDL-$VERS-win32-all
-    zpath=$XPATH/$zipname
-
-    copy_tex $zpath/LAB3D-SDL-$VERS
-    copy_winbin $zpath/LAB3D-SDL-$VERS
-
-    makezip $zipname
-    rm -rf $zpath
-}
-
-if [ -z "$2" ]; then
-    make_tex
-    make_winbin
-    make_winall
-fi
+makezip zip win32 winbin data
+makezip zip win32-all winbin data tex
+makezip tar lin32 linbin32 data
+makezip tar lin32-all linbin32 data tex
+makezip tar lin64 linbin32 data
+makezip tar lin64-all linbin64 data tex
