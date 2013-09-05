@@ -1,0 +1,627 @@
+Technical comments on Ken's Labyrinth source code
+=================================================
+
+	Jan Lönnberg, 14/12/2003.
+
+As the source code for Ken's Labyrinth is supplied with very few comments and
+no proper descriptions of the methods used, I've decided to write a few
+explanations of what the code actually does.
+
+This document assumes some familiarity with the technology used in IBM AT-
+compatible machines, games programming in general and Ken's Labyrinth from the
+player's point of view.
+
+The description here is based on the source code for Ken's Labyrinth v2.1 and
+v1.0, as supplied by the author, Ken Silverman. The source code for v1.1 is
+apparently lost.
+
+	Target platform
+	===============
+
+Ken's Labyrinth (or LAB3D as I will abbreviate it here) was written for IBM
+AT-compatibles with VGA running MS-DOS (or compatible). It was compiled in
+Microsoft C 6.00A.
+
+	Language
+	========
+
+LAB3D was written in what appears to be Kernighan-Ritchie C with inlined
+Intel 8086 assembler. This limits the code to Intel x86 machines. As the code
+is written for 8086 machines, int is 16 bits and long is 32 bits (which causes
+problems when porting, especially in file I/O).
+
+	Libraries
+	=========
+
+LAB3D relies on Microsoft C libraries to provide standard library functions
+(standard I/O, string manipulation, et.c.), direct file I/O and direct access
+to low-level functions such as interrupts and ports.
+
+	Data structures and algorithms
+	==============================
+
+LAB3D has a few data structures and algorithms that merit discussion. The
+graphics algorithms will be discussed in the graphics section.
+
+	Board
+	-----
+
+Each level (or "board") is stored as a 64x64 array of integers, representing
+a 64x64 grid of cubes. Each cube is either empty or a block surrounded by
+walls on all 4 sides. Except for a few special cases, all four sides of a wall
+are the same.
+
+Some walls have a transparency mask; these are placed north to south or west
+to east in the middle of the block instead of being duplicated along the sides
+of the block. Doors belong to this category. Other examples are low fences,
+exit signs, stairs, slot machines and soda machines.
+
+Solid walls next to doors have special textures.
+
+Walls can be defined as shootable. If such a wall is shot, it changes into
+another type of wall (such as a weakened version of the wall or a walk-through
+version of the same wall) or an empty space.
+
+The board also contains starting positions for monsters, power-ups and various
+static objects that are drawn as sprites.
+
+In version 2.x, the board is stored on disk using LZW compression (as patented
+by Unisys). In version 1.x, the board is stored uncompressed.
+
+	Monster movement
+	----------------
+
+Monsters move by choosing a neighbouring square to move to (plus or minus 1
+square on the X or Y axis), and then move without interruption to that square.
+Thus, a monster is either standing still in one square or moving from one
+square to another. A monster is considered to occupy one square when standing
+still or, when moving, its source and destination square.
+
+The monsters choose the square to move to in different ways in LAB3D versions
+1.x and 2.x.
+
+In v1.x, most monsters move directly toward the player along the X or Y axis
+(the axis to use is chosen randomly for each step). Holes move randomly in all
+four directions. The Grim Reaper runs away from the player if he gets too
+close (the sum of the absolute value of the X and Y position differences is
+less than 5000 units, which is slightly less than 5 squares). When fleeing,
+the Grim Reaper can move diagonally (unlike the other monsters) and may walk
+through walls while doing so; this is an unexpected feature.
+
+In v2.x, monster movement is based on a breadth-first search along
+neighbouring empty squares starting from the player's square, up to a distance
+of 20 squares. Monsters are then moved toward the player by moving to an
+(unoccupied) square next to the monster's current square that is closer to the
+player than the monster's current square. The buffer used by this routine is
+too small, and therefore this routine will corrupt other data when used in
+large open spaces.  In LAB3D, this bug usually only causes graphical
+glitches. Zorko, Andy and Ken exhibit additional random behaviour when near
+the player. Holes move randomly, and hives never move.
+
+Monsters fire at random intervals. Their shots are aimed toward the player
+with a small random error in direction.
+
+	Graphics
+	========
+
+LAB3D produces all its graphics by directly manipulating the VGA hardware. VGA
+BIOS functions are used to set up the MCGA 320x200/256 screen mode.
+
+	Screen mode
+	-----------
+
+LAB3D uses unchained 256 colour VGA graphics modes (often referred to as "Mode
+X"). The introduction sequence is in 320x200 resolution, while the actual game
+can be run in either 320x200 or 360x240. Interestingly, irrespective of the
+actual resolution used, the screen row length is set to 90 bytes per plane,
+which means that the actual graphics routines need not know which screen mode
+is in use. A lot of somewhat arcane manipulation of the VGA registers is used
+to achieve these screen modes.
+
+LAB3D makes use of the ability to set the screen start address to draw to one
+part of screen memory while updating another.
+
+	Bitmaps
+	-------
+
+Practically all of the graphics in LAB3D are based on manipulating bitmaps.
+Aside from some straight-forward routines such as drawing a bitmap onto screen
+memory (masked or unmasked; color 255 is used for transparency), LAB3D has a
+few reasonably simple 3D drawing operations.
+
+The bitmaps used by the game can be divided into two categories: full screen
+GIFs (with a slightly modified header in v2.x) and 64x64 pixel
+"walls". Smaller pictures (including text characters) are stored by tiling
+several pictures onto a wall bitmap.
+
+All bitmaps are compressed using LZW compression. US users are advised to
+check their legal situation before using LAB3D, as Unisys holds patents on LZW
+in the USA.
+
+	Drawing the ingame view
+	-----------------------
+
+First the easy part: the roof and floor are infinite horizontal planes, so
+they can be drawn as two coloured rectangles.
+
+The ingame view in LAB3D is generated by casting horizontal rays from the
+player's position in different directions (corresponding to vertical columns
+on the display), and following them until a solid wall is reached. To decrease
+the amount of ray casting (and speed things up a bit on slow machines), the
+ray casting routines take advantage of the fact that all objects in the game
+(walls, monsters, et.c.) are the same size; this means that if two rays hit
+the same wall, no rays in between can pass or hit anything that the two outer
+rays have passed or hit (the full proof is left as an exercise to the reader;
+note that objects closer to the player appear larger). LAB3D starts off by
+casting a few rays in pre-defined starting directions, and then casting rays
+halfway between rays that hit different walls. To avoid rounding problems when
+dividing screen width intervals in two, the initial ray directions are chosen
+to cover intervals with a size that is a power of two.
+
+When a ray hits a solid wall, the distance to it is calculated, and from this
+the height of the vertical strip on the screen covered by the wall in this
+direction can easily be calculated. The impact point also conveniently
+provides one of the texture co-ordinates. When interpolating between two rays
+that hit the same wall, the following formulae are used:
+
+- hi=(ha+hb)/2 (obvious, since a straight line is still straight after
+	       perspective projection)
+- ui=(ua*ha+ub*hb)/(ha+hb) (an approximation that works OK when ha and hb are
+			   close)
+
+Here, the perceived height of the wall in denoted by hx, and the U texture
+co-ordinate by ux, where x is a or b for the rays that have already been
+calculated and i for the ray generated by interpolation.
+
+After all this, drawing the walls is simply a matter of going through all
+screen columns, taking the texture column specified by the wall texture and U
+co-ordinate calculated above and scaling it to the size specified by the
+calculated height.
+
+By checking the empty or partially transparent squares on the board that were
+traversed by rays, it is easy to work out which masked walls and static
+sprites should be displayed. Similarly, monsters that are at least partially
+in a visible square are visible. Masked walls and sprites are drawn in the
+usual farthest-first order.
+
+Sprites (e.g. power-ups, tables, monsters or shots) are drawn by scaling the
+sprite to a size determined by the distance to the object. This means that
+these sprites always face the player (the heat-seekers have several different
+sprites to fix this)!
+
+Like solid walls, masked walls are drawn using vertical texture lines scaled
+to the right size. The U texture co-ordinate is interpolated using some sort
+of weird approximation.
+
+In order to make masked walls and sprites appear in front and behind of solid
+walls correctly, the height value for each screen column is used as a sort of
+one-dimensional Z buffer with a funny scale.
+
+A few of the sprites (e.g. warps, fans) in v2.x are rotated using a simple 2D
+bitmap rotation routine, but are otherwise drawn in a similar fashion.
+
+	Other graphics
+	--------------
+
+The sprite scaling and rotation, status bar drawing and text print routines
+are used in various other contexts in the game, such as the introduction
+sequence, menus and end sequence. A few minor graphical details, such as the
+loading progress bar, use separate routines.
+
+	Palette effects
+	---------------
+
+Palette manipulation is used to provide various special effects, such as
+fading in/out, pulsating level description text and making everything go red
+when the player is being hurt by something nasty. These effects are quite
+simple to produce by manipulating the VGA palette registers.
+
+	Scrolling
+	---------
+
+In v2.x, one of the pictures in the introduction sequence is scrolled up and
+down by adjusting the VGA screen start register. A similar technique is used
+to provide double buffering and tp scroll the main story in the v1.x
+introduction.
+
+	Timing
+	======
+
+The Programmable Interrupt Timer (or PIT) channel 0 is used to provide a
+240 Hz periodic interrupt, which calls the KSM (music) handler. The music
+handler also updates a global clock variable. Apparently, clock increments are
+assumed to be atomic, as there is no attempt (aside from one special case) to
+ensure mutual exclusion of clock variable accesses.
+
+Interestingly, the BIOS timer routines are apparently not called at all while
+the game is running. This will corrupt the system time until the BIOS or some
+other program fixes it by copying the correct time from the Real Time Clock
+(RTC). In practice, this means that the system timer will run late (by the
+time LAB3D uses the PIT) until the next reboot.
+
+When the music is stopped (e.g. when the player dies), the timer routines are
+also frozen. For this reason, the death sequence runs without any delays
+(making it ridiculously fast on modern machines).
+
+	Sound effects
+	=============
+
+Sound effects in LAB3D are 8 bit unsigned mono PCM at 11 KHz, and are played
+either through the PC Speaker or Sound Blaster.
+
+Sound Blaster playback appears to be a pretty standard DMA job, and it is
+surprising that it works so badly on modern systems (especially in v2.x).
+
+As the PC Speaker is, essentially, a 1 bit DAC, PC Speaker playback is a lot
+harder. The PC Speaker digital sound playback code in LAB3D is practically
+illegible (it involves self modifying machine code written in hex!) but
+appears to work using the well-known technique of flipping the PC Speaker from
+0 to 1 very quickly in order to simulate values in between; specifically, for
+each byte in the sample, the PC speaker is kept high for an interval
+corresponding to the value of the byte, and then set to low. In practice, this
+allows a reasonable simulation of a 6 bit DAC at 22 KHz. Timing is done using
+PIT channel 2.
+
+Only one sound effect is in memory at a time; whenever a new sound effect is
+played, it is loaded from disk. This works surprisingly well (even on slow
+machines) if a disk cache is in use.
+
+Generally speaking, Sound Blaster sound seems to cause crashes under Windows
+95/98/ME on some sound cards when one sound is interrupted by another. This
+may have something to with Windows trying to load one sound into a memory area
+which the sound card is playing another from. Interestingly, earlier versions
+of Ken's Labyrinth (WALKEN and v1.x) do not exhibit this problem, as they stop
+the sound playback before loading the new sound. Playing one sound effect at a
+time seems to work fine.
+
+	Music
+	=====
+
+PC Speaker music is produced by converting the music to a single channel and
+playing that note using the usual technique (PIT channel 2 timing). If a sound
+effect is playing, the music is temporarily muted.
+
+The Adlib and MPU-401 routines are also quite standard except for one major
+oddity in the MPU-401 code: all melodic instruments are mapped to a single
+(user-selectable, using "," and ".") instrument, and all percussion is played
+using a single fixed instrument (Tubular Bells in General MIDI). Obviously,
+the MPU-401 music sounds absolutely horrible without manual remixing by the
+user (e.g. by reconfiguring the synthesiser connected to or emulating the
+MPU-401).
+
+	Memory allocation
+	=================
+
+Memory allocation is done (aside from statically allocated memory and local
+variables on the stack) using interrupts instead of using library routines
+such as malloc. Most of the data can only be stored in conventional memory.
+However, walls can be stored in conventional, expanded or extended memory.
+Whenever a wall in expanded memory is used, it is mapped into conventional or
+high memory. Whenever a wall in extended memory is used, it is copied into
+conventional memory.
+
+	Style
+	=====
+
+Generally speaking, the code for LAB3D is absolutely horrible. Most of the
+game is in a single enormous main function, with some subroutines in separate
+functions. The v1.x is a single 8000 line source file, version 2.x is split
+into several files.
+
+Both large and small blocks of code are repeated all over the source, usually
+with minor modifications. For example, the LZW unpacking code is essentially
+duplicated three times.
+
+Structs are eschewed in favour of manual bit manipulation, and assembly code
+is used heavily to manipulate parts of integer variables.
+
+Interestingly, there is not a single goto statement in the entire source.
+Also, there are no pointer variables in the code; all code that uses
+dynamically allocated memory is in assembly!
+
+The code relies heavily on the assumption that the machine is little-endian.
+
+Very few comments have been included in the code; most are code that has been
+commented out.
+
+A lot of functions that don't return values are declared int(...) instead of
+void(...). 
+
+Some of the monster names date back to Walken, so they may seem a bit odd to
+someone unfamiliar with the history of Ken's Labyrinth.
+
+Technical comments on porting Ken's Labyrinth to SDL
+====================================================
+
+	Jan Lönnberg, 14/12/2003.
+
+A lot of modifications were necessary to port Ken's Labyrinth to modern
+systems. The most important of these are described here.
+
+	Target platform
+	===============
+
+The target platform is any machine that supports an ANSI C compiler and SDL.
+In practice, the code has only been tested using GCC, but should compile
+easily which other compilers.
+
+	Language
+	========
+
+To avoid compiler problems and improve readability, LAB3D was converted to
+ANSI C. All assembly code was rewritten in C.
+
+	Libraries
+	=========
+
+The updated LAB3D uses standard library functions, direct file I/O library
+functions (supported by practically every C standard library but apparently
+not in ANSI C). It also requires Simple DirectMedia Layer (SDL) 1.2 and OpenGL
+1.2.
+
+	Graphics
+	========
+
+All graphics output is through OpenGL (using SDL to set up the display). The
+graphics routines have been extensively rewritten.
+
+The graphics routines use a lot of global offset variables to compensate for
+the complex video memory layout used by original game and to allow e.g.
+status bar drawn calls to be used with minimal modification (at the expense of
+legibility).
+
+By default, the screen is handled as if the game were running at 360x240; in
+other words, if you set the screen resolution to 360x240, text and suchlike
+will not be rescaled. As of version 0.932, the simulated screen resolution
+used for 2D graphics (menus, text, status bar, et.c.) can be adjusted freely,
+and an option in the setup menu has been added for using the smallest virtual
+screen size greater than 320x200 that, when scaled up by an integer factor,
+fits the screen resolution (e.g. 800x600 screen resolution gives a 400x300
+virtual screen, 960x600 gives a 320x200 virtual screen).
+
+	Ingame view
+	-----------
+
+The ingame view is generated by clearing the display to the floor colour,
+drawing a rectangle for the roof, and drawing textured squares for each
+visible wall and sprite. Graphics are drawn in the same order as in the
+original LAB3D.
+
+The ray casting routine has been rewritten in floating point (making it easier
+to read) and is no long restricted to casting rays in directions corresponding
+to columns on the screen. Instead, it binary divides until the difference in
+direction is very small or two neighbouring rays hit points within one block
+width of each other. This ensures that walls that are almost parallel to the
+player's viewing direction are visible.
+
+The ray caster is used to work out which walls are visible. As in the
+original, non-transparent walls are drawn first (in the new version, a depth
+buffer is used), and then transparent walls and sprites. All of these are
+drawn using correctly positioned squares.
+
+Most of the ingame graphics can be drawn using trilinear interpolation
+(linear interpolation in both texture axes and between mipmap levels), which
+introduces a few problems with joining up the textures. Most of the time,
+simply repeating opaque textures and clamping transparent textures produces a
+satisfactory result. A few exceptions to this are handled by adding a 1 pixel
+wide border from the adjoining texture to the edge of the texture. In order to
+keep the textures smaller than 64 pixels, these textures with edges are split
+in two pieces.
+
+As alpha and colour are apparently interpolated separately in OpenGL, the
+colour of a totally transparent pixel may affect the colour of neighbouring
+pixels. To avoid nasty black borders around sprites, transparent pixels are
+set to the average of the colours of the surrounding opaque pixels. This looks
+a lot better and means that the original sprites can be used. For similar
+reasons, menus are drawn with alpha testing instead of alpha blending.
+
+OpenGL's near clipping plane and depth buffering cause a minor problem; when
+the player walks through walls, the distance from the viewpoint to the camera
+may become indefinitely small. Thus, the closest parts of the wall are
+clipped, and this must be taken into account when calculating visible walls
+(to avoid displaying a lot of empty horizon where there should be stuff).
+Placing the near clipping plane very near the player causes graphical glitches
+in far-away objects (e.g. the fans on board 1 seen from the other end of the
+corridor); placing the near clipping plane farther away from the player makes
+walk-through walls disappear partially. The near clipping plane distance is
+therefore adjusted depending on the depth buffer resolution; 16-23 bit depth
+buffers place the clipping distance at one eighth of a block (increasing this
+distance further causes problems with impenetrable walls), 24 bit or higher
+bit depth buffer use a clipping distance of one sixty-fourth of a block (which
+is almost indistinguishable (except in carefully constructed cases) from no
+near clipping).
+
+	Other graphics
+	--------------
+
+Menus, text and the status bar are drawn by writing to a large texture (which
+replaces the VGA video memory), which is then drawn to screen. To save time,
+only the portions of the screen that have changed (plus a margin of 1 pixel
+for correct interpolation) are actually drawn. For compatibility reasons, this
+texture is actually several 64x64 textures that are tiled (with an overlap of
+1 texel on each edge for correct interpolation).
+
+The routines used are similar to those in the original game.
+
+Various kludges have been used to speed drawing up and blend menus with ingame
+graphics.
+
+	Palette effects
+	---------------
+
+Most palette effects (fades et.c.) are simulated by redrawing the view with
+differently coloured polygons. Fading between normal brightness and black
+simply involves using textured grey polygons of various brightnesses instead
+of textured white polygons. Fading to red is slightly harder, as the colour of
+the polygon can only make the texture darker, not lighter. Thus, instead of
+ramping the red component up, the green and blue components are ramped down
+when the player is hurt (which looks almost the same). Similarly, instead of
+making some walls a bit brighter, all the other walls are made a bit darker
+(which is hard to tell without reading this or the source code).
+
+In a few places where different parts of the palette are faded in different
+ways, I've used some inelegant kludges to switch fade levels without causing
+redrawing of existing screen contents. I'll clean this up later if I receive
+enough complaints.
+
+	Scrolling
+	---------
+
+This is simply a matter of redrawing the scrolling title picture or story
+(which is in a set of textures) at different positions on screen.
+
+	Memory allocation
+	-----------------
+
+All EMS, XMS and virtual memory code has been removed, and the conventional
+memory allocation replaced by normal malloc/free calls. A lot of assembly code
+using segment numbers was replaced by C code using pointers.
+
+	Timing
+	------
+
+Timing is done using an SDL timer callback. As SDL can not guarantee
+sufficient accuracy to provide a 240 Hz callback, the current time is checked
+every time the callback is executed, and the original KSM handler code run an
+amount of times corresponding to the duration that has elapsed. This smooths
+out most of the timer inaccuracy. 
+
+10 ms delays have been added to places where the original game simply runs as
+quickly as possible to keep the speed in check. In the future, proper timing
+could be implemented in these cases to provide a standard speed across
+different machines.
+
+In order to improve Adlib music quality, only the game clock is incremented
+on timer interrupt; the music is updated according the sound buffer updates.
+
+For systems with low sound latency, using the sound callback for game timing
+instead of the system timer may provide higher resolution. This option has
+also been implemented. However, it is not recommended in most cases, and the
+option is therefore not available to the user.
+
+	Music
+	-----
+
+Music is played using an Adlib emulator written by Ken Silverman specifically
+for playback of his music. The output from the emulation (at 44 KHz) is mixed
+with sound effects and played using SDL.
+
+Music can also be played using Windows or OSS MIDI output written to replace
+the old MPU-401 code. KSM instruments are converted to General MIDI
+instruments using a hand-written lookup table. OSS output is written to
+/dev/sequencer, Windows output to the MIDI Mapper. MIDI music uses less CPU
+power, but does not accurately reproduce the original music.
+
+        Sound effects
+	-------------
+
+Sound effects are played using SDL PCM output in 11 kHz signed 16 bit mono.
+The 8 bit sound effects are loaded in advance and mixed into a sound output
+buffer, which is fed into the SDL sound output using a callback function.
+
+When Adlib emulation is used, the sound effects are resampled (using linear
+interpolation) to 44 KHz before playback.
+
+	Style
+	-----
+
+My modifications didn't make the code much more readable. Sorry. I introduced
+several global variables to keep track of various graphics states; most of
+these exist solely to compensate for oddities in the original code. 
+
+Generally speaking, I tried to change as little as possible of the original
+code, which means that the graphics code design is almost nonexistent; most of
+the time I'm simply trying to simulate the behaviour of the original graphics
+code.
+
+Functions without return values have been changed to return void.
+
+In conclusion, some parts of the code are best left alone until I tidy them up
+a bit.
+
+Well, at least you get my comments. B-)
+
+KSM (Ken Silverman Music) format
+================================
+
+	Jan Lönnberg, 26/7/2004.
+
+This description of the KSM file format should be a bit easier to read than
+the playback code.
+
+	General description
+	-------------------
+
+The KSM music format by Ken Silverman is used to describe music that is
+intended to be played on an Adlib (OPL2) synth or compatible.
+
+The KSM file format relies on a separate instrument definition file (usually
+called insts.dat) containing a library of 256 Adlib instruments. The actual
+music (.ksm) file only contains the notes for a tune. The notes are divided
+into tracks. Time is measured in ticks of 1/240 s.
+
+        .ksm file format
+	----------------
+
+All offsets and field sizes are decimal byte counts. Size n*m means n
+values of m bytes. All multi-byte values are in little-endian form.
+
+Offset	Size	   Name		  Description
+------	----	   ----		  -----------
+
+0	16*1	   trinst	  Instrument number for each track.
+16	16*1	   trquant	  Timing quantum length for each track.
+32	16*1	   trchan	  Amount of channels to play track on.
+48	16*1	   trprio	  Unused (channel priority?).
+64	16*1	   trvol	  Volume level for each track.
+80	2	   numnotes	  Number of notes in tune.
+82	4*numnotes note		  Note data.
+
+unsigned char trinst[16];
+
+For 0<=n<11, trinst[n] is the instrument number for track n. This instrument
+is used to play all notes on track n. The remaining trinst values are used for
+drum instrument control.
+
+unsigned char trquant[16];
+
+The timing quantum length of track n is 240/trquant[n] ticks; in other words,
+track n has trquant[n] timing quanta per second. When a note start/end event
+is received for a track, its time is rounded to the closest timing quantum
+(rounding up if halfway). For example, if trquant[0] is 8, notes can start and
+end at ticks 0, 30, 60, 90, 120 and so on.
+
+unsigned char trchan[16];
+
+For 0<=n<11, trchan[n] is the amount of channels (on the OPL2) allocated to
+track n. Channels are allocated to tracks in ascending order (of both channels
+and tracks). For example, if trchan[0] is 3 and trchan[1] is 4, track 0 gets
+channels 0, 1 and 2 while track 1 gets 3, 4, 5 and (if drums are off) 6.
+
+unsigned char trvol[16];
+
+Track volume from 0 (quietest) to 63 (loudest). Inverted Adlib output level
+value.
+
+unsigned int32 note[numnotes];
+
+Note data in order of playback. Each int32 represents a note on or note off
+event.
+
+- Bits 0-5 are the note (1=C2, 2=C#2, and so on up to 61).
+- Bit 6 is 1 for note on, 0 for note off. Note off events turn the note off
+  from the lowest numbered channel playing the specified note on the specified
+  track. Note off events may not be used on drum tracks. Note on events start
+  the new note on the channel with the oldest note (and highest number if the
+  age is equal).
+- Bit 7 is unused.
+- Bits 8-11 specify the track to play the note. Tracks 11-15 correspond to
+  drums as follows:
+  11: Kick drum
+  12: Snare drum
+  13: Tom-tom
+  14: Cymbal
+  15: Hi hat
+- Bits 12-31 are the time (in ticks) of the event. This time is rounded using
+  trquant. Note that the tune is assumed to start at the first event, not at
+  time 0.

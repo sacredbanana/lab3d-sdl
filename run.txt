@@ -1,0 +1,36 @@
+	LAB3D/SDL Usage
+	===============
+
+Users of binary packages are provided with scripts "setup" (Linux) and
+"setup.bat" (Windows) to run the setup. Alternatively, the "-setup" flag
+may be used as described below.
+
+Run the executable file, making sure that the current directory is the
+directory in which the data files are residing.
+
+Command-line parameters (these override settings chosen in setup):
+
+-setup			Run setup.
+-res <w> <h> <x> <y>	Use <w>x<h> resolution, simulating <x>x<y> 2D screen.
+			Note that while w and h are integers, x and y can be
+			any floating point numbers >= than 320x200.
+-asp <w> <h>		Override aspect correction; <w> and <h> multiply the
+			width and height of the 3D viewport; both are
+			floating point numbers greater than 0.1.
+-win			Run in a window.
+-fullscreen		Run in fullscreen mode.
+-nearest		No display filtering.
+-trilinear		Trilinear display filtering.
+-nomusic		Disable music.
+-gmmusic		General MIDI music.
+-admusic		Adlib emulation music.
+-nosound		Disable sound effects.
+-sound			Enable sound effects.
+-debug			Extended graphics debug output. Only for
+			troubleshooting purposes.
+
+To activate cheat codes, the last parameter must be either "snausty" (normal
+cheat mode) or "cheaton" (cheat codes use [LSHIFT]-[LCTRL] instead of both
+shift keys). Note that cheaters never prosper.
+
+Unrecognised options are ignored.

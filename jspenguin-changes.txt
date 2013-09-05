@@ -1,0 +1,123 @@
+		Changes made to LAB3D-SDL by ktpanda
+		======================================
+
+
+- Wall settings/Hi-Res Texture replacement
+
+There is now a file called wallparams.ini which defines various
+parameters for textures.
+
+The format is similar to a regular INI file:
+
+[wall number]
+key=value
+key=value
+
+Parameters available:
+
+
+src=<filename>
+
+Use <filename> for the in-game texture instead of the texture from
+walls.kzp. The image file can be any type supported by SDL_image;
+however, PNG is recommended because of its features. The image
+dimensions must be a power of 2, and must be smaller than the maximum
+texture size of your OpenGL implementation. Multiple textures can use
+the same image with the 'range' option. Only the in-game texture is
+replaced. Anything that is drawn to the overlay (statusbar, menus,
+etc.) will still use the old texture.
+
+
+range=<left> <right>
+
+Display only a portion of the texture. Only the horizontal range is
+affected.
+
+
+shadow=<wall number>
+
+Use <wall number> as a shadow. The shadow will be drawn whenever the
+current object is drawn. Only makes sense for sprites.
+
+
+minfilt=<filter mode>
+magfilt=<filter mode>
+
+Override the default magnification or minimization filtering mode for
+the texture. The value must be one of  GL_NEAREST, GL_LINEAR,
+GL_NEAREST_MIPMAP_NEAREST, GL_NEAREST_MIPMAP_LINEAR,
+GL_LINEAR_MIPMAP_NEAREST, or GL_LINEAR_MIPMAP_LINEAR.
+
+
+wrap=<wrap mode>
+
+Override the default wrap mode of the texture. The value must be
+either 'repeat' or 'clamp'.
+
+
+bmpkind=<bmpkind>
+
+Override the display type of the texture. Values are:
+
+1: regular wall
+2,3: face sprite
+4: masked wall
+5: floor sprite
+
+This paramater is most often used to turn a face sprite into a floor
+sprite (bmpkind=5). Floor sprites are unique to LAB3D-SDL, and are
+drawn flat on the floor instead of vertically. Floor sprites are used
+to draw shadows, holes, etc.
+
+Note that when wallparams.ini is present, the standard texture
+transitioning system is disabled.
+
+
+- SDL2 support
+
+LAB3D-SDL has been ported to SDL2.0, which brings several improvements:
+1. Fullscreen mode now runs at the native desktop resolution - it's no
+longer necessary to select your resolution in the setup program.
+2. Game controller support - with SDL1.2, game controllers are
+detected as joysticks, so supporting different controllers meant extra
+work for each game.
+
+
+- Improved joystick/controller support
+
+Joystick buttons and axes can be assigned like keys from the setup
+program. In addition, UI functions (such as menus) can now be
+controlled entirely from game controllers or joysticks.
+
+
+- Boss life meter
+
+Whenever a boss is within earshot, a health meter will be drawn at the
+top of the screen.
+
+
+- Longer explosions
+
+In the original Ken's Labyrinth, explosions were only drawn for one
+frame. In LAB3D-SDL, frame rates are so high that explosions may not
+be visible at all. Now, all explosions last for 1/15th of a second,
+regardless of framerate.
+
+
+- No clipping cheat
+
+LSHIFT-RSHIFT-R (or CTRL-SHIFT-R) enables noclip mode, which allows
+you to walk through walls.
+
+
+- Fixed object disappearing
+
+In the original, whenever you enter a cell, it's contents
+disappear. This was probably done because objects looked crappy up
+close with the software renderer; however, with trilinear filtering,
+things look just fine up close.
+
+
+- Anisotropic filtering option
+
+Anisotropic filtering can be selected in the setup program.
