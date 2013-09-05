@@ -294,7 +294,8 @@ void initialize()
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
-    loadmusic("BEGIN");
+    if (!introskip)
+        loadmusic("BEGIN");
     clockspeed = 0;
     slottime = 0;
     owecoins = 0;
@@ -304,7 +305,8 @@ void initialize()
     slotpos[2] = 0;
     clockspeed = 0;
     skilevel = 0;
-    musicon();
+    if (!introskip)
+        musicon();
     fprintf(stderr,"Loading intro pictures...\n");
 
     if (lab3dversion) {
@@ -339,123 +341,125 @@ void initialize()
 
     SetVisibleScreenOffset(0);
     SDL_GL_SwapWindow(mainwindow);
-
+    
     if (moustat == 0)
         moustat = setupmouse();
-    SDL_LockMutex(timermutex);
-    oclockspeed = clockspeed;
-    while ((getkeydefstatlock(ACTION_MENU) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
-           (bstatus == 0) &&
-           (clockspeed < oclockspeed+960))
-    {
-        PollInputs();
-
-        bstatus = 0;
-        if (moustat == 0)
-        {
-            bstatus=readmouse(NULL, NULL);
-        }
-        SDL_UnlockMutex(timermutex);
-        SDL_Delay(10);
+    if (!introskip) {
         SDL_LockMutex(timermutex);
-    }
-    SDL_UnlockMutex(timermutex);
-
-    /* Big scrolly picture... */
-
-    j=0;
-
-    if (lab3dversion==0) {
-        fade(0);
-        j = kgif(2);
-        if (j)
-            kgif(0);
-        
-        fade(63);
-        l = 25200;
-        i = 1;
-    }
-
-    SDL_LockMutex(timermutex);
-    oclockspeed=clockspeed;
-
-    while ((getkeydefstatlock(ACTION_MENU) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
-           (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
-           (bstatus == 0) &&
-           (clockspeed < ((lab3dversion|j)?3840:7680)))
-    {
-        if (i == 0)
+        oclockspeed = clockspeed;
+        while ((getkeydefstatlock(ACTION_MENU) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
+               (bstatus == 0) &&
+               (clockspeed < oclockspeed+960))
         {
-            l += 90;
-            if (l >= 25200)
-            {
-                i = 1;
-                l = 25200;
-            }
-        }
-        if (i == 1)
-        {
-            l -= 90;
-            if (l > 32768)
-            {
-                l = 0;
-                i = 0;
-            }
-        }
+            PollInputs();
 
-        while(clockspeed<oclockspeed+12) {
+            bstatus = 0;
+            if (moustat == 0)
+            {
+                bstatus=readmouse(NULL, NULL);
+            }
             SDL_UnlockMutex(timermutex);
             SDL_Delay(10);
             SDL_LockMutex(timermutex);
         }
-        oclockspeed+=12;
+        SDL_UnlockMutex(timermutex);
 
-        if (!(lab3dversion|j)) {
+        /* Big scrolly picture... */
+
+        j=0;
+
+        if (lab3dversion==0) {
+            fade(0);
+            j = kgif(2);
+            if (j)
+                kgif(0);
+        
+            fade(63);
+            l = 25200;
+            i = 1;
+        }
+
+        SDL_LockMutex(timermutex);
+        oclockspeed=clockspeed;
+
+        while ((getkeydefstatlock(ACTION_MENU) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+               (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
+               (bstatus == 0) &&
+               (clockspeed < ((lab3dversion|j)?3840:7680)))
+        {
+            if (i == 0)
+            {
+                l += 90;
+                if (l >= 25200)
+                {
+                    i = 1;
+                    l = 25200;
+                }
+            }
+            if (i == 1)
+            {
+                l -= 90;
+                if (l > 32768)
+                {
+                    l = 0;
+                    i = 0;
+                }
+            }
+
+            while(clockspeed<oclockspeed+12) {
+                SDL_UnlockMutex(timermutex);
+                SDL_Delay(10);
+                SDL_LockMutex(timermutex);
+            }
+            oclockspeed+=12;
+
+            if (!(lab3dversion|j)) {
+                SDL_UnlockMutex(timermutex);
+                glClearColor(0,0,0,0);
+                glClear( GL_COLOR_BUFFER_BIT);
+                visiblescreenyoffset=(l/90)-20;
+                ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
+                SDL_GL_SwapWindow(mainwindow);
+                SDL_LockMutex(timermutex);
+            }
+            PollInputs();
+            bstatus = 0;
+            if (moustat == 0)
+            {
+                bstatus=readmouse(NULL, NULL);
+            }
+        }
+        oclockspeed=clockspeed;
+        for(i=63;i>=0;i-=4)
+        {
             SDL_UnlockMutex(timermutex);
+            fade(64+i);
             glClearColor(0,0,0,0);
             glClear( GL_COLOR_BUFFER_BIT);
-            visiblescreenyoffset=(l/90)-20;
+            if (lab3dversion|j)
+                visiblescreenyoffset=0;
+            else
+                visiblescreenyoffset=(l/90)-20;
             ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
             SDL_GL_SwapWindow(mainwindow);
             SDL_LockMutex(timermutex);
-        }
-        PollInputs();
-        bstatus = 0;
-        if (moustat == 0)
-        {
-            bstatus=readmouse(NULL, NULL);
-        }
-    }
-    oclockspeed=clockspeed;
-    for(i=63;i>=0;i-=4)
-    {
-        SDL_UnlockMutex(timermutex);
-        fade(64+i);
-        glClearColor(0,0,0,0);
-        glClear( GL_COLOR_BUFFER_BIT);
-        if (lab3dversion|j)
-            visiblescreenyoffset=0;
-        else
-            visiblescreenyoffset=(l/90)-20;
-        ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
-        SDL_GL_SwapWindow(mainwindow);
-        SDL_LockMutex(timermutex);
 
-        while(clockspeed<oclockspeed+4) {
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10);
-            SDL_LockMutex(timermutex);
+            while(clockspeed<oclockspeed+4) {
+                SDL_UnlockMutex(timermutex);
+                SDL_Delay(10);
+                SDL_LockMutex(timermutex);
+            }
+            oclockspeed+=4;
         }
-        oclockspeed+=4;
+        SDL_UnlockMutex(timermutex);
     }
-    SDL_UnlockMutex(timermutex);
     k = 0;
     for(i=0;i<16;i++)
         for(j=1;j<17;j++)
@@ -468,7 +472,7 @@ void initialize()
     lastshoot = 1;
     lastbarchange = 1;
     hiscorenamstat = 0;
-
+    
     /* Shareware/registered check... */
 
     if (lab3dversion) {
@@ -499,5 +503,6 @@ void initialize()
             exit(1);
         }
     }
-    musicoff();
+    if (!introskip)
+        musicoff();
 }

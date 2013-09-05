@@ -152,6 +152,7 @@ void oldmain(void)
                 }
         }
         SetVisibleScreenOffset(0);
+        update_bulrot(posx, posy);
         picrot(posx,posy,posz,ang);
         sortcnt = 0;
         SDL_LockMutex(soundmutex);
