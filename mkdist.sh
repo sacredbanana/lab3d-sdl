@@ -18,14 +18,14 @@ makezip() {
 copy_tex() {
     cpath=$1
     mkdir -p $cpath
-    cp wallparams.ini hires-tex-install.txt hires-tex-readme.txt `awk -F = '/^src=/{print $2}' wallparams.ini` $cpath
+    cp -a wallparams.ini hires $cpath
 }
 
 copy_winbin() {
     cpath=$1
     mkdir -p $cpath
     cp ken.bmp ken.ico ken.exe $cpath
-    cp dist/w32-files/* $cpath
+    cp dist/data-files/* $cpath
     cp dist/winlibs-sdl2/* $cpath
 }
 
@@ -34,6 +34,7 @@ make_tex() {
     zpath=$XPATH/$zipname
 
     copy_tex $zpath/LAB3D-SDL-$VERS
+    cp -a wallparams.ini hires-tex-install.txt hires-tex-readme.txt $zpath/LAB3D-SDL-$VERS
 
     makezip $zipname
     rm -rf $zpath
