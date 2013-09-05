@@ -25,8 +25,9 @@ static K_INT16 gameoverfound;
 #define _DYNAMIC_OGL_FUNCS(mac)                                 \
     mac(GLGENFRAMEBUFFERS, glGenFramebuffers)                   \
     mac(GLGENRENDERBUFFERS, glGenRenderbuffers)                 \
+    mac(GLDRAWBUFFERS, glDrawBuffers)                           \
     mac(GLBINDFRAMEBUFFER, glBindFramebuffer)                   \
-    mac(GLBINDRENDERBUFFER, glBindRenderbuffer)                   \
+    mac(GLBINDRENDERBUFFER, glBindRenderbuffer)                 \
     mac(GLRENDERBUFFERSTORAGE, glRenderbufferStorage)           \
     mac(GLFRAMEBUFFERTEXTURE, glFramebufferTexture)             \
     mac(GLFRAMEBUFFERRENDERBUFFER, glFramebufferRenderbuffer)
@@ -1379,13 +1380,11 @@ void setup_stereo(int s) {
         ext_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
         ext_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, stereo_depth[i]);
 
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereo_tex[i], 0);
-        GLenum drawbuffers[2] = {GL_COLOR_ATTACHMENT0};
-        glDrawBuffers(1, drawbuffers);
-        /*GLenum drawbuffers[2] = {GL_COLOR_ATTACHMENT0, GL_DEPTH_ATTACHMENT};
-          glDrawBuffers(2, drawbuffers);*/
+        ext_glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereo_tex[i], 0);
+        GLenum drawbuffers[1] = {GL_COLOR_ATTACHMENT0};
+        ext_glDrawBuffers(1, drawbuffers);
     }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    ext_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
@@ -1397,15 +1396,15 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
     } else {
         int yo = (sintable[(angs+512)&2047] * sep) >> 17;
         int xo = (sintable[angs&2047] * sep) >> 17;
-        glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[0]);
+        ext_glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[0]);
         glViewport(0, 0, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
         _picrot(posxs - xo, posys - yo, poszs, angs - asep, aspw, stereo == 2 ? asph*2 : asph);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[1]);
+        ext_glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[1]);
         glViewport(0, 0, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
         _picrot(posxs + xo, posys + yo, poszs, angs + asep, aspw, stereo == 2 ? asph*2 : asph);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        ext_glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
