@@ -87,6 +87,9 @@ int main(int argc,char **argv)
     SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|
              SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
 
+    if (SDL_GL_LoadLibrary(NULL) != 0)
+        fatal_error("Could not dynamically open OpenGL library: %s", SDL_GetError());
+
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
         ((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
         close(fil);	

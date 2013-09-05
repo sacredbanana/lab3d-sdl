@@ -15,11 +15,10 @@
 #endif
 
 #include "SDL.h"
-#ifdef pi
-#error wtf
-#endif
-#include <GL/gl.h>
+
+#include <SDL_opengl.h>
 #include <GL/glu.h>
+
 #ifndef GL_BGR
 /* MSVC compatibility hack (some versions have out-of-date OpenGL headers). */
 #define GL_BGR GL_BGR_EXT

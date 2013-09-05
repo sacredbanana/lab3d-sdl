@@ -22,6 +22,25 @@ static K_INT16 gameoverfound;
 
 #define EPSILON 0.0000001
 
+#define _DYNAMIC_OGL_FUNCS(mac)                                 \
+    mac(GLGENFRAMEBUFFERS, glGenFramebuffers)                   \
+    mac(GLGENRENDERBUFFERS, glGenRenderbuffers)                 \
+    mac(GLBINDFRAMEBUFFER, glBindFramebuffer)                   \
+    mac(GLBINDRENDERBUFFER, glBindRenderbuffer)                   \
+    mac(GLRENDERBUFFERSTORAGE, glRenderbufferStorage)           \
+    mac(GLFRAMEBUFFERTEXTURE, glFramebufferTexture)             \
+    mac(GLFRAMEBUFFERRENDERBUFFER, glFramebufferRenderbuffer)
+
+#define _DECLARE_FUNC(type, name) static PFN ##type## PROC ext_##name;
+#define _LOAD_FUNC(type, name) ext_##name = SDL_GL_GetProcAddress(#name); if (!ext_##name) return #name;
+
+_DYNAMIC_OGL_FUNCS(_DECLARE_FUNC)
+
+static int stereo = 0;
+static GLuint stereo_fbufs[2];
+static GLuint stereo_tex[2];
+static GLuint stereo_depth[2];
+
 /* (x2-x1)^2+(y2-y1)^2. */
 
 double distance2(double x1,double y1,double x2,double y2) {
@@ -1322,16 +1341,29 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     ShowStatusBar();
 }
 
-static int stereo = 0;
-static GLuint stereo_fbufs[2];
-static GLuint stereo_tex[2];
-static GLuint stereo_depth[2];
+static char* load_ogl_ext_funcs(void) {
+    _DYNAMIC_OGL_FUNCS(_LOAD_FUNC)
+    return NULL;
+}
 
 void setup_stereo(int s) {
+    static int loaded = 0;
     int i;
-    glGenFramebuffers(2, stereo_fbufs);
+    if (!loaded) {
+        char *failed;
+        if ((failed = load_ogl_ext_funcs()) != NULL) {
+            loaded = -1;
+            fprintf(stderr, "Could not find %s, Stereo not available (OpenGL too old)", failed);
+            return;
+        }
+        loaded = 1;
+    }
+    if (loaded == -1)
+        return;
+
+    ext_glGenFramebuffers(2, stereo_fbufs);
     glGenTextures(2, stereo_tex);
-    glGenRenderbuffers(2, stereo_depth);
+    ext_glGenRenderbuffers(2, stereo_depth);
 
     stereo = s;
     
@@ -1341,11 +1373,11 @@ void setup_stereo(int s) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-        glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[i]);
+        ext_glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[i]);
 
-        glBindRenderbuffer(GL_RENDERBUFFER, stereo_depth[i]);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, stereo_depth[i]);
+        ext_glBindRenderbuffer(GL_RENDERBUFFER, stereo_depth[i]);
+        ext_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
+        ext_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, stereo_depth[i]);
 
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereo_tex[i], 0);
         GLenum drawbuffers[2] = {GL_COLOR_ATTACHMENT0};
