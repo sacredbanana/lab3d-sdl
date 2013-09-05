@@ -6,8 +6,8 @@ OBJS=subs.obj init.obj graphx.obj lab3d.obj setup.obj adlibemu.obj icon.obj oldl
 MINGW_PATH=c:\mingw32\
 PREFIX=
 
-SDL_CFLAGS=-I$(MINGW_PATH)/include/SDL2 -Dmain=SDL_main
-SDL_LDFLAGS=-L$(MINGW_PATH)/lib -lmingw32 -lSDL2 -mwindows
+SDL_CFLAGS=-I$(MINGW_PATH)/include/SDL2
+SDL_LDFLAGS=-L$(MINGW_PATH)/lib -lmingw32 -lSDL2main -lSDL2 -mwindows
 
 default: $(OBJS)
 	$(PREFIX)gcc -O3 -o ken.exe $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1

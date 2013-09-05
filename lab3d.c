@@ -2,6 +2,7 @@
 #include "lab3d.h"
 #include "adlibemu.h"
 #include "math.h"
+#include "SDL_main.h"
 
 unsigned char slotable[3][16] =
 {
