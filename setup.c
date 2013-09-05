@@ -1,4 +1,3 @@
-#include "lab3d.h"
 #ifdef USE_OSS
 #define MUSIC_SOURCES 3
 #else
@@ -10,6 +9,8 @@
 #define MUSIC_SOURCES 2
 #endif
 #endif
+
+#include "lab3d.h"
 
 static void draw_mainmenu(void);
 
