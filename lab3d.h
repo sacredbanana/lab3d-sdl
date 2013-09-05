@@ -258,6 +258,20 @@ enum {
     ACTION_CONFIG_LAST = ACTION_MENU+1
 };
 
+enum {
+    MAINMENU_NEWGAME,
+    MAINMENU_LOADGAME,
+    MAINMENU_SAVEGAME,
+    MAINMENU_RETURN,
+    MAINMENU_SETUP,
+    MAINMENU_HELP,
+    MAINMENU_STORY,
+    MAINMENU_COPYRIGHT,
+    MAINMENU_CREDITS,
+    MAINMENU_EXIT,
+    MAINMENU_LAST
+};
+
 #define KEY_REPEAT_START 250
 #define KEY_REPEAT 80
 
@@ -502,6 +516,7 @@ void setgamevideomode();
 void textprint(K_INT16, K_INT16, char);
 K_INT16 loadstory(K_INT16);
 K_INT16 setupmouse();
+void setupmenu(int ingame);
 void statusbaralldraw();
 void hiscorecheck();
 void setuptextbuf(K_INT32);

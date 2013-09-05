@@ -3253,9 +3253,9 @@ int main(int argc,char **argv)
                 SDL_GL_SwapWindow(mainwindow);
                 j = mainmenu();
                 picrot(posx,posy,posz,ang);
-                if (j < 7)
+                if (j < MAINMENU_COPYRIGHT)
                 {
-                    if (j == 0)
+                    if (j == MAINMENU_NEWGAME)
                     {
                         musicoff();
                         fade(0);
@@ -3319,13 +3319,13 @@ int main(int argc,char **argv)
                         scorecount = 0;
                         statusbaralldraw();
                     }
-                    if ((j == 1) && (loadsavegameplace >= 0))
+                    if ((j == MAINMENU_LOADGAME) && (loadsavegameplace >= 0))
                     {
                         fade(0);
                         loadgame(loadsavegameplace);
                         fade(63);
                     }
-                    if ((j == 2) && (loadsavegameplace >= 0))
+                    if ((j == MAINMENU_SAVEGAME) && (loadsavegameplace >= 0))
                     {
                         if (hiscorenamstat == 0)
                         {

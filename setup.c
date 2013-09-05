@@ -15,6 +15,7 @@
 static void draw_mainmenu(void);
 
 #ifdef WIN32
+#define HAVE_DESKTOP
 HRESULT CreateLink(LPCSTR lpszPathObj, 
                    LPSTR lpszPathLink, LPSTR lpszDesc,
                    LPSTR lpszArgs) { 
@@ -58,7 +59,7 @@ HRESULT CreateLink(LPCSTR lpszPathObj,
     return hres; 
 } 
 
-void createshortcut(void) {
+void createshortcut(char* errbuf, int errlen) {
     ITEMIDLIST *l;
     char p[MAX_PATH];
     char p2[MAX_PATH];
@@ -95,11 +96,101 @@ void createshortcut(void) {
 
     CreateLink(p2, p3,"Ken's Labyrinth Setup","-setup");
 }
+#elif defined(linux)
+
+#define HAVE_DESKTOP
+
+#include <unistd.h>
+#include <errno.h>
+
+int makedirs(char* path) {
+    struct stat st;
+    char *s = path - 1;
+
+    while (1) {
+        while (*++s != '/') { if (!*s) return 0; }
+        if (s == path)
+            continue;
+
+        *s = 0;
+
+        if (stat(path, &st) != 0) {
+            if (errno == ENOENT) {
+
+                if (mkdir(path, 0755) != 0) {
+                    *s = '/';
+                    return errno;
+                }
+                *s = '/';
+                continue;
+            }
+        }
+        *s = '/';
+        if (!S_ISDIR(st.st_mode)) {
+            return ENOTDIR;
+        }
+    }
+}
+
+int create_desktop_file(char* path) {
+    char *cwd;
+    FILE* f;
+
+    if (!(cwd = getcwd(NULL, 0)))
+        return 0;
+
+    fprintf(stderr, "Creating %s\n", path);
+    f = fopen(path, "w");
+    if (!f) {
+        if (errno == ENOENT) {
+            makedirs(path);
+            f = fopen(path, "w");
+        }
+    }
+    if (!f) {
+        free(cwd);
+        return 0;
+    }
+    
+    fprintf(f, "[Desktop Entry]\n");
+    fprintf(f, "Categories=Game;ArcadeGame;\n");
+    fprintf(f, "Encoding=UTF-8\n");
+    fprintf(f, "Name=Ken's Labyrinth\n");
+    fprintf(f, "Path=%s/\n", cwd);
+    fprintf(f, "Exec=%s/ken\n", cwd);
+    fprintf(f, "Icon=%s/ken.bmp\n", cwd);
+    fprintf(f, "Type=Application\n");
+    fclose(f);
+
+    return 1;
+}
+
+
+void createshortcut(char* errbuf, int errlen) {
+    char *home = getenv("HOME");
+    char *deskpath;
+    if (!home) {
+        strncpy(errbuf, "could not get home dir", errlen);
+        return;
+    }
+    deskpath = malloc(strlen(home) + 64);
+    if (!deskpath)
+        fatal_error("out of memory");
+
+    sprintf(deskpath, "%s/Desktop/Ken's Labyrinth.desktop", home);
+    create_desktop_file(deskpath);
+
+    sprintf(deskpath, "%s/.local/share/applications/Ken's Labyrinth.desktop", home);
+    create_desktop_file(deskpath);
+
+    free(deskpath);
+}
 #endif
 
 static int inputdevice=1, window_width=640, window_height=480, nearest=0;
 static int music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
 static int soundblock=0,timing=0,texturedepth=1,scaling=2;
+static int setup_ingame=0;
 
 static char *keynames[ACTION_LAST]={
     "Move FORWARD",
@@ -301,61 +392,63 @@ static int action_group_actions[] = {
     -1
 };
 
-static char inputdevicemenu[4][30]={
+static char *okmenu[] = { "OK" };
+
+static char *inputdevicemenu[4] = {
     "Keyboard only",
     "Keyboard + mouse",
     "Keyboard + joystick",
     "Keyboard + mouse + joystick"
 };
 
-static char configureinputmenu[4][30]={
+static char *configureinputmenu[4] = {
     "Configure Keyboard",
     "Configure Joystick",
     "Configure Controller",
     "Return to setup menu"
 };
 
-static char inputgroupsmenu[4][30]={
+static char *inputgroupsmenu[4] = {
     "Movement",
     "Weapons",
     "Actions",
     "Return to input menu"
 };
 
-static char fullscreenmenu[2][30]={
+static char *fullscreenmenu[2] = {
     "Windowed",
     "Fullscreen"
 };
 
-static char filtermenu[3][30]={
+static char *filtermenu[3] = {
     "Anisotropic filtering",
     "Trilinear filtering",
     "No filtering"
 };
 
-static char musicmenu[3][30]={
+static char *musicmenu[3] = {
     "No music",
     "Adlib emulation",
     "General MIDI",
 };
 
-static char soundmenu[2][30]={
+static char *soundmenu[2] = {
     "No sound",
     "Digital sound effects"
 };
 
-static char channelmenu[2][30]={
+static char *channelmenu[2] = {
     "Mono",
     "Stereo"
 };
 
-static char cheatmenu[3][30]={
+static char *cheatmenu[3] = {
     "No cheats",
     "LSHIFT-RSHIFT",
     "LSHIFT-LCTRL"
 };
 
-static char soundblockmenu[10][30]={
+static char *soundblockmenu[10] = {
     "Default (11.6 ms)",
     "1.5 ms",
     "2.9 ms",
@@ -368,18 +461,18 @@ static char soundblockmenu[10][30]={
     "371.5 ms"
 };
 
-static char timingmenu[2][30]={
+static char *timingmenu[2] = {
     "System timer",
     "Sound output"
 };
 
-static char texturedepthmenu[3][30]={
+static char *texturedepthmenu[3] = {
     "Driver default",
     "32 bit",
     "16 bit"
 };
 
-static char scalingtypemenu[4][30]={
+static char *scalingtypemenu[4] = {
     "Fill screen (4:3 view)",
     "Integer scale (4:3 view)",
     "Fill screen (square pixels)",
@@ -390,7 +483,7 @@ static void makeupper(char* txt) {
     while (*txt) { *txt = toupper(*txt); txt++; }
 }
 
-int selectionmenu(int alts,char titles[][30],int *value, const char* menutitle) {
+int selectionmenu(int alts,char *titles[], int *value, const char* menutitle) {
     int i;
     int j=12*alts+24;
     int ofs = 0;
@@ -709,16 +802,11 @@ static int ctrl_select(SDL_Event* event, int action) {
 }
 
 static void key_instruction(const char* inst) {
-    drawmenu(304,72,menu);
-    strcpy(textbuf,"Move joystick in");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
+    drawmenu(304,48,menu);
+    strcpy(textbuf,"Press key for action:");
+    textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+0*12,lab3dversion?32:34);
     strcpy(textbuf,inst);
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
-    strcpy(textbuf,"direction, or press");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
-    
-    strcpy(textbuf,"any key to delete");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+1*12,0);
     finalisemenu();
     glFlush();
 }
@@ -849,76 +937,89 @@ void setupconfigureinput(void) {
 }
 
 static void draw_mainmenu(void) {
+    int n = 18;
     drawmenu(360,240,menu);
 
-    strcpy(textbuf,"LAB3D/SDL setup menu");
-    textprint(81,22,126);
+    if (setup_ingame) {
+        n = 6;
+    } else {
+        n = 18;
+        strcpy(textbuf,"LAB3D/SDL setup menu");
+        textprint(81,16,126);
+    }
 
     strcpy(textbuf,"Input: ");
     strcat(textbuf,inputdevicemenu[inputdevice]);
-    textprint(51,36,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion?32:34);
     strcpy(textbuf,"Configure Input");
-    textprint(51,48,lab3dversion?32:34);
-    strcpy(textbuf,"Window size: ");
+    n += 12; textprint(51,n,lab3dversion?32:34);
     sprintf(textbuf,"Window size: %dx%d", window_width,
             window_height);
-    textprint(51,60,64);
+    n += 12; textprint(51,n,64);
     strcpy(textbuf,"Display type: ");
     strcat(textbuf,fullscreenmenu[fullscr]);
-    textprint(51,72,64);
+    n += 12; textprint(51,n,64);
     strcpy(textbuf,"Filtering: ");
     strcat(textbuf,filtermenu[nearest]);
-    textprint(51,84,64);
+    n += 12; textprint(51,n,64);
     strcpy(textbuf,"Music: ");
     strcat(textbuf,musicmenu[music]);
-    textprint(51,96,96);
+    n += 12; textprint(51,n,96);
     strcpy(textbuf,"Effects: ");
     strcat(textbuf,soundmenu[sound]);
-    textprint(51,108,96);
+    n += 12; textprint(51,n,96);
     strcpy(textbuf,"Sound channels: ");
     strcat(textbuf,channelmenu[channel]);
-    textprint(51,120,96);
+    n += 12; textprint(51,n,96);
     strcpy(textbuf,"Music channels: ");
     strcat(textbuf,channelmenu[musicchannel]);
-    textprint(51,132,96);
+    n += 12; textprint(51,n,96);
     strcpy(textbuf,"Cheats: ");
     strcat(textbuf,cheatmenu[cheat]);
-    textprint(51,144,96);
+    n += 12; textprint(51,n,96);
     strcpy(textbuf,"Sound block size: ");
     strcat(textbuf,soundblockmenu[soundblock]);
-    textprint(51,156,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion?32:34);
     strcpy(textbuf,"Texture colour depth: ");
     strcat(textbuf,texturedepthmenu[texturedepth]);
-    textprint(51,168,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion?32:34);
     strcpy(textbuf,"View: ");
     strcat(textbuf,scalingtypemenu[scaling]);
-    textprint(51,180,lab3dversion?32:34);
-    strcpy(textbuf,"Exit setup");
-    textprint(51,192,lab3dversion?128:130);
-#ifdef WIN32
-    strcpy(textbuf,"Create desktop shortcuts");
-    textprint(51,204,96);
+    n += 12; textprint(51,n,lab3dversion?32:34);
+#ifdef HAVE_DESKTOP
+    n += 12; strcpy(textbuf,"Create desktop shortcuts");
+    textprint(51,n,96);
 #endif
+    if (setup_ingame)
+        strcpy(textbuf,"Return");
+    else
+        strcpy(textbuf,"Exit setup");
+        
+    n += 12; textprint(51,n,lab3dversion?128:130);
 
-    strcpy(textbuf,"Use cursor keys / left stick to select.");
-    textprint(31,220,lab3dversion?32:34);
+    n = 220;
+    if (setup_ingame) {
+        strcpy(textbuf,"Some settings may require restart.");
+        textprint(31,n,lab3dversion?32:34);
+    } else {
+        strcpy(textbuf,"Use cursor keys / left stick to select.");
+        textprint(31,n,lab3dversion?32:34);
+    }
 
     finalisemenu();
 }
 
-static void pushmenu(void (*draw)(void)) {
-    
-}
-
-void setupmenu(void) {
-    int quit=0,sel=0;
+void setupmenu(int ingame) {
+    int quit=0,sel=0,j;
+    char errbuf[64];
+    setup_ingame = ingame;
 
     while(!quit) {
         draw_mainmenu();
-#ifdef WIN32
-        if ((sel = getselection(12,15,sel,15)) < 0)
+#ifdef HAVE_DESKTOP
+        if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,15)) < 0)
 #else
-        if ((sel = getselection(12,15,sel,14)) < 0)
+        if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,14)) < 0)
 #endif
                 quit=1;
             else {
@@ -962,12 +1063,18 @@ void setupmenu(void) {
                     case 12:
                         setupscalingmodemenu();
                         break;
-#ifdef WIN32
-                    case 14:
-                        createshortcut();
-                        break;
-#endif
                     case 13:
+#ifdef HAVE_DESKTOP
+                        errbuf[0] = 0;
+                        createshortcut(errbuf, sizeof(errbuf) - 1);
+                        if (!errbuf[0]) {
+                            strcpy(errbuf, "Shortcuts created.");
+                        }
+                        j = 0;
+                        selectionmenu(1, okmenu, &j, errbuf);
+                        break;
+                    case 14:
+#endif
                         quit=1;
                         break;
                 }
@@ -1313,6 +1420,7 @@ static int _save_blankline(const char* key, FILE* f, setting_t* set) {
 #define ENUMSETTING(name, values, gvar) { #name, _load_enum, _save_enum, &gvar, values }
 
 static setting_t video_settings[] = {
+    INTSETTING(fullscreen, fullscr),
     INTSETTING(width, window_width),
     INTSETTING(height, window_height),
     INTSETTING(filtering, nearest),
@@ -1653,7 +1761,7 @@ void setup(void) {
     }
     glDrawBuffer(GL_FRONT);
 
-    setupmenu();
+    setupmenu(0);
   
     savesettings();
     SDL_Quit();
