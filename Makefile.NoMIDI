@@ -1,0 +1,10 @@
+OBJS=subs.o init.o graphx.o lab3d.o setup.o adlibemu.o
+
+%.o: %.c lab3d.h
+	gcc -O3 -Wall `sdl-config --cflags` -o $@ -c $<
+
+default: $(OBJS)
+	gcc -o ken $(OBJS) `sdl-config --libs` -lGL -lGLU -lm
+
+clean:
+	rm -f $(OBJS)

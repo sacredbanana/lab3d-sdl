@@ -1,0 +1,29 @@
+3.0: 2013-09-03
+  * Upgraded to SDL2.
+  * New settings format - now actually readable, and easier to add to in the
+    future.
+  * Unified jpystick and keyboard support - most UI functions can now be
+    operated by controller or joystick (except for entering text). Joysticks and
+    controllers can be plugged and unplugged while the game is running.
+  * New -load option to load a savegame directly.
+  * Fixed bug where only the top half of scrolling image on the title screen was
+    displayed. 
+  * Fixed bug where menus would go black after switching away and back.
+  * Added new "cycle weapon" key.
+  * Added direct strafe keys.
+  *
+
+2.32-2005-10-31:
+  * Added anisotropic filtering option, which reduces the blurring on walls when
+    viewed from an angle. 
+
+
+2.32-2005-05-30:
+  * Made warp transparent<
+  * Created binary package for Linux
+
+2.32-2005-02-18:
+  * Removed textures based on GIMP patterns
+  * New Pov-Ray rendered robot
+  * New Ken-face textures
+  * New gold & silver doors
