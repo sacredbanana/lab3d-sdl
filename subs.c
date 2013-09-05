@@ -225,7 +225,7 @@ if (cur_##type && action_##type[keydef] != ACTION_UNBOUND) {            \
 }
 
 int getkeypressure(int keydef, int pressval, int runpressval) {
-    int deadzone = 5000;
+    int deadzone = 6000;
     if (action_key[keydef] != ACTION_UNBOUND) {
         if (newkeystatus(action_key[keydef])) {
             if (pressval == runpressval)
@@ -2067,7 +2067,7 @@ K_INT16 loadgame(K_INT16 gamenum)
     readLE32(fil, &totalclock, 4);
 
     if (demorecording)
-        demo_time_jump(demorecording);
+        demo_time_jump(demorecording, totalclock);
 
     ototclock = totalclock;
     readLE32(fil, &purpletime, 4);
@@ -2707,7 +2707,7 @@ void introduction(K_INT16 songnum)
     totalclock = 1;
 
     if (demorecording)
-        demo_time_jump(demorecording);
+        demo_time_jump(demorecording, totalclock);
 
     purpletime = 0;
     greentime = 0;
@@ -3671,7 +3671,7 @@ void winallgame()
     totalclock = 1;
 
     if (demorecording)
-        demo_time_jump(demorecording);
+        demo_time_jump(demorecording, totalclock);
 
     linecompare(statusbar);
     fade(63);
@@ -5728,7 +5728,7 @@ void sodamenu()
     }
     if ((sodaplace >= 0) && (valid == 1))
     {
-        ksayui(24);
+        ksay(24);
         switch(sodaplace)
         {
             case 0:

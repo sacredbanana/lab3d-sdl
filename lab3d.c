@@ -56,6 +56,11 @@ void drawvolumebar(int vol,int type,float level) {
     checkGLStatus();
 }
 
+static K_INT16 rerecord_demo_sound(K_INT16 which, int pan, int ui) {
+    if (demorecording)
+        demo_sound(demorecording, which, pan);
+}
+
 int main(int argc,char **argv)
 {
     char ksmfile[15], hitnet, cheatkeysdown, won;
@@ -71,6 +76,7 @@ int main(int argc,char **argv)
     K_INT16 soundvolumevisible=0,musicvolumevisible=0;
     int fil;
     int cmd_loadgame = 0;
+    int stereo = 0;
 
     clockspd=0;
 
@@ -143,7 +149,17 @@ int main(int argc,char **argv)
                 introskip = 1;
             }
         }
-        else if ((strcmp(argv[i],"-record")==0)&&(i+2<argc)) {
+        else if ((strcmp(argv[i],"-stereo")==0)&&(i+1<argc)) {
+            j = atoi(argv[++i]);
+
+            if (j > 0 && j <= 2) {
+                stereo = j;
+            }
+        }
+        else if (((k=(strcmp(argv[i],"-recordx")==0)) ||
+                  (strcmp(argv[i],"-record")==0))
+                 &&(i+2<argc)) {
+            printf("k=%d\n",k);
             j = atoi(argv[++i]);
 
             if (j > 0 && j <= 8) {
@@ -151,7 +167,7 @@ int main(int argc,char **argv)
                 introskip = 1;
             }
             
-            demorecording = demo_start_record(argv[++i]);
+            demorecording = demo_start_record(argv[++i], k);
         }
         else if ((strcmp(argv[i],"-play")==0)&&(i+1<argc)) {
             demoplaying = demo_start_play(argv[++i]);
@@ -220,6 +236,9 @@ int main(int argc,char **argv)
         return 0;
     }
 
+    if (stereo)
+        setup_stereo(stereo);
+
     /* Introduction... */
 
     kgif(1);
@@ -231,39 +250,120 @@ int main(int argc,char **argv)
 
     introskip = 0;
 
+    won = 0;
+    cliptowall=1;
+
     if (demoplaying) {
+        double basetime = SDL_GetTicks();
+        double ctime;
+        int democlock = 0;
+        double demomsclock = 0;
         fade(63);
         int cf = 0;
-        int pause = 0;
+        int pausemode = 0, oldpause = 0, pause = 0;
         int oboardnum = -1;
+        if (demorecording)
+            demo_time_jump(demorecording, 0);
         while (1) {
-            int td, i;
+            double accelf, decelf;
+            int td, i, dir;
             PollInputs();
             if (getkeydefstatlock(ACTION_MENU)) {
                 quit();
                 return;
             }
+
             if (getkeydefstatlock(ACTION_USE)) {
-                pause ^= 1;
+                pausemode ^= 1;
             }
+
+            dir = 1;
+            accelf = (getkeypressure(ACTION_FORWARD, 16384, 32767) - getkeypressure(ACTION_BACKWARD, 16384, 32767))/ 32767.0;
+
+            if (pausemode) {
+                pause = 1;
+                if (fabs(accelf) >= 0.1) {
+                    pause = 0;
+                }
+            } else {
+                pause = 0;
+                accelf *= 20;
+            }
+            accelf *= 1 + (getkeypressure(ACTION_FIRE, 32767, 32767) * 19.0 / 32767.0);
+
+            if (accelf < 0) {
+                if (demorecording) {
+                    accelf = 0;
+                    pause = 1;
+                } else
+                    dir = -1;
+                accelf = -accelf;
+            }
+
+            accelf = pausemode ? 1.0 / accelf : 1.0 / (1 + accelf);
+
+            if (pause != oldpause) {
+                oldpause = pause;
+                if (pause) {
+                    basetime -= SDL_GetTicks();
+                } else {
+                    basetime += SDL_GetTicks();
+                }
+            }
+
             if (getkeydefstatlock(ACTION_STATUS)) {
                 break;
             }
+            
+            if (accelf < (1.0/20.0))
+                demo_set_soundfunc(demoplaying, rerecord_demo_sound);
+            else
+                demo_set_soundfunc(demoplaying, ksaypan);
+            ctime = ((double)SDL_GetTicks()) - basetime;
+            /*printf("%lf %lf %lf %d\n", ctime, demomsclock, accelf, pause);*/
+            if (!pause) {
+                while (demomsclock < ctime) {
+                    
+                    td = demo_update_play(demoplaying, dir);
+                    if (dir == -1 && posx == 0 && posy == 0 && posz == 0) {
+                        td = demo_update_play(demoplaying, 1);
+                    }
+                    /*fprintf(stderr, "%5d %d %d %d %d\n", cf, td, posx, posy, ang);*/
+                    cf++;
+
+                    if (td < 0) {
+                        if (dir == -1 || pausemode) {
+                            basetime = SDL_GetTicks() - 1;
+                            demomsclock = 0;
+                            ctime = 0;
+                            break;
+                        }
+                        if (demorecording)
+                            goto break_demo_loop;
+                        quit();
+                        return;
+                    }
+                    democlock += td;
+                    if (demorecording)
+                        demo_update(demorecording, democlock);
+
+                    demomsclock += td * (1000.0/240.0) * accelf;
+                }
+                if (ctime > 0) {
+                    ctime += (1000.0/60.0);
+                    double waitfor = demomsclock;
+                    if (waitfor > ctime)
+                        waitfor = ctime;
+                    while ((ctime = ((double)SDL_GetTicks()) - basetime) < waitfor)
+                        SDL_Delay((int)(waitfor - ctime));
+                }
+            }
+            /*
             if (pause) {
                 td = 0;
             } else {
-                int fc = getkeypressure(ACTION_FIRE, 16384, 32768) >> 12;
-                if (fc < 1) fc = 1;
-                if (fc > 7) fc = 7;
-                for (i = 0; i < fc; i++) {
-                    td = demo_update_play(demoplaying);
-                    fprintf(stderr, "%5d %d %d %d %d\n", cf, td, posx, posy, ang);
-                }
-                cf++;
             }
-            if (td < 0) {
-                quit();
-            }
+            */
 
             ototclock = totalclock;
 
@@ -316,12 +416,15 @@ int main(int argc,char **argv)
             SDL_GL_SwapWindow(mainwindow);
 
         }
+    break_demo_loop:
+        clockspeed = 0;
+        if (demorecording)
+            demo_time_jump(demorecording, totalclock);
+        goto demo_continue_entry;
     }
 
     /* Main game loop starts here... */
 
-    won = 0;
-    cliptowall=1;
     while (quitgame == 0)
     {
         PollInputs();
@@ -501,9 +604,11 @@ int main(int argc,char **argv)
         update_bulrot(posx, posy);
 
         if (demorecording)
-            demo_update(demorecording);
+            demo_update(demorecording, totalclock);
 
         picrot(posx,posy,posz,ang);
+        
+    demo_continue_entry:
 
         if ((death<4095)&&(lifevests == 0))
         {

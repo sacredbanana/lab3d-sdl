@@ -428,7 +428,7 @@ void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
 /* Draw an ingame view, as seen from (posxs,posys,poszs) in direction
    angs. */
 
-void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs)
+static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, double aspw, double asph)
 {
     unsigned char shadecoffs;
     K_INT16 i, j, k, x, y;
@@ -576,6 +576,7 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs)
                       palette[0x84*3+1]/64.0*greenfactor, 
                       palette[0x84*3+2]/64.0*bluefactor, 0 );
 
+    glDepthMask(1);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glDisable(GL_TEXTURE_2D);
@@ -1320,6 +1321,121 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs)
     glDisable(GL_LIGHTING);
     ShowStatusBar();
 }
+
+static int stereo = 0;
+static GLuint stereo_fbufs[2];
+static GLuint stereo_tex[2];
+static GLuint stereo_depth[2];
+
+void setup_stereo(int s) {
+    int i;
+    glGenFramebuffers(2, stereo_fbufs);
+    glGenTextures(2, stereo_tex);
+    glGenRenderbuffers(2, stereo_depth);
+
+    stereo = s;
+    
+    for (i = 0; i < 2; i++) {
+        glBindTexture(GL_TEXTURE_2D, stereo_tex[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, stereo == 2 ? screenwidth/2 : screenwidth, screenheight, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[i]);
+
+        glBindRenderbuffer(GL_RENDERBUFFER, stereo_depth[i]);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, stereo_depth[i]);
+
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereo_tex[i], 0);
+        GLenum drawbuffers[2] = {GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, drawbuffers);
+        /*GLenum drawbuffers[2] = {GL_COLOR_ATTACHMENT0, GL_DEPTH_ATTACHMENT};
+          glDrawBuffers(2, drawbuffers);*/
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
+    int i;
+    int sep = -16;
+    int asep = 4;
+    if (!stereo) {
+        _picrot(posxs, posys, poszs, angs, aspw, asph);
+    } else {
+        int yo = (sintable[(angs+512)&2047] * sep) >> 17;
+        int xo = (sintable[angs&2047] * sep) >> 17;
+        glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[0]);
+        glViewport(0, 0, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
+        _picrot(posxs - xo, posys - yo, poszs, angs - asep, aspw, stereo == 2 ? asph*2 : asph);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[1]);
+        glViewport(0, 0, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
+        _picrot(posxs + xo, posys + yo, poszs, angs + asep, aspw, stereo == 2 ? asph*2 : asph);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+    
+        glMatrixMode( GL_MODELVIEW );
+        glLoadIdentity( );
+        
+        glViewport(0, 0, screenwidth, screenheight);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(0);
+        if (stereo == 2) {
+            for (i = 0; i < 2; i++) {
+                float ofs = i == 0 ? 0.0 : 0.5;
+                glBindTexture(GL_TEXTURE_2D, stereo_tex[i]); 
+                glBegin(GL_QUADS);
+                glTexCoord2f(0.0, 0.0);
+                glVertex3f(0.0+ofs, 0.0, 0.0);
+            
+                glTexCoord2f(1.0, 0.0);
+                glVertex3f(0.5+ofs, 0.0, 0.0);
+            
+                glTexCoord2f(1.0, 1.0);
+                glVertex3f(0.5+ofs, 1.0, 0.0);
+            
+                glTexCoord2f(0.0, 1.0);
+                glVertex3f(0.0+ofs, 1.0, 0.0);
+                glEnd();
+            }
+            
+        } else {
+            glDisable(GL_BLEND);
+            glEnable(GL_TEXTURE_2D);
+            for (i = 0; i < 2; i++) {
+                if (i == 0)
+                    glColor4f(1.0, 0.0, 0.0, 1.0);
+                else {
+                    glEnable(GL_BLEND);
+                    glColor4f(0.0, 1.0, 1.0, 1.0);
+                    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+                }
+                glBindTexture(GL_TEXTURE_2D, stereo_tex[i]); 
+                glBegin(GL_QUADS);
+                glTexCoord2f(0.0, 0.0);
+                glVertex3f(0.0, 0.0, 0.0);
+            
+                glTexCoord2f(1.0, 0.0);
+                glVertex3f(1.0, 0.0, 0.0);
+            
+                glTexCoord2f(1.0, 1.0);
+                glVertex3f(1.0, 1.0, 0.0);
+            
+                glTexCoord2f(0.0, 1.0);
+                glVertex3f(0.0, 1.0, 0.0);
+                glEnd();
+            }
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glColor4f(1.0, 1.0, 1.0, 1.0);
+        }
+    }
+}
+
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume) {
     glBindTexture(GL_TEXTURE_2D,texName[walnume-1]); 
     glEnable(GL_DEPTH_TEST);
