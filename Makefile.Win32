@@ -1,25 +1,25 @@
-OBJS=subs.obj init.obj graphx.obj lab3d.obj setup.obj adlibemu.obj icon.obj oldlab3d.obj
+OBJS=subs.obj init.obj graphx.obj lab3d.obj setup.obj adlibemu.obj icon.obj oldlab3d.obj demo.obj
 
 #SDL_CFLAGS=`sdl-config --cflags`
 #SDL_LDFLAGS=`sdl-config --libs`
 
 MINGW_PATH=c:\mingw32\
+PREFIX=
 
-
-SDL_CFLAGS=-I$(MINGW_PATH)/include/SDL -Dmain=SDL_main
-SDL_LDFLAGS=-L$(MINGW_PATH)/lib -lmingw32 -lSDLmain -lSDL -mwindows
+SDL_CFLAGS=-I$(MINGW_PATH)/include/SDL2 -Dmain=SDL_main
+SDL_LDFLAGS=-L$(MINGW_PATH)/lib -lmingw32 -lSDL2 -mwindows
 
 default: $(OBJS)
-	gcc -O3 -o ken.exe $(OBJS) $(SDL_LDFLAGS) -lSDL_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid
-	strip -s ken.exe
+	$(PREFIX)gcc -O3 -o ken.exe $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
+	$(PREFIX)strip -s ken.exe
 
 clean:
 	rm -f $(OBJS)
 
 icon.obj: ken.ico ken.rc
-	windres -i ken.rc -o icon.obj
+	$(PREFIX)windres -i ken.rc -o icon.obj
 
 %.obj: %.c lab3d.h
-	gcc -Wall -O3 $(SDL_CFLAGS) -o $@ -c $<
+	$(PREFIX)gcc -Wall -Wno-pointer-sign -O3 $(SDL_CFLAGS) -o $@ -c $<
 
 

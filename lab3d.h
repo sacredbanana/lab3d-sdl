@@ -15,6 +15,9 @@
 #endif
 
 #include "SDL.h"
+#ifdef pi
+#error wtf
+#endif
 #include <GL/gl.h>
 #include <GL/glu.h>
 #ifndef GL_BGR
