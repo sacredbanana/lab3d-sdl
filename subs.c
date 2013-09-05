@@ -4710,6 +4710,34 @@ void drawscorebox() {
     menuing=1;
 }
 
+static int default_hiscores() {
+    int level, pos;
+    char buf[16];
+    K_INT32 score;
+    
+    FILE* f;
+    memset(buf, 0, 16);
+    f = fopen("hiscore.dat", "wb");
+    if (!f) return 0;
+    for (level = 0; level < 30; level++) {
+        for (pos = 0; pos < 8; pos++) {
+            if (level == 28) {
+                switch (pos) {
+                    case 0: strcpy(buf, "Ken S.      "); score = 1000000; break;
+                    case 1: strcpy(buf, "Andy C.     "); score = 900000; break;
+                    case 2: strcpy(buf, "Alan S.     "); score = 800000; break;
+                    case 3: strcpy(buf, "Mahesh J.   "); score = 700000; break;
+                    case 4: memset(buf, 0, 12); score = 0;
+                }
+                writelong(buf + 12, score);
+            }
+            fwrite(buf, 1, 16, f);
+        }
+    }
+    fclose(f);
+    return 1;
+}
+
 /* Hiscore sequence; check for new hiscore and display hiscore box. */
 
 void hiscorecheck()
@@ -4717,9 +4745,16 @@ void hiscorecheck()
     K_INT16 i, j, k, m, inse, namexist, fil;
     K_INT32 hiscore[8], scorexist, templong;
 
-    if (((fil = open("hiscore.dat", O_RDWR|O_BINARY, 0)) == -1)&&
-        ((fil = open("HISCORE.DAT", O_RDWR|O_BINARY, 0)) == -1))
-        return;
+    fil = open("hiscore.dat", O_RDWR|O_BINARY, 0);
+    if (fil == -1)
+        fil = open("HISCORE.DAT", O_RDWR|O_BINARY, 0);
+    if (fil == -1) {
+        if (default_hiscores())
+            fil = open("hiscore.dat", O_RDWR|O_BINARY, 0);
+        if (fil == -1)
+            return;
+    }
+
     glDrawBuffer(GL_FRONT);
     wipeoverlay(0, 0, 361, statusbaryoffset);
     lseek(fil, (long)(boardnum<<7), SEEK_SET);
