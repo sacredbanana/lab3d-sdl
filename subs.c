@@ -354,7 +354,7 @@ void loadboard()
             for(i=0;i<2;i++)
             {
                 unsigned char* boardp = ((unsigned char*)(board)) + (i << 12);
-                /*printf("%d: %d\n", i, boardp - (unsigned char*)&board[0][0]);*/
+
                 compleng = boleng[(boardnum<<1)+i];
                 readLE16(fil, &strtot, 2);
                 read(fil, &tempbuf[0], compleng);
@@ -654,12 +654,15 @@ void loadtables()
 
 /* ksay sound filenum. pan = 0 for left, 128 centre, 256 right. */
 
-K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan) {
+K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     K_INT16 numfiles;
     K_UINT16 leng;
     K_INT32 sndfiloffs;
     K_INT32 blocksize=(musicsource==2)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
 
+    if (demorecording && !ui) 
+        demo_sound(demorecording, filenum, pan);
+    
     if (!soundpan) pan=128;
 
     SDL_LockMutex(soundmutex);
@@ -717,14 +720,19 @@ K_INT16 ksaystereo(K_UINT16 filenum, K_UINT16 x, K_UINT16 y) {
         pan=(1536-dir)>>2; /* Back */
     else pan=128+(dir>>2); /* Forward right */
 
-    return ksaypan(filenum, pan);
+    return ksaypan(filenum, pan, 0);
 }
 
 /* Play a digital sound... */
 
 K_INT16 ksay(K_UINT16 filenum)
 {
-    return(ksaypan(filenum, 128));
+    return(ksaypan(filenum, 128, 0));
+}
+
+K_INT16 ksayui(K_UINT16 filenum)
+{
+    return(ksaypan(filenum, 128, 1));
 }
 
 /* Wipe digital sound buffer... */
@@ -917,6 +925,9 @@ void checkobj(K_UINT16 x, K_UINT16 y, K_UINT16 posxs, K_UINT16 posys,
               K_INT16 angs, K_INT16 num)
 {
     K_INT16 angle, siz, ysiz;
+
+    if (sortcnt >= (sizeof(sortx)/sizeof(sortx[0])))
+        return;
 
     if (shadow[num&1023]) {
         checkobj(x, y, posxs, posys, angs, shadow[num&1023]);
@@ -2054,6 +2065,10 @@ K_INT16 loadgame(K_INT16 gamenum)
     read(fil, &xwarp[0], numwarps);
     read(fil, &ywarp[0], numwarps);
     readLE32(fil, &totalclock, 4);
+
+    if (demorecording)
+        demo_time_jump(demorecording);
+
     ototclock = totalclock;
     readLE32(fil, &purpletime, 4);
     readLE32(fil, &greentime, 4);
@@ -2252,7 +2267,7 @@ K_INT16 savegame(K_INT16 gamenum)
     writeLE16(fil, &owecoins, 2);
     writeLE16(fil, &owecoinwait, 2);
     close(fil);
-    ksay(16);
+    ksayui(16);
     return 0;
 }
 
@@ -2448,20 +2463,24 @@ void introduction(K_INT16 songnum)
     glClearColor(0, 0, 0, 0);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if (songnum == 0)
-        loadmusic("INTRO");
-    else
-        loadmusic("INTRO2");
+    if (!introskip) {
+        if (songnum == 0)
+            loadmusic("INTRO");
+        else
+            loadmusic("INTRO2");
+    }
     clockspeed = 0;
     ototclock = -1;
     totalclock = 1;
     introplc = 5;
-
-    musicon();
-    if (saidwelcome == 0)
-    {
-        ksay(18);
-        saidwelcome = 1;
+    
+    if (!introskip) {
+        musicon();
+        if (saidwelcome == 0)
+        {
+            ksayui(18);
+            saidwelcome = 1;
+        }
     }
 /*    for(i=0;i<360;i++)
       height[i] = 0;*/
@@ -2474,7 +2493,7 @@ void introduction(K_INT16 songnum)
     newgamepisode = 1;
     animater2 = 0;
     totalclock = 0;
-    leaveintro = 0;
+    leaveintro = introskip;
     pickskiltime = -32768;
 
     while (leaveintro == 0)
@@ -2512,7 +2531,7 @@ void introduction(K_INT16 songnum)
             }
             else
                 skilevel = 1 - skilevel;
-            ksay(27);
+            ksayui(27);
         }
         if (repeatkeydef(ACTION_MENU_DOWN1) ||
             repeatkeydef(ACTION_MENU_DOWN2) ||
@@ -2527,7 +2546,7 @@ void introduction(K_INT16 songnum)
             }
             else
                 skilevel = 1 - skilevel;
-            ksay(27);
+            ksayui(27);
         }
         if (getkeydefstat(ACTION_MENU) > 0)
         {
@@ -2597,7 +2616,7 @@ void introduction(K_INT16 songnum)
                 leaveintro = 1;
             else if (((newgamepisode == 2) && (numboards < 20)) || ((newgamepisode == 3) && (numboards < 30)))
             {
-                ksay(12);
+                ksayui(12);
                 SDL_LockMutex(timermutex);
                 clockspeed = 0;
                 SDL_UnlockMutex(timermutex);
@@ -2686,6 +2705,10 @@ void introduction(K_INT16 songnum)
     animate15 = 0;
     ototclock = -1;
     totalclock = 1;
+
+    if (demorecording)
+        demo_time_jump(demorecording);
+
     purpletime = 0;
     greentime = 0;
     capetime[0] = 0;
@@ -3438,7 +3461,7 @@ void wingame(K_INT16 episode)
                 if (life > 4095)
                     life = 4095;
                 drawlife();
-                ksay(7);
+                ksayui(7);
             }
             if ((revtotalclock >= 1560) && (revototclock < 1560))
             {
@@ -3446,7 +3469,7 @@ void wingame(K_INT16 episode)
                 if (life > 4095)
                     life = 4095;
                 drawlife();
-                ksay(7);
+                ksayui(7);
             }
         }
         if (revtotalclock >= 3840)
@@ -3454,8 +3477,8 @@ void wingame(K_INT16 episode)
             if (revototclock < 3840)
             {
                 death = 4094;
-                if (episode == 1) ksay(6);
-                if (episode == 2) ksay(9);
+                if (episode == 1) ksayui(6);
+                if (episode == 2) ksayui(9);
                 mute=mute?1:2;
             }
             if (death < 4095)
@@ -3507,7 +3530,7 @@ void wingame(K_INT16 episode)
 
                     finalisemenu();
 
-                    ksay(23);
+                    ksayui(23);
                     SDL_GL_SwapWindow(mainwindow);
                     pressakey();
                     glClear(GL_COLOR_BUFFER_BIT);
@@ -3614,7 +3637,7 @@ void winallgame()
             fade(63);
             loadstory(-17);
             finalisemenu();
-            ksay(23);
+            ksayui(23);
             SDL_GL_SwapWindow(mainwindow);
             pressakey();
             glClear(GL_COLOR_BUFFER_BIT);
@@ -3646,6 +3669,10 @@ void winallgame()
     fade(0);
     ototclock = -1;
     totalclock = 1;
+
+    if (demorecording)
+        demo_time_jump(demorecording);
+
     linecompare(statusbar);
     fade(63);
     fadewarpval = 63;
@@ -3766,7 +3793,7 @@ void fade(K_INT16 brightness)
 
         /* Factors can't exceed 1.0, so we scale them all (makes the hurting
            a bit darker, but a lot easier/faster). */
-
+        
         greenfactor/=redfactor;
         bluefactor/=redfactor;
         redfactor=1.0;
@@ -4598,7 +4625,7 @@ void statusbaralldraw()
             }
         }
     }
-    if (capetime[1] >= ototclock)
+    if (capetime[1] >= totalclock)
     {
         statusbardraw(37, 0, 21, 28, 216, 2+statusbaryoffset, statusbarinfo);
         if (capetime[1] < totalclock+3072)
@@ -5190,9 +5217,9 @@ void screencapture()
     }
 
     if (success)
-        ksay(7);
+        ksayui(7);
     else
-        ksay(8);
+        ksayui(8);
 }
 
 /* Draw main menu. Separated to eliminate need for saving screen contents. */
@@ -5235,7 +5262,7 @@ K_INT16 mainmenu()
 
     spriteyoffset=0;
 
-    ksay(27);
+    ksayui(27);
     fade(63);
     if (sortcnt == -1) {
         /* Emulating the original a bit too closely, this... */
@@ -5275,12 +5302,12 @@ K_INT16 mainmenu()
                     done = 1;
                     if ((k == 1) && (numboards < 20))
                     {
-                        ksay(12);
+                        ksayui(12);
                         done = 0;
                     }
                     else if ((k == 2) && (numboards < 30))
                     {
-                        ksay(12);
+                        ksayui(12);
                         done = 0;
                     }
                 }
@@ -5290,7 +5317,7 @@ K_INT16 mainmenu()
             if (mainmenuplace == 2)
             {
                 if (sortcnt == -1)
-                    ksay(12);
+                    ksayui(12);
                 else
                 {
                     if (loadsavegamemenu(2) >= 0)
@@ -5410,7 +5437,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
             else
                 statusbardraw(16, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
             nowselector--;
-            ksay(27);
+            ksayui(27);
             if (nowselector < 0)
                 nowselector = totselectors-1;
         }
@@ -5424,7 +5451,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
             else
                 statusbardraw(16, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
             nowselector++;
-            ksay(27);
+            ksayui(27);
             if (nowselector == totselectors)
                 nowselector = 0;
         }
@@ -5438,7 +5465,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         glFlush();
         /*SDL_GL_SwapWindow(mainwindow);*/
     }
-    ksay(27);
+    ksayui(27);
     if (lab3dversion)
         wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
     else
@@ -5604,7 +5631,7 @@ void bigstorymenu()
             if (i > k)
                 quitstat = 1;
         }
-        ksay(27);
+        ksayui(27);
     }
 }
 
@@ -5665,7 +5692,7 @@ void sodamenu()
         n = 0;
     else
         n = 20;
-    ksay(27);
+    ksayui(27);
     drawmenu(256, 160, menu);
     if (boardnum < 10)
         loadstory(-34);
@@ -5694,14 +5721,14 @@ void sodamenu()
             if ((sodaplace == 8) && ((coins < 200) || (boardnum < 10))) valid = 0;
             if ((sodaplace == 9) && (coins < 250)) valid = 0;
             if (valid == 0)
-                ksay(12);
+                ksayui(12);
         }
         else
             valid = 1;
     }
     if ((sodaplace >= 0) && (valid == 1))
     {
-        ksay(24);
+        ksayui(24);
         switch(sodaplace)
         {
             case 0:
@@ -5804,7 +5831,7 @@ void sodamenu()
     if (sodaplace < 0)
     {
         sodaplace = (-sodaplace)-1;
-        ksay(26);
+        ksayui(26);
     }
     totalclock = ototclocker;
     SDL_LockMutex(timermutex);
@@ -6086,7 +6113,7 @@ void pressakey()
             bstatus=readmouse(NULL, NULL);
         }
     }
-    ksay(27);
+    ksayui(27);
 }
 
 /* Update slot machine... */
@@ -6316,6 +6343,16 @@ unsigned char readmouse(int *x, int *y) {
 void quit() {
 
     savesettings();
+    
+    if (demorecording) {
+        demo_close_record(demorecording);
+        demorecording = NULL;
+    }
+
+    if (demoplaying) {
+        demo_close_play(demoplaying);
+        demoplaying = NULL;
+    }
 
     /* Start by demolishing all other threads... */
 

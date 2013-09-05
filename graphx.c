@@ -335,6 +335,96 @@ void recurseray(K_UINT16 posxs,K_UINT16 posys,double angle,double la,double ra,
 
 float fogcol[4]={0.5,0.5,0.5,1.0};
 
+void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
+    /* Update bullet rotations... Somewhat misplaced IMHO. */
+
+    K_INT16 i, j, k;
+    K_INT32 x1, x2, y1, y2;
+
+    static int spareframes=0;
+
+    if (lab3dversion) {
+        spareframes+=clockspd;
+        i=(spareframes/TICKS_PER_SPRITE_FRAME)%12;
+        spareframes%=TICKS_PER_SPRITE_FRAME;
+        for(k=0;k<i;k++) {
+            heatpos = 287-heatpos;
+            j = kenpos;
+            if (j == 66) kenpos = 67;
+            if (j == 67) kenpos = 1024+66;
+            if (j == 1024+66) kenpos = 65;
+            if (j == 65) kenpos = 66;
+            switch(kenpos2) {
+                /* Sequence is 193, 65, 66, 67, 194, 67+1024, 66+1024, 65+1024.
+                   Sequence appears to match values used in v1.1; determined
+                   through observation of v1.1 in slow motion. */
+                case 193:
+                    kenpos2=65; break;
+                case 65:
+                    kenpos2=66; break;
+                case 66:
+                    kenpos2=67; break;
+                case 67:
+                    kenpos2=194; break;
+                case 194:
+                    kenpos2=67+1024; break;
+                case 67+1024:
+                    kenpos2=66+1024; break;
+                case 66+1024:
+                    kenpos2=65+1024; break;
+                case 65+1024:
+                    kenpos2=193; break;
+            }
+            ballpos++;
+            if (ballpos == 72)
+                ballpos = 68;
+            fanpos++;
+            if (fanpos == 52)
+                fanpos = 49;
+            warpos++;
+            if (warpos == 125)
+                warpos = 123;
+        }
+        for(k=0;k<bulnum;k++)
+            if (bulkind[k] == 7)
+            {
+                x1 = ((long)bulx[k]-(long)posx);
+                y1 = ((long)buly[k]-(long)posy);
+                if (labs(x1)+labs(y1) < 32768)
+                {
+                    x1 >>= 2;
+                    y1 >>= 2;
+                    x2 = (((x1*sintable[bulang[k]])-(y1*sintable[(bulang[k]+512)&2047]))>>16);
+                    y2 = (((x1*sintable[(bulang[k]+512)&2047])+(y1*sintable[bulang[k]]))>>16);
+                    if ((x2|y2) != 0)
+                    {
+                        j = ((x2*clockspd)<<11)/(x2*x2+y2*y2);
+                        bulang[k] += j;
+                    }
+                }
+            }
+    } else {
+        for(k=0;k<bulnum;k++)
+            if (bulkind[k] == 7)
+            {
+                x1 = ((long)bulx[k]-(long)posxs);
+                y1 = ((long)buly[k]-(long)posys);
+                if (labs(x1)+labs(y1) < 32768)
+                {
+                    x1 >>= 2;
+                    y1 >>= 2;
+                    x2 = (((x1*sintable[bulang[k]])-(y1*sintable[(bulang[k]+512)&2047]))>>16);
+                    y2 = (((x1*sintable[(bulang[k]+512)&2047])+(y1*sintable[bulang[k]]))>>16);
+                    if ((x2|y2) != 0)
+                    {
+                        j = ((x2*clockspd)<<11)/(x2*x2+y2*y2);
+                        bulang[k] += j;
+                    }
+                }
+            }
+    }
+}
+
 /* Draw an ingame view, as seen from (posxs,posys,poszs) in direction
    angs. */
 
@@ -350,11 +440,70 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs)
 
     GLdouble xmin,xmax,ymin,ymax;
 
-    static int spareframes=0;
-
     double angl, angr;
     double vangw;
+
+    for(i=0;i<explonum;i++)
+    {
+        checkobj(explox[i],exploy[i],posxs,posys,angs,explostat[i]);
+    }
     
+    for(i=0;i<bulnum;i++)
+    {
+        switch(bulkind[i])
+        {
+            case 1: case 18:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul1fly+animate3);
+                break;
+            case 2: case 19:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul2fly+animate2);
+                break;
+            case 3: case 20:
+                k = bul3fly+animate2+2;
+                j = (1024+bulang[i]-angs)&2047;
+                if (j < 960)
+                    k -= 2;
+                if (j > 1088)
+                    k += 2;
+                checkobj(bulx[i],buly[i],posxs,posys,angs,k);
+                break;
+            case 4: case 21:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul3halfly+animate2);
+                break;
+            case 5: case 6:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,bul4fly);
+                break;
+            case 7: case 8:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul6fly+animate2);
+                break;
+            case 9: case 10:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul5fly+animate2);
+                break;
+            case 11: case 12:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,bul9fly);
+                break;
+            case 13: case 14:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,bul8fly);
+                break;
+            case 15: case 16: case 17:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul7fly+bulkind[i]-15);
+                break;
+            case 22: case 23:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,bul10fly);
+                break;
+            case 24: case 25:
+                checkobj(bulx[i],buly[i],posxs,posys,angs,
+                         bul11fly+animate7);
+                break;
+        }
+    }
+
     wallsfound=0;
     mapfound=0;
     gameoverfound=0;
@@ -600,89 +749,6 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs)
 
 
     glDepthMask(0);
-
-    /* Update bullet rotations... Somewhat misplaced IMHO. */
-
-    if (lab3dversion) {
-        spareframes+=clockspd;
-        i=(spareframes/TICKS_PER_SPRITE_FRAME)%12;
-        spareframes%=TICKS_PER_SPRITE_FRAME;
-        for(k=0;k<i;k++) {
-            heatpos = 287-heatpos;
-            j = kenpos;
-            if (j == 66) kenpos = 67;
-            if (j == 67) kenpos = 1024+66;
-            if (j == 1024+66) kenpos = 65;
-            if (j == 65) kenpos = 66;
-            switch(kenpos2) {
-                /* Sequence is 193, 65, 66, 67, 194, 67+1024, 66+1024, 65+1024.
-                   Sequence appears to match values used in v1.1; determined
-                   through observation of v1.1 in slow motion. */
-                case 193:
-                    kenpos2=65; break;
-                case 65:
-                    kenpos2=66; break;
-                case 66:
-                    kenpos2=67; break;
-                case 67:
-                    kenpos2=194; break;
-                case 194:
-                    kenpos2=67+1024; break;
-                case 67+1024:
-                    kenpos2=66+1024; break;
-                case 66+1024:
-                    kenpos2=65+1024; break;
-                case 65+1024:
-                    kenpos2=193; break;
-            }
-            ballpos++;
-            if (ballpos == 72)
-                ballpos = 68;
-            fanpos++;
-            if (fanpos == 52)
-                fanpos = 49;
-            warpos++;
-            if (warpos == 125)
-                warpos = 123;
-        }
-        for(k=0;k<bulnum;k++)
-            if (bulkind[k] == 7)
-            {
-                x1 = ((long)bulx[k]-(long)posx);
-                y1 = ((long)buly[k]-(long)posy);
-                if (labs(x1)+labs(y1) < 32768)
-                {
-                    x1 >>= 2;
-                    y1 >>= 2;
-                    x2 = (((x1*sintable[bulang[k]])-(y1*sintable[(bulang[k]+512)&2047]))>>16);
-                    y2 = (((x1*sintable[(bulang[k]+512)&2047])+(y1*sintable[bulang[k]]))>>16);
-                    if ((x2|y2) != 0)
-                    {
-                        j = ((x2*clockspd)<<11)/(x2*x2+y2*y2);
-                        bulang[k] += j;
-                    }
-                }
-            }
-    } else {
-        for(k=0;k<bulnum;k++)
-            if (bulkind[k] == 7)
-            {
-                x1 = ((long)bulx[k]-(long)posxs);
-                y1 = ((long)buly[k]-(long)posys);
-                if (labs(x1)+labs(y1) < 32768)
-                {
-                    x1 >>= 2;
-                    y1 >>= 2;
-                    x2 = (((x1*sintable[bulang[k]])-(y1*sintable[(bulang[k]+512)&2047]))>>16);
-                    y2 = (((x1*sintable[(bulang[k]+512)&2047])+(y1*sintable[bulang[k]]))>>16);
-                    if ((x2|y2) != 0)
-                    {
-                        j = ((x2*clockspd)<<11)/(x2*x2+y2*y2);
-                        bulang[k] += j;
-                    }
-                }
-            }
-    }
 
     /* Check for visible monsters... */
 

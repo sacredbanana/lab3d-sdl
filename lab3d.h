@@ -345,6 +345,13 @@ EXTERN K_UINT16 sortx[512], sorty[512];
 EXTERN K_INT16 sorti[512], sortbnum[512];
 EXTERN char wallheader[numwalls+1], bmpkind[numwalls+1];
 
+/* 
+   Why not just skip over the functions that draw the
+   intro? Because they do important initialization stuff.
+   Sigh.
+*/
+
+EXTERN char introskip;
 
 /* Monster stuff... */
 
@@ -366,6 +373,13 @@ EXTERN K_UINT16 exploy[16];
 EXTERN K_UINT32 explotime[16];
 EXTERN K_UINT16 explostat[16];
 EXTERN K_UINT16 explonum;
+
+typedef K_INT16 (*soundfunc)(K_UINT16 filenum, K_UINT16 pan, int ui);
+typedef struct demorec demorec;
+typedef struct demoplay demoplay;
+
+extern demorec* demorecording;
+extern demoplay* demoplaying;
 
 /* Temporary table... */
 EXTERN K_INT16 lincalc[360];
@@ -458,6 +472,8 @@ void statusbardraw(K_UINT16, K_UINT16, K_UINT16, K_UINT16, K_UINT16,
 void loadboard();
 void loadtables();
 K_INT16 ksay(K_UINT16);
+K_INT16 ksayui(K_UINT16);
+K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui);
 void checkobj(K_UINT16, K_UINT16, K_UINT16, K_UINT16, K_INT16, K_INT16);
 void addexplosion(K_UINT16 x, K_UINT16 y, K_UINT16 stat);
 void linecompare(K_UINT16);
@@ -519,6 +535,15 @@ void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
                 K_INT16 walnume);
+
+demorec* demo_start_record(const char* filename);
+void demo_close_record(demorec*);
+void demo_update(demorec*);
+
+demoplay* demo_start_play(const char* filename);
+void demo_close_play(demoplay*);
+int demo_update_play(demoplay*);
+void demo_set_soundfunc(demoplay*, soundfunc);
 
 typedef struct {
     SDL_Keycode key;

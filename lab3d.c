@@ -10,6 +10,21 @@ unsigned char slotable[3][16] =
     {4,2,0,4,5,4,1,3,1,5,4,3,2,5,3,5}
 };
 
+void delmonster(int i) {
+    mnum--;
+    board[moldx[i]>>10][moldy[i]>>10] &= 0xbfff;
+    board[mgolx[i]>>10][mgoly[i]>>10] &= 0xbfff;
+    moldx[i] = moldx[mnum];
+    moldy[i] = moldy[mnum];
+    mposx[i] = mposx[mnum];
+    mposy[i] = mposy[mnum];
+    mgolx[i] = mgolx[mnum];
+    mgoly[i] = mgoly[mnum];
+    mstat[i] = mstat[mnum];
+    mshot[i] = mshot[mnum];
+    mshock[i] = mshock[mnum];
+}
+
 void drawvolumebar(int vol,int type,float level) {
     if (level>0.5) level=0.5;
     glEnable(GL_BLEND);
@@ -125,7 +140,24 @@ int main(int argc,char **argv)
 
             if (j > 0 && j <= 8) {
                 cmd_loadgame = j;
+                introskip = 1;
             }
+        }
+        else if ((strcmp(argv[i],"-record")==0)&&(i+2<argc)) {
+            j = atoi(argv[++i]);
+
+            if (j > 0 && j <= 8) {
+                cmd_loadgame = j;
+                introskip = 1;
+            }
+            
+            demorecording = demo_start_record(argv[++i]);
+        }
+        else if ((strcmp(argv[i],"-play")==0)&&(i+1<argc)) {
+            demoplaying = demo_start_play(argv[++i]);
+            if (!demoplaying)
+                fatal_error("failed to load demo");
+            introskip = 1;
         }
         else if (strcmp(argv[i],"-win")==0) fullscreen=0;
         else if (strcmp(argv[i],"-fullscreen")==0) fullscreen=1;
@@ -190,11 +222,100 @@ int main(int argc,char **argv)
 
     /* Introduction... */
 
-    if (cmd_loadgame == 0) {
-        kgif(1);
-        introduction(0);
-    } else {
+    kgif(1);
+    introduction(0);
+
+    if (cmd_loadgame != 0) {
         loadgame(cmd_loadgame);
+    }
+
+    introskip = 0;
+
+    if (demoplaying) {
+        fade(63);
+        int cf = 0;
+        int pause = 0;
+        int oboardnum = -1;
+        while (1) {
+            int td, i;
+            PollInputs();
+            if (getkeydefstatlock(ACTION_MENU)) {
+                quit();
+                return;
+            }
+            if (getkeydefstatlock(ACTION_USE)) {
+                pause ^= 1;
+            }
+            if (getkeydefstatlock(ACTION_STATUS)) {
+                break;
+            }
+            if (pause) {
+                td = 0;
+            } else {
+                int fc = getkeypressure(ACTION_FIRE, 16384, 32768) >> 12;
+                if (fc < 1) fc = 1;
+                if (fc > 7) fc = 7;
+                for (i = 0; i < fc; i++) {
+                    td = demo_update_play(demoplaying);
+                    fprintf(stderr, "%5d %d %d %d %d\n", cf, td, posx, posy, ang);
+                }
+                cf++;
+            }
+            if (td < 0) {
+                quit();
+            }
+
+            ototclock = totalclock;
+
+            if (boardnum != oboardnum) {
+                if (oboardnum != -1)
+                    musicoff();
+                sprintf(ksmfile, "LABSNG%02d", boardnum);
+                loadmusic(ksmfile);
+                musicon();
+                oboardnum = boardnum;
+            }
+
+
+            int tcshf = totalclock >> 4;
+            animate2 = tcshf & 1;
+            animate3 = tcshf % 3;
+            animate4 = tcshf & 3;
+            animate6 = totalclock % 6;
+            animate7 = totalclock % 7;
+            animate8 = tcshf & 7;
+            animate10 = tcshf % 10;
+            animate11 = tcshf % 11;
+            animate15 = tcshf % 15;
+            oscillate3 = tcshf & 3;
+            if (oscillate3 == 3) oscillate3 = 0;
+            oscillate5 = tcshf & 7;
+            if (oscillate5 > 4) oscillate5 = 8 - oscillate5;
+            
+            wipeoverlay(0,0,361,statusbaryoffset);
+            if (slottime > 0) {
+                copyslots(slotto+1);
+            } else {
+                copyslots(slotto);
+            }
+            if (death == 4095)
+            {
+                if (fadehurtval > 0) {
+                    fade(fadehurtval+128);
+                } else if (fadewarpval < 63) {
+                    fade(fadewarpval);
+                } else {
+                    fade(63);
+                }
+            } else {
+                fade(death>>6);
+            }
+
+            picrot(posx, posy, posz, ang);
+            statusbaralldraw();
+            SDL_GL_SwapWindow(mainwindow);
+
+        }
     }
 
     /* Main game loop starts here... */
@@ -306,65 +427,12 @@ int main(int argc,char **argv)
                 i--;
                 continue;
             }
-            checkobj(explox[i],exploy[i],posx,posy,ang,explostat[i]);
         }
 
         /* Find bullets... */
 
         for(i=0;i<bulnum;i++)
         {
-            switch(bulkind[i])
-            {
-                case 1: case 18:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul1fly+animate3);
-                    break;
-                case 2: case 19:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul2fly+animate2);
-                    break;
-                case 3: case 20:
-                    k = bul3fly+animate2+2;
-                    j = (1024+bulang[i]-ang)&2047;
-                    if (j < 960)
-                        k -= 2;
-                    if (j > 1088)
-                        k += 2;
-                    checkobj(bulx[i],buly[i],posx,posy,ang,k);
-                    break;
-                case 4: case 21:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul3halfly+animate2);
-                    break;
-                case 5: case 6:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,bul4fly);
-                    break;
-                case 7: case 8:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul6fly+animate2);
-                    break;
-                case 9: case 10:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul5fly+animate2);
-                    break;
-                case 11: case 12:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,bul9fly);
-                    break;
-                case 13: case 14:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,bul8fly);
-                    break;
-                case 15: case 16: case 17:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul7fly+bulkind[i]-15);
-                    break;
-                case 22: case 23:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,bul10fly);
-                    break;
-                case 24: case 25:
-                    checkobj(bulx[i],buly[i],posx,posy,ang,
-                             bul11fly+animate7);
-                    break;
-            }
             if (bulstat[i] < totalclock)
             {
                 bulnum--;
@@ -430,6 +498,11 @@ int main(int argc,char **argv)
             linecompare(statusbar);
         }
 
+        update_bulrot(posx, posy);
+
+        if (demorecording)
+            demo_update(demorecording);
+
         picrot(posx,posy,posz,ang);
 
         if ((death<4095)&&(lifevests == 0))
@@ -455,9 +528,9 @@ int main(int argc,char **argv)
         SDL_LockMutex(timermutex);
         
         /* Speed cap at 2 ticks/frame (about 120 fps). */
-        if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 2)) {
+        if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < (demorecording ? 4 : 2))) {
             SDL_UnlockMutex(soundmutex);
-            while(clockspeed<2) {
+            while(clockspeed < (demorecording ? 4 : 2)) {
                 SDL_Delay(0); /* Give other threads a chance. */
                 updateclock();
             }
@@ -858,18 +931,8 @@ int main(int argc,char **argv)
                                                 case mondog: scorecount >>= 1; break;
                                             }
                                             drawscore(scorecount);
-                                            mnum--;
-                                            board[moldx[k]>>10][moldy[k]>>10] &= 0xbfff;
-                                            board[mgolx[k]>>10][mgoly[k]>>10] &= 0xbfff;
-                                            moldx[k] = moldx[mnum];
-                                            moldy[k] = moldy[mnum];
-                                            mposx[k] = mposx[mnum];
-                                            mposy[k] = mposy[mnum];
-                                            mgolx[k] = mgolx[mnum];
-                                            mgoly[k] = mgoly[mnum];
-                                            mstat[k] = mstat[mnum];
-                                            mshot[k] = mshot[mnum];
-                                            mshock[k] = mshock[mnum];
+
+                                            delmonster(k);
                                         }
                                     }
                                 }
@@ -1288,19 +1351,8 @@ int main(int argc,char **argv)
                                 addexplosion(mposx[i],mposy[i],miniexplosion);
                             else
                                 addexplosion(mposx[i],mposy[i],explosion);
-                            mnum--;
-                            board[moldx[i]>>10][moldy[i]>>10] &= 0xbfff;
-                            board[mgolx[i]>>10][mgoly[i]>>10] &= 0xbfff;
                             ksaystereo(30,mposx[i],mposy[i]);
-                            moldx[i] = moldx[mnum];
-                            moldy[i] = moldy[mnum];
-                            mposx[i] = mposx[mnum];
-                            mposy[i] = mposy[mnum];
-                            mgolx[i] = mgolx[mnum];
-                            mgoly[i] = mgoly[mnum];
-                            mstat[i] = mstat[mnum];
-                            mshot[i] = mshot[mnum];
-                            mshock[i] = mshock[mnum];
+                            delmonster(i);
                         }
                     }
                 }
@@ -1310,18 +1362,7 @@ int main(int argc,char **argv)
                     {
                         if (mstat[i] == monbal)
                             checkobj(mposx[i],mposy[i],posx,posy,ang,monbal+4);
-                        mnum--;
-                        board[moldx[i]>>10][moldy[i]>>10] &= 0xbfff;
-                        board[mgolx[i]>>10][mgoly[i]>>10] &= 0xbfff;
-                        moldx[i] = moldx[mnum];
-                        moldy[i] = moldy[mnum];
-                        mposx[i] = mposx[mnum];
-                        mposy[i] = mposy[mnum];
-                        mgolx[i] = mgolx[mnum];
-                        mgoly[i] = mgoly[mnum];
-                        mstat[i] = mstat[mnum];
-                        mshot[i] = mshot[mnum];
-                        mshock[i] = mshock[mnum];
+                        delmonster(i);
                         ksaystereo(6,mposx[i],mposy[i]);
                     }
                     else
@@ -1704,6 +1745,7 @@ int main(int argc,char **argv)
                     {
                         inhibitrepeat=1;
                         sodamenu();
+                        update_bulrot(posx, posy);
                         picrot(posx,posy,posz,ang);
                         lastunlock = 1;
                         lastbarchange = 1;
