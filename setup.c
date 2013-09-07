@@ -249,7 +249,9 @@ static char* action_enum_names[ACTION_LAST] = {
     "menu_select1",
     "menu_select2",
     "menu_select3",
-    "menu_cancel"
+    "menu_cancel",
+    "rewind",
+    "advance"
 };
 
 static int action_key_default[ACTION_LAST]={
@@ -285,7 +287,9 @@ static int action_key_default[ACTION_LAST]={
     /* ACTION_MENU_SELECT1 */  SDLK_RETURN,
     /* ACTION_MENU_SELECT2 */  SDLK_KP_ENTER,
     /* ACTION_MENU_SELECT3 */  SDLK_SPACE,
-    /* ACTION_MENU_CANCEL  */  SDLK_ESCAPE
+    /* ACTION_MENU_CANCEL  */  SDLK_ESCAPE,
+    /* ACTION_REWIND       */  SDLK_m,
+    /* ACTION_ADVANCE      */  SDLK_n
 };
 
 static int action_joystick_default[ACTION_LAST]={
@@ -321,7 +325,9 @@ static int action_joystick_default[ACTION_LAST]={
     /* ACTION_MENU_SELECT1 */  0,
     /* ACTION_MENU_SELECT2 */  ACTION_UNBOUND,
     /* ACTION_MENU_SELECT3 */  ACTION_UNBOUND,
-    /* ACTION_MENU_CANCEL  */  1
+    /* ACTION_MENU_CANCEL  */  1,
+    /* ACTION_REWIND       */  ACTION_UNBOUND,
+    /* ACTION_ADVANCE      */  ACTION_UNBOUND
 };
 
 static int action_controller_default[ACTION_LAST]={
@@ -357,7 +363,9 @@ static int action_controller_default[ACTION_LAST]={
     /* ACTION_MENU_SELECT1 */  SDL_CONTROLLER_BUTTON_A,
     /* ACTION_MENU_SELECT2 */  SDL_CONTROLLER_AXIS_TRIGGERRIGHT | JOY_FLAG_AXIS,
     /* ACTION_MENU_SELECT3 */  ACTION_UNBOUND,
-    /* ACTION_MENU_CANCEL  */  SDL_CONTROLLER_BUTTON_B
+    /* ACTION_MENU_CANCEL  */  SDL_CONTROLLER_BUTTON_B,
+    /* ACTION_REWIND       */  SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
+    /* ACTION_ADVANCE      */  SDL_CONTROLLER_BUTTON_RIGHTSHOULDER
 };
 
 static int action_group_movement[] = {
@@ -846,7 +854,7 @@ input_configuration_method icm_joy = { "Configure Joystick", joy_get_action_name
 input_configuration_method icm_ctrl = { "Configure Controller", ctrl_get_action_name, ctrl_select, ctrl_instruction };
 
 void setupsetinputgroup(int *group, input_configuration_method* meth) {
-    int i = 0, j, quitf = 0, sk;
+    int i = 0, j, quitf = 0;
     SDL_Event event;
     int cnt;
 
@@ -1317,6 +1325,7 @@ static int _save_key(const char* key, FILE* f, setting_t* set) {
         }
     }
     fprintf(f, "%s = \"%s\"\n", key, txt);
+    return 0;
 }
 
 static int _load_joyaction(const char* key, char* val, setting_t* set) {
@@ -1407,11 +1416,13 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
     }
     makeupper(txtbuf);
     fprintf(f, "%s = %s\n", key, txtbuf);
+    return 0;
 }
 
 
 static int _save_blankline(const char* key, FILE* f, setting_t* set) {
     fprintf(f, "\n");
+    return 0;
 }
 
 #define INTSETTING(name, gvar) { #name, _load_int, _save_int, &gvar }
@@ -1541,7 +1552,6 @@ void loadsettings(void) {
 
 void savesettings(void) {
     FILE *output = fopen("settings.ini", "w");
-    int i;
 
     setting_section_t* cursection = sections;
     setting_t* cursetting = NULL;
@@ -1565,7 +1575,7 @@ void setup(void) {
     K_INT16 i, j, k, walcounter;
     K_UINT16 l;
     char *v;
-    SDL_Surface *screen, *icon;
+    SDL_Surface *icon;
     SDL_Rect displaybounds;
 
     configure();

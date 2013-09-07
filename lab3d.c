@@ -4,6 +4,89 @@
 #include "math.h"
 #include "SDL_main.h"
 
+static demo_vardef_t demovars[] = {
+
+    DEMO_VAR(boardnum),
+    DEMO_VAR(scorecount),
+    DEMO_VAR(scoreclock),
+    { "board", &board[0][0], 2, 4096 },
+    DEMO_VAR(skilevel),
+    DEMO_VAR(life),
+    DEMO_VAR(death),
+    DEMO_VAR(lifevests),
+    DEMO_VAR(lightnings),
+    DEMO_ARRAY(firepowers),
+    DEMO_VAR(bulchoose),
+    DEMO_ARRAY(keys),
+    DEMO_VAR(coins),
+    DEMO_VAR(compass),
+    DEMO_VAR(cheated),
+    DEMO_VAR(statusbar),
+    DEMO_VAR(statusbargoal),
+    DEMO_VAR(posx),
+    DEMO_VAR(posy),
+    DEMO_VAR(posz),
+    DEMO_VAR(ang),
+    DEMO_VAR(startx),
+    DEMO_VAR(starty),
+    DEMO_VAR(startang),
+    DEMO_VAR(angvel),
+    DEMO_VAR(vel),
+    DEMO_VAR(mxvel),
+    DEMO_VAR(myvel),
+    DEMO_VAR(svel),
+    DEMO_VAR(hvel),
+    DEMO_VAR(oldposx),
+    DEMO_VAR(oldposy),
+    DEMO_VAR(bulnum),
+    DEMO_ARRAY(bulang),
+    DEMO_ARRAY(bulkind),
+    DEMO_ARRAY(bulx),
+    DEMO_ARRAY(buly),
+    DEMO_ARRAY(bulstat),
+    DEMO_VAR(lastbulshoot),
+    DEMO_VAR(mnum),
+    DEMO_VAR(bossmonster),
+    DEMO_ARRAY(mposx),
+    DEMO_ARRAY(mposy),
+    DEMO_ARRAY(mgolx),
+    DEMO_ARRAY(mgoly),
+    DEMO_ARRAY(moldx),
+    DEMO_ARRAY(moldy),
+    DEMO_ARRAY(mstat),
+    DEMO_ARRAY(mshock),
+    DEMO_ARRAY(mshot),
+    DEMO_VAR(doorx),
+    DEMO_VAR(doory),
+    DEMO_VAR(doorstat),
+    DEMO_VAR(numwarps),
+    DEMO_VAR(justwarped),
+    DEMO_ARRAY(xwarp),
+    DEMO_ARRAY(ywarp),
+    DEMO_VAR(totalclock),
+    DEMO_VAR(ototclock),
+    DEMO_VAR(purpletime),
+    DEMO_VAR(greentime),
+    DEMO_ARRAY(capetime),
+    DEMO_VAR(fadewarpval),
+    DEMO_VAR(fadehurtval),
+    DEMO_VAR(slottime),
+    DEMO_ARRAY(slotpos),
+    DEMO_VAR(owecoins),
+    DEMO_VAR(owecoinwait),
+    DEMO_ARRAY(hiscorenam),
+    DEMO_VAR(hiscorenamstat),
+    DEMO_VAR(explonum),
+    DEMO_ARRAY(explox),
+    DEMO_ARRAY(exploy),
+    DEMO_ARRAY(explotime),
+    DEMO_ARRAY(explostat),
+    DEMO_VAR(psoundnum),
+    DEMO_ARRAY(psounds),
+    DEMO_ARRAY(psoundpan),
+    { NULL }
+};
+
 unsigned char slotable[3][16] =
 {
     {5,2,4,5,3,0,4,1,2,4,5,3,5,4,1,3},
@@ -13,6 +96,7 @@ unsigned char slotable[3][16] =
 
 void delmonster(int i) {
     mnum--;
+    if (i + 1 == bossmonster) bossmonster = 0;
     board[moldx[i]>>10][moldy[i]>>10] &= 0xbfff;
     board[mgolx[i]>>10][mgoly[i]>>10] &= 0xbfff;
     moldx[i] = moldx[mnum];
@@ -57,9 +141,212 @@ void drawvolumebar(int vol,int type,float level) {
     checkGLStatus();
 }
 
-static K_INT16 rerecord_demo_sound(K_INT16 which, int pan, int ui) {
-    if (demorecording)
-        demo_sound(demorecording, which, pan);
+static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewinding) {
+    char ksmfile[15];
+    double basetime = SDL_GetTicks();
+    double ctime;
+    int democlock = 0;
+    double demomsclock = 0;
+    fade(63);
+    int cf = 0;
+    int done = 0;
+    int pausemode = rewinding, oldpause = 0, pause = 0;
+    int oboardnum = rewinding ? boardnum : -1;
+    int advance_pressed = 1, rewind_pressed = 1, use_pressed = 1;
+    K_UINT32 opsoundnum = 0xFFFFFFFF;
+    unsigned char opsounds[16], opsoundpan[16];
+    int rewindable = demofile_rewindable(demoplaying);
+
+    if (demorecording) {
+        rewindable &= demofile_rewindable(demoplaying);
+    }
+
+    while (1) {
+        double accelf;
+        int td, dir;
+        PollInputs();
+
+        if (getkeydefstatlock(ACTION_MENU) || getkeydefstatlock(ACTION_MENU_CANCEL)) {
+            return 1;
+        }
+
+        if (getkeydefstat(ACTION_REWIND)) {
+            if (!advance_pressed) {
+                return 0;
+            }
+        }
+
+        if (getkeydefstat(ACTION_ADVANCE)) {
+            pause = 1;
+        } else {
+
+            if (getkeydefstat(ACTION_USE) && !use_pressed) {
+                use_pressed = 1;
+                pausemode ^= 1;
+            }
+
+            dir = 1;
+            accelf = (getkeypressure(ACTION_FORWARD, 16384, 32767) - getkeypressure(ACTION_BACKWARD, 16384, 32767))/ 32767.0;
+
+            if (pausemode) {
+                pause = 1;
+                if (fabs(accelf) >= 0.1) {
+                    pause = 0;
+                }
+            } else {
+                pause = 0;
+                accelf *= 20;
+            }
+            accelf *= 1 + (getkeypressure(ACTION_FIRE, 32767, 32767) * 19.0 / 32767.0);
+
+            if (accelf < 0 /*|| (rewinding && accelf == 0)*/) {
+                if (!rewindable) {
+                    accelf = 0;
+                    pause = 1;
+                } else
+                    dir = -1;
+                accelf = -accelf;
+            }
+
+            accelf = pausemode ? 1.0 / accelf : 1.0 / (1 + accelf);
+
+        }
+        if (!getkeydefstat(ACTION_REWIND))
+            advance_pressed = 0;
+        if (!getkeydefstat(ACTION_USE))
+            use_pressed = 0;
+            
+        if (pause != oldpause) {
+            oldpause = pause;
+            if (pause) {
+                basetime -= SDL_GetTicks();
+            } else {
+                basetime += SDL_GetTicks();
+            }
+        }
+
+        ctime = ((double)SDL_GetTicks()) - basetime;
+        /*printf("%lf %lf %lf %d\n", ctime, demomsclock, accelf, pause);*/
+        if (!pause) {
+            while (demomsclock < ctime) {
+                td = demofile_advance(demoplaying, dir);
+                if (dir == -1) {
+                    memcpy(opsounds, psounds, 16);
+                    memcpy(opsoundpan, psoundpan, 16);
+                }
+                demofile_update_vars(demoplaying);
+                if (dir == -1 && posx == 0 && posy == 0 && posz == 0) {
+                    demofile_advance(demoplaying, 1);
+                    demofile_update_vars(demoplaying);
+                    td = 0;
+                }
+
+                if (accelf >= (1.0/15.0) && psoundnum != opsoundnum && opsoundnum != 0xFFFFFFFF) {
+                    if (psoundnum > opsoundnum) {
+                        if (opsoundnum + 16 < psoundnum)
+                            opsoundnum = psoundnum - 16;
+                        for (;opsoundnum < psoundnum; opsoundnum++) {
+                            if (debugmode)
+                                printf("fsnd %d: %d\n", opsoundnum, psounds[opsoundnum & 15]);
+                            ksaypan(psounds[opsoundnum & 15], psoundpan[opsoundnum & 15], 1);
+                        }
+                    } else {
+                        if (opsoundnum > psoundnum + 16)
+                            opsoundnum = psoundnum + 16;
+                        for (;opsoundnum > psoundnum; opsoundnum--) {
+                            if (debugmode)
+                                printf("bsnd %d: %d\n", opsoundnum, psounds[opsoundnum & 15]);
+                            ksaypan(opsounds[(opsoundnum - 1) & 15], opsoundpan[(opsoundnum - 1) & 15], 1);
+                        }
+                    }
+                }
+                opsoundnum = psoundnum;
+                
+                if (td >= 0)
+                    democlock += td * dir;
+                /*fprintf(stderr, "%5d %d %d %d %d\n", democlock, td, posx, posy, ang);*/
+                if (demorecording && td >= 0) {
+                    if (dir == -1) {
+                        demofile_advance(demorecording, -1);
+                    } else {
+                        demofile_write_frame(demorecording, td);
+                    }
+                }
+
+                if (td <= 0) {
+                    basetime = SDL_GetTicks() - 1;
+                    demomsclock = 0;
+                    ctime = 0;
+                    break;
+                }
+
+                demomsclock += td * (1000.0/240.0) * accelf;
+            }
+            if (ctime > 0) {
+                ctime += (1000.0/60.0);
+                double waitfor = demomsclock;
+                if (waitfor > ctime)
+                    waitfor = ctime;
+                while ((ctime = ((double)SDL_GetTicks()) - basetime) < waitfor)
+                    SDL_Delay((int)(waitfor - ctime));
+            }
+        }
+
+        if (ototclock <= 0)
+            ototclock = totalclock;
+
+        if (boardnum != oboardnum) {
+            if (oboardnum != -1)
+                musicoff();
+            sprintf(ksmfile, "LABSNG%02d", boardnum);
+            loadmusic(ksmfile);
+            musicon();
+            oboardnum = boardnum;
+        }
+
+
+        /* All of these increment at 15fps */
+        int tcshf = totalclock >> 4;
+        animate2 = tcshf & 1;
+        animate3 = tcshf % 3;
+        animate4 = tcshf & 3;
+        animate8 = tcshf & 7;
+        animate10 = tcshf % 10;
+        animate11 = tcshf % 11;
+        animate15 = tcshf % 15;
+        oscillate3 = tcshf & 3;
+        if (oscillate3 == 3) oscillate3 = 0;
+        oscillate5 = tcshf & 7;
+        if (oscillate5 > 4) oscillate5 = 8 - oscillate5;
+            
+        /* These two increment as fast as the game can display - just assume 60fps for now */
+        tcshf = totalclock >> 2;
+        animate6 = totalclock % 6;
+        animate7 = totalclock % 7;
+
+        wipeoverlay(0,0,361,statusbaryoffset);
+        if (slottime > 0) {
+            copyslots(slotto+1);
+        } else {
+            copyslots(slotto);
+        }
+        if (death == 4095)
+        {
+            if (fadehurtval > 0) {
+                fade(fadehurtval+128);
+            } else if (fadewarpval < 63) {
+                fade(fadewarpval);
+            } else {
+                fade(63);
+            }
+        } else {
+            fade(death>>6);
+        }
+
+        picrot(posx, posy, posz, ang);
+        statusbaralldraw();
+        SDL_GL_SwapWindow(mainwindow);
+    }
 }
 
 int main(int argc,char **argv)
@@ -69,7 +356,7 @@ int main(int argc,char **argv)
     K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
     K_INT32 templong;
 
-    K_INT32 fwdvel=0, sidevel=0, standvel=0;
+    K_INT32 standvel=0;
     K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
 
     K_INT16 bx; /* Converted from asm. */
@@ -171,10 +458,10 @@ int main(int argc,char **argv)
                 introskip = 1;
             }
             
-            demorecording = demo_start_record(argv[++i], k);
+            demorecording = demofile_open(argv[++i], demovars, 1, k);
         }
         else if ((strcmp(argv[i],"-play")==0)&&(i+1<argc)) {
-            demoplaying = demo_start_play(argv[++i]);
+            demoplaying = demofile_open(argv[++i], demovars, 0, 0);
             if (!demoplaying)
                 fatal_error("failed to load demo");
             introskip = 1;
@@ -258,175 +545,16 @@ int main(int argc,char **argv)
     cliptowall=1;
 
     if (demoplaying) {
-        double basetime = SDL_GetTicks();
-        double ctime;
-        int democlock = 0;
-        double demomsclock = 0;
-        fade(63);
-        int cf = 0;
-        int pausemode = 0, oldpause = 0, pause = 0;
-        int oboardnum = -1;
-        if (demorecording)
-            demo_time_jump(demorecording, 0);
-        while (1) {
-            double accelf, decelf;
-            int td, i, dir;
-            PollInputs();
-            if (getkeydefstatlock(ACTION_MENU)) {
-                quit();
-                return;
-            }
-
-            if (getkeydefstatlock(ACTION_USE)) {
-                pausemode ^= 1;
-            }
-
-            dir = 1;
-            accelf = (getkeypressure(ACTION_FORWARD, 16384, 32767) - getkeypressure(ACTION_BACKWARD, 16384, 32767))/ 32767.0;
-
-            if (pausemode) {
-                pause = 1;
-                if (fabs(accelf) >= 0.1) {
-                    pause = 0;
-                }
-            } else {
-                pause = 0;
-                accelf *= 20;
-            }
-            accelf *= 1 + (getkeypressure(ACTION_FIRE, 32767, 32767) * 19.0 / 32767.0);
-
-            if (accelf < 0) {
-                if (demorecording) {
-                    accelf = 0;
-                    pause = 1;
-                } else
-                    dir = -1;
-                accelf = -accelf;
-            }
-
-            accelf = pausemode ? 1.0 / accelf : 1.0 / (1 + accelf);
-
-            if (pause != oldpause) {
-                oldpause = pause;
-                if (pause) {
-                    basetime -= SDL_GetTicks();
-                } else {
-                    basetime += SDL_GetTicks();
-                }
-            }
-
-            if (getkeydefstatlock(ACTION_STATUS)) {
-                break;
-            }
-            
-            if (accelf < (1.0/20.0))
-                demo_set_soundfunc(demoplaying, rerecord_demo_sound);
-            else
-                demo_set_soundfunc(demoplaying, ksaypan);
-            ctime = ((double)SDL_GetTicks()) - basetime;
-            /*printf("%lf %lf %lf %d\n", ctime, demomsclock, accelf, pause);*/
-            if (!pause) {
-                while (demomsclock < ctime) {
-                    
-                    td = demo_update_play(demoplaying, dir);
-                    if (dir == -1 && posx == 0 && posy == 0 && posz == 0) {
-                        td = demo_update_play(demoplaying, 1);
-                    }
-                    /*fprintf(stderr, "%5d %d %d %d %d\n", cf, td, posx, posy, ang);*/
-                    cf++;
-
-                    if (td < 0) {
-                        if (dir == -1 || pausemode) {
-                            basetime = SDL_GetTicks() - 1;
-                            demomsclock = 0;
-                            ctime = 0;
-                            break;
-                        }
-                        if (demorecording)
-                            goto break_demo_loop;
-                        quit();
-                        return;
-                    }
-                    democlock += td;
-                    if (demorecording)
-                        demo_update(demorecording, democlock);
-
-                    demomsclock += td * (1000.0/240.0) * accelf;
-                }
-                if (ctime > 0) {
-                    ctime += (1000.0/60.0);
-                    double waitfor = demomsclock;
-                    if (waitfor > ctime)
-                        waitfor = ctime;
-                    while ((ctime = ((double)SDL_GetTicks()) - basetime) < waitfor)
-                        SDL_Delay((int)(waitfor - ctime));
-                }
-            }
-            /*
-            if (pause) {
-                td = 0;
-            } else {
-            }
-            */
-
-            ototclock = totalclock;
-
-            if (boardnum != oboardnum) {
-                if (oboardnum != -1)
-                    musicoff();
-                sprintf(ksmfile, "LABSNG%02d", boardnum);
-                loadmusic(ksmfile);
-                musicon();
-                oboardnum = boardnum;
-            }
-
-
-            int tcshf = totalclock >> 4;
-            animate2 = tcshf & 1;
-            animate3 = tcshf % 3;
-            animate4 = tcshf & 3;
-            animate6 = totalclock % 6;
-            animate7 = totalclock % 7;
-            animate8 = tcshf & 7;
-            animate10 = tcshf % 10;
-            animate11 = tcshf % 11;
-            animate15 = tcshf % 15;
-            oscillate3 = tcshf & 3;
-            if (oscillate3 == 3) oscillate3 = 0;
-            oscillate5 = tcshf & 7;
-            if (oscillate5 > 4) oscillate5 = 8 - oscillate5;
-            
-            wipeoverlay(0,0,361,statusbaryoffset);
-            if (slottime > 0) {
-                copyslots(slotto+1);
-            } else {
-                copyslots(slotto);
-            }
-            if (death == 4095)
-            {
-                if (fadehurtval > 0) {
-                    fade(fadehurtval+128);
-                } else if (fadewarpval < 63) {
-                    fade(fadewarpval);
-                } else {
-                    fade(63);
-                }
-            } else {
-                fade(death>>6);
-            }
-
-            picrot(posx, posy, posz, ang);
-            statusbaralldraw();
-            SDL_GL_SwapWindow(mainwindow);
-
+        int rc = playdemo(demoplaying, demorecording, 0);
+        if (rc == 0) {
+            clockspeed = 0;
+            goto demo_continue_entry;
+        } else {
+            quit();
         }
-    break_demo_loop:
-        clockspeed = 0;
-        if (demorecording)
-            demo_time_jump(demorecording, totalclock);
-        goto demo_continue_entry;
     }
 
+    clockspeed = 0;
     /* Main game loop starts here... */
 
     while (quitgame == 0)
@@ -607,8 +735,15 @@ int main(int argc,char **argv)
 
         update_bulrot(posx, posy);
 
-        if (demorecording)
-            demo_update(demorecording, totalclock);
+        if (demorecording) {
+            /*int timediff = totalclock-ototclock;
+              if (timediff > 4) timediff = 4;*/
+            demofile_write_frame(demorecording, clockspd);
+            if (demofile_rewindable(demorecording) && getkeydefstat(ACTION_REWIND)) {
+                int rc = playdemo(demorecording, NULL, 1);
+                clockspeed = 4;
+            }
+        }
 
         picrot(posx,posy,posz,ang);
         
@@ -1308,6 +1443,8 @@ int main(int argc,char **argv)
 
         /* Move monsters and allow them to fire and suchlike... */
 
+        bossmonster = 0;
+
         for(i=0;i<mnum;i++)
         {
             if (mposx[i] > posx) templong = (K_INT32)(mposx[i]-posx);
@@ -1636,12 +1773,7 @@ int main(int argc,char **argv)
                 if (mstat[i] == monzor || mstat[i] == monke2 || mstat[i] == monan2) {
                     
                     if (tempbuf[((mposx[i]>>10)<<6)|(mposy[i]>>10)]) {
-                        mixing=1;
-                        strcpy(textbuf,"BOSS:");
-                        textprint(139,2,(char)96);
-                        drawmeter((mshot[i]<<8)/3,0,175,2);
-                        drawmeter((mshot[i]<<8)/3,4096,175,2);
-                        mixing=0;
+                        bossmonster = i + 1;
                     }
                     
                 }
@@ -1741,6 +1873,7 @@ int main(int argc,char **argv)
         waterstat = 0;
         if (((getkeydefstat(ACTION_USE) > 0) || 
              ((bstatus&2) > 0)) && (death == 4095)) {
+            /*printf("use!!! ihr=%d ds=%d\n", inhibitrepeat, doorstat);*/
             if (!inhibitrepeat)
             {
                 x = (posx>>10);
@@ -2280,7 +2413,6 @@ int main(int argc,char **argv)
         }
 
         /* Update doors... */
-
         if (doorstat > 0 && ((totalclock^ototclock) > 7))
         {
             if (doorstat < 1024)

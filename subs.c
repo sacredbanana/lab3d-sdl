@@ -466,6 +466,7 @@ void loadboard()
     /* Place warps and monsters... */
 
     mnum = 0;
+    bossmonster = 0;
     if (lab3dversion)
         for(i=0;i<63;i++)
             for(j=0;j<63;j++)
@@ -660,8 +661,11 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     K_INT32 sndfiloffs;
     K_INT32 blocksize=(musicsource==2)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
 
-    if (demorecording && !ui) 
-        demo_sound(demorecording, filenum, pan);
+    if (!ui) {
+        psounds[psoundnum & 15] = filenum;
+        psoundpan[psoundnum & 15] = pan > 255 ? 255 : pan;
+        psoundnum++;
+    }
     
     if (!soundpan) pan=128;
 
@@ -1327,7 +1331,6 @@ imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfil
 
 int read_ini(FILE* input, char* buf, int buflen, char **keyp, char **valp, int *linep) {
     char *line, *end, *val;
-    int r;
     while (fgets(buf, buflen, input)) {
         if (linep) (*linep)++;
         line = buf;
@@ -2065,10 +2068,6 @@ K_INT16 loadgame(K_INT16 gamenum)
     read(fil, &xwarp[0], numwarps);
     read(fil, &ywarp[0], numwarps);
     readLE32(fil, &totalclock, 4);
-
-    if (demorecording)
-        demo_time_jump(demorecording, totalclock);
-
     ototclock = totalclock;
     readLE32(fil, &purpletime, 4);
     readLE32(fil, &greentime, 4);
@@ -2091,6 +2090,9 @@ K_INT16 loadgame(K_INT16 gamenum)
     readLE16(fil, &owecoins, 2);
     readLE16(fil, &owecoinwait, 2);
     close(fil);
+
+    bossmonster = 0;
+
     if (((i == -1) || (i > 2)) && (musicsource >= 0))
     {
         musicoff();
@@ -2697,10 +2699,6 @@ void introduction(K_INT16 songnum)
     animate15 = 0;
     ototclock = -1;
     totalclock = 1;
-
-    if (demorecording)
-        demo_time_jump(demorecording, totalclock);
-
     purpletime = 0;
     greentime = 0;
     capetime[0] = 0;
@@ -2920,7 +2918,7 @@ void musicon()
     if (ksaystat == 0)
     {
         lastTick=SDL_GetTicks();
-        if (timer==NULL)
+        if (!timer)
             timer=SDL_AddTimer(4, tickhandler, NULL);/* 250 Hz, should be 240.*/
     }
     SDL_UnlockMutex(soundmutex);
@@ -2935,9 +2933,9 @@ void musicoff()
     ksaystat = 0;
     if (ksaystat == 0)
     {
-        if (timer!=NULL) {
+        if (timer) {
             SDL_RemoveTimer(timer);
-            timer=NULL;
+            timer=0;
         }
     }
     if (musicsource == 1) {
@@ -3661,10 +3659,6 @@ void winallgame()
     fade(0);
     ototclock = -1;
     totalclock = 1;
-
-    if (demorecording)
-        demo_time_jump(demorecording, totalclock);
-
     linecompare(statusbar);
     fade(63);
     fadewarpval = 63;
@@ -4106,8 +4100,6 @@ int ClipToBuffer(int *sx, int *sy, int *w, int *h) {
 }
 
 void ConvertPartialOverlay(int sx, int sy, int w, int h) {
-    SDL_Rect scn, param, out;
-
     unsigned char *f, *t;
 
     int x, y;
@@ -4700,7 +4692,7 @@ void drawscorebox() {
 static int default_hiscores() {
     int level, pos;
     char buf[16];
-    K_INT32 score;
+    K_INT32 score=0;
     
     FILE* f;
     memset(buf, 0, 16);
@@ -6232,7 +6224,6 @@ void updategameover() {
 
 Uint16 getkeypress(int* key) {
     SDL_Event event;
-    int sk, scan;
 
     while(SDL_PollEvent(&event))
     {
@@ -6278,7 +6269,7 @@ void FindJoysticks() {
 
 void ProcessEvent(SDL_Event* event) {
     int sk, scan;
-    static int i=0;
+
     switch(event->type)
     {	
         case SDL_QUIT:
@@ -6366,12 +6357,12 @@ void quit() {
     savesettings();
     
     if (demorecording) {
-        demo_close_record(demorecording);
+        demofile_close(demorecording);
         demorecording = NULL;
     }
 
     if (demoplaying) {
-        demo_close_play(demoplaying);
+        demofile_close(demoplaying);
         demoplaying = NULL;
     }
 
