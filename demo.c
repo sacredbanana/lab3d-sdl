@@ -1,506 +1,524 @@
-#include "lab3d.h"
-#include "SDL_endian.h"
-#include "zlib.h"
+#include <stdio.h>
+#include <SDL_endian.h>
+#include <zlib.h>
 
-typedef struct {
-    char* name;
-    void* ptr;
-    int sgn;
-    int elemsize;
-    int size;
-    int cnt;
-} vardef_t;
+#include "demo.h"
 
+#ifdef WIN32
+static void truncate_file(FILE* f) {
+    int fd = _fileno(f);
+    fflush(f);
+    _chsize_s(fd, _ftelli64(fd));
+}
+#else
+#include <sys/types.h>
+#include <unistd.h>
+static void truncate_file(FILE* f) {
+    int fd = fileno(f);
+    fflush(f);
+    ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+}
+
+#endif
+
+static Uint16 get16(Uint8* a) {
+    return a[0] | (a[1] << 8);
+}
+
+static Uint16 set16(Uint8* a, Uint16 v) {
+    *a++ = v;
+    *a = v >> 8;
+    return v;
+}
+
+/* Dynamically allocated during playback */
 typedef struct {
-    char* name;
     void* ptr;
+    int pos;
     int elemsize;
-    int realcnt;
     int cnt;
 } vartrack_t;
 
-typedef struct {
-    int num;
-    int posx, posy;
-} soundevent_t;
-
-static vardef_t vars[] = {
-
-#define VAR(t) { #t, &t, 0, sizeof(t), sizeof(t), 1 }
-#define ARRAY(t) { #t, &t[0], 0, sizeof(t[0]), sizeof(t), sizeof(t) / sizeof(t[0]) }
-    VAR(boardnum),
-    VAR(scorecount),
-    VAR(scoreclock),
-    { "board", &board[0][0], 0, 2, 8192, 4096 },
-    VAR(skilevel),
-    VAR(life),
-    VAR(death),
-    VAR(lifevests),
-    VAR(lightnings),
-    ARRAY(firepowers),
-    VAR(bulchoose),
-    ARRAY(keys),
-    VAR(coins),
-    VAR(compass),
-    VAR(cheated),
-    VAR(statusbar),
-    VAR(statusbargoal),
-    VAR(posx),
-    VAR(posy),
-    VAR(posz),
-    VAR(ang),
-    VAR(startx),
-    VAR(starty),
-    VAR(startang),
-    VAR(angvel),
-    VAR(vel),
-    VAR(mxvel),
-    VAR(myvel),
-    VAR(svel),
-    VAR(hvel),
-    VAR(oldposx),
-    VAR(oldposy),
-    VAR(bulnum),
-    ARRAY(bulang),
-    ARRAY(bulkind),
-    ARRAY(bulx),
-    ARRAY(buly),
-    ARRAY(bulstat),
-    VAR(lastbulshoot),
-    VAR(mnum),
-    ARRAY(mposx),
-    ARRAY(mposy),
-    ARRAY(mgolx),
-    ARRAY(mgoly),
-    ARRAY(moldx),
-    ARRAY(moldy),
-    ARRAY(mstat),
-    ARRAY(mshock),
-    ARRAY(mshot),
-    VAR(doorx),
-    VAR(doory),
-    VAR(doorstat),
-    VAR(numwarps),
-    VAR(justwarped),
-    ARRAY(xwarp),
-    ARRAY(ywarp),
-    VAR(totalclock),
-    VAR(purpletime),
-    VAR(greentime),
-    ARRAY(capetime),
-    VAR(fadewarpval),
-    VAR(fadehurtval),
-    VAR(slottime),
-    ARRAY(slotpos),
-    VAR(owecoins),
-    VAR(owecoinwait),
-    ARRAY(hiscorenam),
-    VAR(hiscorenamstat),
-    VAR(explonum),
-    ARRAY(explox),
-    ARRAY(exploy),
-    ARRAY(explotime),
-    ARRAY(explostat),
-    
-    { NULL }
-};
-/*
-  Commands:
-
-  00001 time(v4)
-  00010 x(snv7) y(snv7) ang(snv7)
-  00011 posz(b6)
-  00100 slot(b1) spos(b7)[3]
-  00101 mnum(v7)
-  00110 bulnum(v7)
-  00111 loc(b12) val(b13)
-  01000 val(b13)[4096]
-  01001 <reserved>
-  ...
-  01111 <reserved>
-  10 id(6) kind(nb5) x(snv7) y(snv7) ang(snv7)
-  11 id(v6) stat(nb9) shot(nb6) x(snv7) y(snv7) shock(snv7) 
-  
- */
-
-/*
-enum {
-    D_TIME = 1,
-    D_POS = 2,
-    D_POSZ = 3,
-    D_SLOT = 4,
-    D_MNUM = 5,
-    D_BULNUM = 6,
-    D_BOARD = 7,
-    D_BOARDALL = 8,
-
-    D_BULLET = 2,
-    D_MONST = 3
-};
-*/
-
-demorec* demorecording;
-demoplay* demoplaying;
-
-typedef struct {
-    K_UINT16 x, y;
-    K_INT16 shock, shot, stat;
-} monster_t;
-
-typedef struct {
-    K_UINT16 x, y;
-    K_INT16 ang, kind;
-} bullet_t;
-
-struct demorec {
-    gzFile gzoutput;
-    FILE* rawoutput;
-
-    int format;
-
-    K_INT32 totalclock;
-    int prevsize;
-
-    int size_data;
-    /* Allocated sequentially */
-    unsigned char* last_data;
-    /*unsigned char* hdr;*/
-    unsigned char* delta_buf;
-    unsigned char* rle_buf;
-};
-
-struct demoplay {
-    gzFile gzinput;
-    FILE* rawinput;
-
-    int format;
-    int startpos;
+struct demofile {
+    gzFile gzfil;
+    FILE* rawfil;
 
     vartrack_t* vars;
-    int nvars;
-
-    K_INT32 totalclock;
-    int size_data;
-    soundfunc sound;
 
     /* Allocated sequentially */
-    unsigned char* last_data;
-    /*unsigned char* hdr;*/
-    unsigned char* delta_buf;
-    unsigned char* rle_buf;
+    Uint8* cur_data;
+    Uint8* delta_buf;
+    Uint8* rle_buf;
+
+    Uint32 totalclock;
+
+    int cursize;
+    int buffer_size;
+
+    int nvars;
+
+    Uint8 format;
+    Uint8 recording;
+    Uint8 compressed;
 };
 
-static void demo_write(demorec* d, const void* data, int size);
-static void demo_write_hdr(demorec* d, const unsigned char* hdr, int size);
-static int demo_read(demoplay* d, void* data, int size);
-demoplay* demo_start_play(const char* filename) {
-    int i, pos, fpos, cap;
-    demoplay* d;
-    vardef_t *cv, *ocv;
-    vartrack_t* ct;
-    unsigned char hdr[4];
-    char name[256];
 
-    d = (demoplay*)malloc(sizeof(demoplay));
-    if (!d) goto memory_error;
-    
+static int demofile_read(demofile_t* d, void* data, int size);
+static int demofile_write(demofile_t* d, const void* data, int size);
+static int demofile_write_hdr(demofile_t* d, int, int);
+static void demofile_seek(demofile_t* d, int amt);
+
+static int demofile_read_fileheader(demofile_t* d, demo_vardef_t*, const char* filename);
+static int demofile_write_fileheader(demofile_t* d, demo_vardef_t*, const char* filename);
+
+demofile_t* demofile_open(const char* filename, demo_vardef_t* vars, int record, int format) {
+    demofile_t* d = (demofile_t*)malloc(sizeof(demofile_t));
+    if (!d) return NULL;
     memset(d, 0, sizeof(*d));
-    
 
-    d->gzinput = gzopen(filename, "rb9");
-    if (!d->gzinput) goto file_error;
+    d->recording = !!record;
+    if (record) {
+        if (format < 0 || format > 1)
+            return NULL;
 
-    if (demo_read(d, hdr, 4) < 4) {
-        goto read_error;
-    }
-
-    if (hdr[0] == 0xFF && hdr[1] == 0xFF) {
-        gzclose(d->gzinput);
-        d->gzinput = NULL;
-        d->rawinput = fopen(filename, "rb");
-        if (!d->rawinput) goto file_error;
-        fseek(d->rawinput, 2, 0);
-        d->format = 1;
-        if (demo_read(d, hdr, 4) < 4) {
-            goto read_error;
+        d->format = format;
+        if (demofile_write_fileheader(d, vars, filename)) {
+            fprintf(stderr, "Recording demo to %s (%d raw bytes per frame)\n", filename, d->buffer_size);
+            return d;
+        }
+    } else {
+        if (demofile_read_fileheader(d, vars, filename)) {
+            fprintf(stderr, "Playing demo from %s (%d raw bytes per frame)\n", filename, d->buffer_size);
+            return d;
         }
     }
-    cap = 128;
-    ct = d->vars = (vartrack_t*)malloc(cap * sizeof(vartrack_t));
-    if (!ct) goto memory_error_2;
-    memset(ct, 0, cap * sizeof(vartrack_t));
-
-    d->sound = ksaypan;
-    d->nvars = 0;
     
-    cv = vars - 1;
-    pos = 0;
-    fpos = 0;
+    demofile_close(d);
+    return NULL;
+}
 
-    while (1) {
-        if (pos != 0 && demo_read(d, hdr, 4) < 4) {
-            fprintf(stderr, "%s: truncated (%d)\n", filename, d->nvars);
-            goto read_error;
-        }
-        fpos += 4;
-        if (hdr[0] == 0)
-            break;
-        if (demo_read(d, name, hdr[0]) < hdr[0]) {
-            fprintf(stderr, "%s: truncated\n", filename);
-            goto read_error;
-        }
-        fpos += hdr[0];
-        name[hdr[0]] = 0;
-        ocv = cv;
-        ct->elemsize = hdr[1];
-        ct->cnt = hdr[2] | (hdr[3] << 8);
+void demofile_close(demofile_t* d) {
+    if (d->gzfil)
+        gzclose(d->gzfil);
+    if (d->rawfil) {
+        fclose(d->rawfil);
+    }
+    if (d->vars) free(d->vars);
+    if (d->cur_data) free(d->cur_data);
+    free(d);
+}
+
+int demofile_rewindable(demofile_t* d) {
+    return d->format == 1 && !d->compressed;
+}
+
+static int demofile_read(demofile_t* d, void* data, int size) {
+    int r;
+    if (d->rawfil)
+        r = fread(data, 1, size, d->rawfil);
+    else
+        r = gzread(d->gzfil, data, size);
+
+    if (r > 0)
+        d->cursize += r;
+    return r;
+}
+
+static void demofile_seek(demofile_t* d, int amt) {
+    if (d->rawfil)
+        fseek(d->rawfil, amt, 1);
+    else
+        gzseek(d->gzfil, amt, 1);
+}
+
+static int demofile_write(demofile_t* d, const void* data, int size) {
+    if (d->gzfil)
+        return gzwrite(d->gzfil, data, size);
+    else
+        return fwrite(data, 1, size, d->rawfil);
         
-        do {
-            if (!(++cv)->name) cv = vars;
-        } while (cv != ocv && !(strcmp(name, cv->name) == 0 && cv->elemsize == ct->elemsize));
+}
 
-        if (cv == ocv) {
-            fprintf(stderr, "%s: WARNING: unknown variable %s\n", filename, name);
-        } else {
-            ct->name = cv->name;
-            ct->realcnt = ct->cnt;
-            ct->ptr = cv->ptr;
-            if (ct->cnt > cv->cnt) {
-                fprintf(stderr, "%s: WARNING: array exceeds buffer space %s[%d], alloc = %d\n", filename, name, ct->cnt, cv->cnt);
-                ct->realcnt = cv->cnt;
+static int demofile_write_hdr(demofile_t* d, int size, int clock) {
+    Uint8 hdr[4];
+    set16(hdr, size);
+    set16(hdr+2, clock);
+    return demofile_write(d, hdr, 4);
+}
+
+static int demofile_read_frame(demofile_t* d) {
+    int i, j;
+    int readsize, timediff;
+    Uint8 *delta, *rle, *delta_end, hdr[4];
+    Uint64 *tdelta, *tdata;
+    
+    if ((j = demofile_read(d, hdr, 4)) < 4) {
+        return -1;
+    }
+
+    readsize = get16(hdr);
+    if (readsize < 2 || readsize > d->buffer_size + 2)
+        return -1;
+
+    readsize -= 2;
+
+    rle = readsize == d->buffer_size ? d->delta_buf : d->rle_buf;
+    if (demofile_read(d, rle, readsize) < readsize)
+        return -1;
+
+    timediff = get16(hdr + 2);
+    if (readsize < d->buffer_size) {
+        delta = d->delta_buf;
+        delta_end = delta + d->buffer_size;
+        i = readsize;
+        while (i > 0 && delta < delta_end) {
+            Uint8 r = *rle++;
+            i--;
+            if (r == 0) {
+                unsigned int cnt = 0;
+                int shift = 0;
+                while (i > 0) {
+                    Uint8 tc = *rle++;
+                    i--;
+                    cnt |= (tc & 0x7F) << shift;
+                    shift += 7;
+                    if (!(tc & 0x80)) break;
+                }
+                if (delta + cnt <= delta_end)
+                    memset(delta, 0, cnt);
+                delta += cnt;
+            } else {
+                *delta++ = r;
             }
         }
-        pos += ct->cnt * ct->elemsize;
-        d->nvars++;
-        ct++;
+        if (delta < delta_end)
+            memset(delta, 0, delta_end - delta);
     }
 
-    d->startpos = fpos;
-    fprintf(stderr, "Playing demo from %s (%d raw bytes per frame)\n", filename, pos);
+    tdata = (Uint64*)d->cur_data;
+    tdelta = (Uint64*)d->delta_buf;
+    i = (d->buffer_size + 7) >> 3;
+
+    do {
+        *tdata++ ^= *tdelta++;
+    } while (--i);
+
+    if (d->format == 1) {
+        int prevsize;
+        if (demofile_read(d, hdr, 2) < 2)
+            return -1;
+
+        prevsize = get16(hdr);
+        if (prevsize != readsize + 2) {
+            fprintf(stderr, "Frame end size marker does not match size!\n");
+        }
+    }
+
+    return timediff;
+}
+
+int demofile_advance(demofile_t* d, int dir) {
+    int rc, prevsize;
+    Uint8 hdr[2];
+
+    if (dir == -1) {
+        if (!demofile_rewindable(d))
+            return -1;
+        
+        demofile_seek(d, -2);
+        demofile_read(d, hdr, 2);
+        prevsize = get16(hdr);
+        if (prevsize == 0)
+            return -1;
+
+        demofile_seek(d, -prevsize - 4);
+        d->cursize = 0;
+    }
+    rc = demofile_read_frame(d);
+    if (dir == -1) {
+        demofile_seek(d, -d->cursize);
+    }
+    return rc;
+}
+
+#define DECODELOOP(size, type, swap)            \
+    case size: {                                \
+        type* ndelt = (type*)delta;             \
+        type* nptr = (type*)ct->ptr;            \
+        do {                                    \
+            type ov = *nldata++;                \
+            *nptr++ = swap(ov);                 \
+        } while (--i);                          \
+        delta = (Uint8*)ndelt;                  \
+        ldata = (Uint8*)nldata;                 \
+    }                                           \
+    break
+
+void demofile_update_vars(demofile_t* d) {
+    int i, j;
+    Uint8 *cdata;
+    vartrack_t* ct;
+
+    for (j = 0, ct = d->vars; j < d->nvars; j++, ct++) {
+        cdata = d->cur_data + ct->pos;
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+        i = ct->cnt * ct->elemsize;
+        memcpy(ct->ptr, cdata, i);
+#else
+        i = ct->cnt;
+
+        switch(ct->elemsize) {
+            DECODELOOP(1, Uint8, NOSWAP);
+            DECODELOOP(2, Uint16, SDL_SwapLE16);
+            DECODELOOP(4, Uint32, SDL_SwapLE32);
+            default:
+                fatal_error("unknown size: %d (%s)", ct->elemsize, ct->name);
+        }
+#endif
+    }
+}
+
+
+static int demofile_read_fileheader(demofile_t* d, demo_vardef_t* vars, const char* filename) {
+    int i, pos, nvars;
+    demo_vardef_t *cvardef, *lastvardef;
+    vartrack_t* cvartrack;
+    Uint8 hdr[8];
+    char name[256];
+
+    d->gzfil = gzopen(filename, "rb9");
+    if (!d->gzfil) return 0;
+
+    d->compressed = !gzdirect(d->gzfil);
+
+    if (demofile_read(d, hdr, 8) < 8)
+        return 0;
+
+    if (memcmp(hdr, "KENDEMO", 7) != 0)
+        return 0;
+
+    d->format = hdr[7];
+    if (d->format > 1)
+        return 0;
+
+    if (demofile_read(d, hdr, 4) < 4) 
+        return 0;
+    
+    nvars = get16(hdr);
+    d->buffer_size = get16(hdr + 2);
+
+    if (nvars == 0)
+        return 0;
+
+    cvartrack = d->vars = (vartrack_t*)malloc(nvars * sizeof(vartrack_t));
+    if (!cvartrack) return 0;
+
+    memset(cvartrack, 0, nvars * sizeof(vartrack_t));
+
+    cvardef = vars - 1;
+    pos = 0;
+
+    d->nvars = 0;
+    i = nvars;
+    do {
+        int cnt, elemsize;
+
+        if (demofile_read(d, hdr, 4) < 4) {
+            fprintf(stderr, "%s: truncated (%d)\n", filename, d->nvars);
+            return 0;
+        }
+
+        if (demofile_read(d, name, hdr[0]) < hdr[0]) {
+            fprintf(stderr, "%s: truncated\n", filename);
+            return 0;
+        }
+
+        name[hdr[0]] = 0;
+        lastvardef = cvardef;
+        elemsize = hdr[1];
+        cnt = get16(hdr + 2);
+
+        if (cnt == 0)
+            return 0;
+
+        /* Alignment & size check */
+        switch(elemsize) {
+            case 1: break;
+            case 2: pos = (pos + 1) & ~1; break;
+            case 4: pos = (pos + 3) & ~3; break;
+            case 8: pos = (pos + 7) & ~7; break;
+            default:
+                fprintf(stderr, "%s: invalid size for variable '%s': %d\n", filename, name, elemsize);
+                return 0;
+        }
+
+        /* Most likely scenario is that the variables from the demo are in the
+         * same order as the variables we have here - so it's likely to match
+         * the next demo_vardef_t.*/
+
+        do {
+            if (!(++cvardef)->name) cvardef = vars;
+        } while (cvardef != lastvardef && !(strcmp(name, cvardef->name) == 0 && cvardef->elemsize == elemsize));
+
+        if (cvardef == lastvardef) {
+            fprintf(stderr, "%s: WARNING: unknown variable %s\n", filename, name);
+        } else {
+            cvartrack->ptr = cvardef->ptr;
+            cvartrack->pos = pos;
+            cvartrack->elemsize = elemsize;
+            cvartrack->cnt = cnt;
+
+            if (cnt > cvardef->cnt) {
+                fprintf(stderr, "%s: WARNING: array exceeds buffer space %s[%d], alloc = %d\n", filename, name, cnt, cvardef->cnt);
+                cvartrack->cnt = cvardef->cnt;
+            }
+            cvartrack++;
+            d->nvars++;
+        }
+        pos += cnt * elemsize;
+        if (pos > d->buffer_size) {
+            fprintf(stderr, "%s: ERROR: variable %s extends beyond buffer size\n", filename, name);
+            return 0;
+        }
+    } while (--i);
+
+    if (d->format == 1) {
+        demofile_read(d, hdr, 2);
+    }
+
+    /* Align the buffers on a 64-bit boundary so bulk XOR can use 64-bit operations */
+    pos = (d->buffer_size + 7) & ~7;
+
+    d->cur_data = malloc(pos * 3);
+    if (!d->cur_data) return 0;
+    memset(d->cur_data, 0, pos);
+
+    d->delta_buf = d->cur_data + pos;
+    d->rle_buf = d->delta_buf + pos;
+
+    return 1;
+}
+
+static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const char* filename) {
+    int i, j, pos;
+    demo_vardef_t* cvardef;
+    vartrack_t* cvartrack;
+    Uint8 hdr[8];
+
+    for (i = 0, cvardef = vars; cvardef->name; cvardef++) {
+        i++;
+    }
+    d->nvars = i;
+
+    cvartrack = d->vars = (vartrack_t*)malloc(i * sizeof(vartrack_t));
+    if (!cvartrack) return 0;
+
+    memset(cvartrack, 0, i * sizeof(vartrack_t));
+
+    pos = 0;
+    for (cvardef = vars; cvardef->name; cvardef++) {
+        
+        cvartrack->ptr = cvardef->ptr;
+        cvartrack->elemsize = cvardef->elemsize;
+        cvartrack->cnt = cvardef->cnt;
+
+        /* Alignment */
+        j = cvardef->elemsize - 1;
+        pos = (pos + j) & ~j;
+
+        cvartrack->pos = pos;
+
+        pos += cvardef->elemsize * cvardef->cnt;
+        cvartrack++;
+    }
 
     pos = (pos + 3) & ~3;
 
-    d->size_data = pos;
+    d->buffer_size = pos;
 
-    d->last_data = malloc(pos * 3);
-    if (!d->last_data) goto memory_error_3;
-    memset(d->last_data, 0, pos);
+    d->cur_data = malloc(pos * 3);
+    if (!d->cur_data) return 0;
+    memset(d->cur_data, 0, pos);
 
-    d->delta_buf = d->last_data + pos;
+    d->delta_buf = d->cur_data + pos;
     d->rle_buf = d->delta_buf + pos;
 
-    return d;
-
-    /*free(d->last_data);*/
-memory_error_3:
-
-read_error:
-
-    free(d->vars);
-memory_error_2:
-    if (d->gzinput)
-        gzclose(d->gzinput);
-    if (d->rawinput)
-        fclose(d->rawinput);
-file_error:
-
-    free(d);
-memory_error:
-
-    return NULL;
-}
-
-demorec* demo_start_record(const char* filename, int format) {
-    int i, pos;
-    demorec* d;
-    vardef_t* cv;
-    unsigned char hdr[4];
-
-    if (format < 0 || format > 1)
-        return NULL;
-    d = (demorec*)malloc(sizeof(demorec));
-    if (!d) goto memory_error;
-    memset(d, 0, sizeof(*d));
-
-    d->format = format;
     if (d->format == 1) {
-        d->rawoutput = fopen(filename, "wb");
-        if (!d->rawoutput) goto file_error;
-        hdr[0] = 0xFF; hdr[1] = 0xFF;
-        demo_write(d, hdr, 2);
+        d->compressed = 0;
+        d->rawfil = fopen(filename, "wb+");
+
+        if (!d->rawfil) return 0;
     } else {
-        d->gzoutput = gzopen(filename, "wb9");
-        if (!d->gzoutput) goto file_error;
+        d->compressed = 1;
+        d->gzfil = gzopen(filename, "wb9");
+        if (!d->gzfil) return 0;
     }
 
-    pos = 0;
-    for (cv = vars; cv->name; cv++) {
-        unsigned char hdr[6];
-        hdr[0] = strlen(cv->name);
-        hdr[1] = cv->elemsize;
-        hdr[2] = cv->cnt & 0xFF;
-        hdr[3] = (cv->cnt >> 8) & 0xFF;
-        demo_write(d, hdr, 4);
-        demo_write(d, cv->name, hdr[0]);
-        pos += cv->size;
+    strcpy(hdr, "KENDEMO");
+    hdr[7] = d->format;
+    if (demofile_write(d, hdr, 8) < 8) return 0;
+
+    set16(hdr+0, d->nvars);
+    set16(hdr+2, d->buffer_size);
+    if (demofile_write(d, hdr, 4) < 4) return 0;
+
+    for (cvardef = vars; cvardef->name; cvardef++) {
+        hdr[0] = strlen(cvardef->name);
+        hdr[1] = cvardef->elemsize;
+        set16(hdr+2, cvardef->cnt);
+        if (demofile_write(d, hdr, 4) < 4) return 0;
+        if (demofile_write(d, cvardef->name, hdr[0]) < hdr[0]) return 0;
     }
-    hdr[0] = hdr[1] = hdr[2] = hdr[3] = 0;
-    demo_write(d, hdr, 4);
-
-    fprintf(stderr, "Recording demo to %s (%d raw bytes per frame)\n", filename, pos);
-
-    d->size_data = pos;
-
-    d->last_data = malloc(pos * 3);
-    if (!d->last_data) goto memory_error_2;
-    memset(d->last_data, 0, pos);
-
-    d->delta_buf = d->last_data + pos;
-    d->rle_buf = d->delta_buf + pos;
-
-    return d;
-
-    /*free(d->last_data);*/
- memory_error_2:
-
-    if (d->gzoutput)
-        gzclose(d->gzoutput);
-    if (d->rawoutput)
-        fclose(d->rawoutput);
- file_error:
-
-    free(d);
- memory_error:
-
-    return NULL;
-}
-
-static void demo_write(demorec* d, const void* data, int size) {
-    if (d->gzoutput)
-        gzwrite(d->gzoutput, data, size);
-    else
-        fwrite(data, 1, size, d->rawoutput);
-        
-}
-static void demo_write_hdr(demorec* d, const unsigned char* hdr, int size) {
-    char xhdr[2];
     if (d->format == 1) {
-        xhdr[0] = d->prevsize & 0xFF;
-        xhdr[1] = (d->prevsize >> 8) & 0xFF;
-        demo_write(d, xhdr, 2);
+        set16(hdr, 0);
+        demofile_write(d, hdr, 2);
     }
-    if (size)
-        demo_write(d, hdr, size);
-        
-}
-
-static int demo_read(demoplay* d, void* data, int size) {
-    int rc;
-    if (d->gzinput)
-        rc =  gzread(d->gzinput, data, size);
-    else
-        rc = fread(data, 1, size, d->rawinput);
-    /*
-    int i = 0;
-    printf("read %d:", size);
-    for(i = 0; i < size; i++) {
-        unsigned char c = ((unsigned char*)(data))[i];
-        printf(" %02x", c);
-    }
-    printf("\n");
-    */
-    return rc;
-
-}
-
-void demo_close_record(demorec* d) {
-    /*demo_write_align(d);*/
-    if (d->format == 1) {
-        demo_write_hdr(d, NULL, 0);
-    }
-
-    if (d->gzoutput)
-        gzclose(d->gzoutput);
-    if (d->rawoutput)
-        fclose(d->rawoutput);
-    free(d->last_data);
-    free(d);
-}
-
-void demo_close_play(demoplay* d) {
-    /*demo_write_align(d);*/
-    if (d->gzinput)
-        gzclose(d->gzinput);
-    if (d->rawinput)
-        fclose(d->rawinput);
-
-    free(d->vars);
-    free(d->last_data);
-    free(d);
-}
-
-void demo_time_jump(demorec* d, int totalclock) {
-    d->totalclock = totalclock;
-}
-
-void demo_sound(demorec* d, int which, int pan) {
-    unsigned char data[6];
-    data[0] = data[1] = 0xFF;
-    data[2] = 1; data[3] = which;
-    data[4] = pan & 0xFF;
-    data[5] = pan >> 8;
-    demo_write_hdr(d, data, 6);
-    d->prevsize = 6;
-}
-
-void demo_set_soundfunc(demoplay* p, soundfunc f) {
-    p->sound = f;
+    return 1;
 }
 
 #define NOSWAP(X) (X)
 
-#define ENCODELOOP(size, type, swap)            \
-    case size: {                                \
-        type* ndelt = (type*)delta;             \
-        type* nldata = (type*)ldata;            \
-        type* nptr = (type*)cv->ptr;            \
-        do {                                    \
-            type ov = *nldata;                  \
-            type nv = swap(*nptr++);            \
-            *ndelt++ = ov ^ nv;                 \
-            if (ov != nv) *nldata = nv;         \
-            (nldata)++;                         \
-        } while (--i);                          \
-        delta = (unsigned char*)ndelt;          \
-        ldata = (unsigned char*)nldata;         \
-    }                                           \
+#define ENCODELOOP(size, type, swap)                \
+    case size: {                                    \
+        type* ndelta = (type*)(delta + ct->pos);    \
+        type* nldata = (type*)(ldata + ct->pos);    \
+        type* nptr = (type*)ct->ptr;                \
+        do {                                        \
+            type ov = *nldata;                      \
+            type nv = swap(*nptr++);                \
+            *nldata++ = nv;                         \
+            *ndelta++ = ov ^ nv;                    \
+        } while (--i);                              \
+    }                                               \
     break
 
-void demo_update(demorec* d, int totalclock) {
-    int i, zc, writesize, timediff;
-    unsigned char *ldata, *delta, *rle, *rle_end, hdr[4];
-    vardef_t* cv;
+void demofile_write_frame(demofile_t* d, int timediff) {
+    int i, j, zc, writesize;
+    Uint8 *ldata, *delta, *rle, *rle_end;
+    Uint8 hdr[2];
+    vartrack_t* ct;
     
-    ldata = d->last_data;
+    ldata = d->cur_data;
     delta = d->delta_buf;
-    
-    for (cv = vars; cv->name; cv++) {
-        i = cv->cnt;
-        switch(cv->elemsize) {
-            ENCODELOOP(1, unsigned char, NOSWAP);
-            ENCODELOOP(2, K_UINT16, SDL_SwapLE16);
-            ENCODELOOP(4, K_UINT32, SDL_SwapLE32);
-            default:
-                fatal_error("unknown size: %d (%s)", cv->elemsize, cv->name);
+
+    for (j = 0, ct = d->vars; j < d->nvars; j++, ct++) {
+        i = ct->cnt;
+
+        switch(ct->elemsize) {
+            ENCODELOOP(1, Uint8, NOSWAP);
+            ENCODELOOP(2, Uint16, SDL_SwapLE16);
+            ENCODELOOP(4, Uint32, SDL_SwapLE32);
+            ENCODELOOP(8, Uint64, SDL_SwapLE64);
         }
     }
+
     delta = d->delta_buf;
     rle = d->rle_buf;
-    rle_end = rle + d->size_data - 3;
-    i = d->size_data;
+    rle_end = rle + d->buffer_size - 3;
+    i = d->buffer_size;
     zc = 0;
     do {
-        unsigned char bv = *delta++;
+        Uint8 bv = *delta++;
         if (bv == 0) {
             zc++;
         } else {
@@ -520,166 +538,32 @@ void demo_update(demorec* d, int totalclock) {
 
     if (rle >= rle_end) {
         delta = d->delta_buf;
-        writesize = d->size_data;
-        hdr[3] = 0x80;
+        writesize = d->buffer_size;
     } else {
         delta = d->rle_buf;
         writesize = rle - delta;
-        hdr[3] = 0;
     }
-    timediff = totalclock - d->totalclock;
-    d->totalclock = totalclock;
-    hdr[0] = timediff & 0xFF;
-    hdr[1] = (timediff >> 8) & 0xFF;
-    hdr[2] = writesize & 0xFF;
-    hdr[3] |= (writesize >> 8) & 0x7F;
-    demo_write_hdr(d, hdr, 4);
-    demo_write(d, delta, writesize);
-    d->prevsize = writesize + 4;
-}
 
-#define DECODELOOP(size, type, swap)            \
-    case size: {                                \
-        type* ndelt = (type*)delta;             \
-        type* nptr = (type*)ct->ptr;            \
-        do {                                    \
-            type ov = *nldata++;                \
-            *nptr++ = swap(ov);                 \
-        } while (--i);                          \
-        delta = (unsigned char*)ndelt;          \
-        ldata = (unsigned char*)nldata;         \
-    }                                           \
-    break
+    if (timediff >= 0xFFFF) timediff = 0xFFFF;
 
-static int demo_read_frame(demoplay* d, int dir) {
-    int i, j;
-    int readsize, userle, timediff;
-    unsigned char *ldata, *delta, *rle, *delta_end, hdr[4];
-    vartrack_t* ct;
-    K_UINT32 *tdelta, *tdata;
+    demofile_write_hdr(d, writesize + 2, timediff);
 
-    int prev_ofs;
+    demofile_write(d, delta, writesize);
     if (d->format == 1) {
-        if (demo_read(d, hdr, 2) < 2) {
-            return -1;
-        }
-        prev_ofs = hdr[0] | (hdr[1] << 8);
-        if (dir == -1) {
-            fseek(d->rawinput, -prev_ofs - 2, 1);
-            if (prev_ofs == 0) return -1;
-        }
-    } else if (dir == -1) {
-        return -1;
+        set16(hdr, writesize + 2);
+        demofile_write(d, hdr, 2);
     }
-
-    if (demo_read(d, hdr, 4) < 4) {
-        if (d->format == 1)
-            fseek(d->rawinput, -2, 1);
-        return -1;
-    }
-
-    if (hdr[0] == 0xFF && hdr[1] == 0xFF) {
-        if (hdr[2] == 1) {
-            int which = hdr[3];
-            int pan;
-            if (demo_read(d, hdr, 2) < 2) return -1;
-            pan = hdr[0] | (hdr[1] << 8);
-            d->sound(which, pan, 0);
-            timediff = 0;
-            readsize = 2;
-        } else {
-        }
-    } else {
-    
-        timediff = hdr[0] | (hdr[1] << 8);
-        readsize = hdr[2] | (hdr[3] << 8);
-        if (readsize & 0x8000) {
-            rle = d->delta_buf;
-            userle = 0;
-            readsize &= 0x7FFF;
-        } else {
-            rle = d->rle_buf;
-            userle = 1;
-        }
-        if (readsize > d->size_data) return -1;
-        if (demo_read(d, rle, readsize) < readsize) return -1;
-        if (userle) {
-            delta = d->delta_buf;
-            delta_end = delta + d->size_data;
-            i = readsize;
-            while (i > 0 && delta < delta_end) {
-                unsigned char r = *rle++;
-                i--;
-                if (r == 0) {
-                    unsigned int cnt = 0;
-                    int shift = 0;
-                    while (i > 0) {
-                        unsigned char tc = *rle++;
-                        i--;
-                        cnt |= (tc & 0x7F) << shift;
-                        shift += 7;
-                        if (!(tc & 0x80)) break;
-                    }
-                    if (delta + cnt <= delta_end)
-                        memset(delta, 0, cnt);
-                    delta += cnt;
-                } else {
-                    *delta++ = r;
-                }
-            }
-            if (delta < delta_end)
-                memset(delta, 0, delta_end - delta);
-        }
-
-        tdata = (K_UINT32*)d->last_data;
-        tdelta = (K_UINT32*)d->delta_buf;
-        i = d->size_data >> 2;
-
-        do {
-            *tdata++ ^= *tdelta++;
-        } while (--i);
-
-        ldata = d->last_data;
-        for (j = 0, ct = d->vars; j < d->nvars; j++, ct++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            i = ct->cnt * ct->elemsize;
-            memcpy(ct->ptr, ldata, i);
-            ldata += i;
-#else
-            i = ct->cnt;
-
-            switch(ct->elemsize) {
-                DECODELOOP(1, unsigned char, NOSWAP);
-                DECODELOOP(2, K_UINT16, SDL_SwapLE16);
-                DECODELOOP(4, K_UINT32, SDL_SwapLE32);
-                default:
-                    fatal_error("unknown size: %d (%s)", ct->elemsize, ct->name);
-            }
-#endif
-        }
-    }
-
-    if (d->format == 1 && dir == -1) {
-        fseek(d->rawinput, -readsize - 6, 1);
-    }
-        
-
-
-    return timediff;
-}
-
-int demo_update_play(demoplay* d, int dir) {
-    while (1) {
-        int rc = demo_read_frame(d, dir);
-        if (rc != 0) return rc;
+    if (d->rawfil) {
+        truncate_file(d->rawfil);
     }
 }
+
 /*
-static int demo_read_frame(demoplay* d, unsigned char* hdr, int dir) {
+static int demofile_read_frame(demofile_t* d, Uint8* hdr, int dir) {
     int prev_ofs, readsize;
     
     if (demo->format == 1) {
-        if (demo_read(d, hdr, 2) < 2)
+        if (demofile_read(d, hdr, 2) < 2)
             return 0;
         prev_ofs = hdr[0] | (hdr[1] << 8);
         if (dir == -1) {
@@ -687,7 +571,7 @@ static int demo_read_frame(demoplay* d, unsigned char* hdr, int dir) {
         }
     }
 
-    if (demo_read(d, hdr, 4) < 4) return 0;
+    if (demofile_read(d, hdr, 4) < 4) return 0;
     if (hdr[0] == 0xFF && hdr[1] == 0xFF) {
     }
 }

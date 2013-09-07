@@ -1339,6 +1339,16 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     }
     glDepthMask(1);
     glDisable(GL_LIGHTING);
+
+    if (bossmonster) {
+        mixing=1;
+        strcpy(textbuf,"BOSS:");
+        textprint(139,2,(char)96);
+        drawmeter((mshot[bossmonster-1]<<8)/3,0,175,2);
+        drawmeter((mshot[bossmonster-1]<<8)/3,4096,175,2);
+        mixing=0;
+    }
+
     ShowStatusBar();
 }
 

@@ -12,7 +12,6 @@ void initialize()
     K_UINT16 l;
     char *v;
     time_t tnow;
-    SDL_Surface *screen;
     SDL_Surface *icon;
 
     SDL_AudioSpec want;

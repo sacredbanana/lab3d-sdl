@@ -68,6 +68,8 @@ typedef Sint16 K_INT16;
 #include <unistd.h>
 #endif
 
+#include "demo.h"
+
 /* Some (obsolete) port numbers... */
 
 #define dataport 0x330
@@ -254,6 +256,8 @@ enum {
     ACTION_MENU_SELECT2,
     ACTION_MENU_SELECT3,
     ACTION_MENU_CANCEL,
+    ACTION_REWIND,
+    ACTION_ADVANCE,
     ACTION_LAST,
     ACTION_CONFIG_LAST = ACTION_MENU+1
 };
@@ -371,7 +375,7 @@ EXTERN char introskip;
 
 /* Monster stuff... */
 
-EXTERN K_UINT16 mposx[512], mposy[512], mnum;
+EXTERN K_UINT16 mposx[512], mposy[512], mnum, bossmonster;
 EXTERN K_UINT16 mgolx[512], mgoly[512], mrotbuf[2048];
 EXTERN K_UINT16 moldx[512], moldy[512];
 EXTERN K_INT16 mshock[512], mstat[512];
@@ -390,12 +394,11 @@ EXTERN K_UINT32 explotime[16];
 EXTERN K_UINT16 explostat[16];
 EXTERN K_UINT16 explonum;
 
-typedef K_INT16 (*soundfunc)(K_UINT16 filenum, K_UINT16 pan, int ui);
-typedef struct demorec demorec;
-typedef struct demoplay demoplay;
+EXTERN unsigned char psounds[16];
+EXTERN unsigned char psoundpan[16];
+EXTERN K_UINT32 psoundnum;
 
-extern demorec* demorecording;
-extern demoplay* demoplaying;
+EXTERN demofile_t *demoplaying, *demorecording;
 
 /* Temporary table... */
 EXTERN K_INT16 lincalc[360];
@@ -478,6 +481,7 @@ void UploadOverlay(void);
 void UploadPartialOverlay(int x,int y,int w,int h);
 void initialize();
 K_INT16 vline(K_INT16,K_INT16,K_INT16,K_INT16,K_INT16);
+void update_bulrot(K_UINT16, K_UINT16);
 void picrot(K_UINT16, K_UINT16, K_INT16, K_INT16);
 void spridraw(K_INT16, K_INT16, K_INT16, K_INT16);
 void pictur(K_INT16, K_INT16, K_INT16, K_INT16, K_INT16);
@@ -547,22 +551,12 @@ void SetVisibleScreenOffset(K_UINT16 offset);
 int ClipToBuffer(int *sx, int *sy, int *w, int *h);
 void ShowPartialOverlay(int x,int y,int w,int h,int statusbar);
 void PollInputs();
+void FindJoysticks();
 void ProcessEvent(SDL_Event* event);
 void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
                 K_INT16 walnume);
-
-demorec* demo_start_record(const char* filename, int format);
-void demo_close_record(demorec*);
-void demo_update(demorec*, int);
-void demo_sound(demorec* d, int which, int pan);
-void demo_time_jump(demorec*, int);
-
-demoplay* demo_start_play(const char* filename);
-void demo_close_play(demoplay*);
-int demo_update_play(demoplay*, int);
-void demo_set_soundfunc(demoplay*, soundfunc);
 
 typedef struct {
     SDL_Keycode key;
@@ -768,6 +762,7 @@ void quit();
 void loadsettings();
 void savesettings();
 void configure();
+void configure_screen_size();
 void reset_dsp();
 void updatemap();
 void updategameover();
@@ -775,6 +770,7 @@ void ShowStatusBar();
 void setup();
 void drawinputbox();
 int getkeydefstat(int keydef);
+int getkeydefstatlock(int keydef);
 void clearkeydefstat(int keydef);
 int getkeypressure(int keydef, int pressval, int runpressval);
 void fatal_error(const char* fmt, ...);
@@ -784,6 +780,7 @@ int get_pckey(SDL_Keycode key);
 int read_ini(FILE* input, char* buf, int buflen, char **keyp, char **valp, int *linep);
 int get_enum(char* str, enumpair* cur);
 int smooth_input(int, int, int, int);
+void setup_stereo(int);
 
 SDL_mutex *soundmutex,*timermutex;
 
