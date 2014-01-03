@@ -17,9 +17,11 @@ Improvements over the original Ken's Labyrinth:
 - Supports big-endian CPUs.
 - Uses OpenGL to provide hardware accelerated, anti-aliased graphics with
   trilinear interpolation in true colour (where available).
+- Hi-res texture support.
 - Multiple simultaneous sound effects.
 - Improved General MIDI music.
 - Adlib emulation.
+- Game controller support.
 - Many bug fixes.
 
         Credits
@@ -28,6 +30,8 @@ Improvements over the original Ken's Labyrinth:
 Design, code and Adlib emulation by:	LAB3D/SDL code by:
 Ken Silverman				Jan Lönnberg
 http://www.advsys.net/ken		http://koti.mbnet.fi/lonnberg/
+					Katie Stafford
+                                        https://ktpanda.org/
 
 Artwork by:				Board maps by:
 Mikko Iho				Andrew Cotter
@@ -280,6 +284,10 @@ Changes:
 Fixed bugs:
 
 - Fixed incorrect warp behaviour in LAB3D v1.x.
+
+----------------------------------------------------------------------------
+For further changes, see CHANGELOG
+----------------------------------------------------------------------------
 
 The following is an excerpt from Ken Silverman's original documentation for
 the Ken's Labyrinth 2.1 source release:
