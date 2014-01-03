@@ -2,6 +2,30 @@
 		======================================
 
 
+- SDL2 support
+
+LAB3D-SDL has been ported to SDL2.0, which brings several improvements:
+1. Fullscreen mode now runs at the native desktop resolution - it's no
+longer necessary to select your resolution in the setup program.
+2. Game controller support - with SDL1.2, game controllers are
+detected as joysticks, so supporting different controllers meant extra
+work for each game.
+
+
+- Improved setup program
+
+Settings can now be changed from the main menu without launching a
+separate program. Changes to controls take effect immediately, all
+other settings require the game to be restarted.
+
+
+- Improved joystick/controller support
+
+Joystick buttons and axes can be assigned like keys from the setup
+program. In addition, UI functions (such as menus) can now be
+controlled entirely from game controllers or joysticks.
+
+
 - Wall settings/Hi-Res Texture replacement
 
 There is now a file called wallparams.ini which defines various
@@ -73,23 +97,6 @@ Note that when wallparams.ini is present, the standard texture
 transitioning system is disabled.
 
 
-- SDL2 support
-
-LAB3D-SDL has been ported to SDL2.0, which brings several improvements:
-1. Fullscreen mode now runs at the native desktop resolution - it's no
-longer necessary to select your resolution in the setup program.
-2. Game controller support - with SDL1.2, game controllers are
-detected as joysticks, so supporting different controllers meant extra
-work for each game.
-
-
-- Improved joystick/controller support
-
-Joystick buttons and axes can be assigned like keys from the setup
-program. In addition, UI functions (such as menus) can now be
-controlled entirely from game controllers or joysticks.
-
-
 - Boss life meter
 
 Whenever a boss is within earshot, a health meter will be drawn at the
@@ -121,3 +128,4 @@ things look just fine up close.
 - Anisotropic filtering option
 
 Anisotropic filtering can be selected in the setup program.
+
