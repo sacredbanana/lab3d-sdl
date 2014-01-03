@@ -1,4 +1,4 @@
-3.0: 2013-09-03
+3.0: 2014-01-03
   * Upgraded to SDL2.
   * New settings format - now actually readable, and easier to add to in the
     future.
