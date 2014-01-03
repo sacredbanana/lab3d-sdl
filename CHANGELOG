@@ -5,18 +5,20 @@
   * Unified jpystick and keyboard support - most UI functions can now be
     operated by controller or joystick (except for entering text). Joysticks and
     controllers can be plugged and unplugged while the game is running.
+  * Setup can now be accessed from the main menu. Changes to controls
+    take effect immediately, all other settings require restart.
   * New -load option to load a savegame directly.
+  * Beta support for demo recording and playback.
+  * Initial support for red-blue anaglyph stereo.
   * Fixed bug where only the top half of scrolling image on the title screen was
     displayed. 
   * Fixed bug where menus would go black after switching away and back.
   * Added new "cycle weapon" key.
   * Added direct strafe keys.
-  *
 
 2.32-2005-10-31:
   * Added anisotropic filtering option, which reduces the blurring on walls when
     viewed from an angle. 
-
 
 2.32-2005-05-30:
   * Made warp transparent<
