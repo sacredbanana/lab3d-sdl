@@ -28,6 +28,9 @@ Command-line parameters (these override settings chosen in setup):
 -sound			Enable sound effects.
 -debug			Extended graphics debug output. Only for
 			troubleshooting purposes.
+-load <s>		Immediately load a savegame slot (1-8)
+-record <demo> <s>	Start recording a demo file starting at savegame slot <s>
+-play <demo>		Play back a demo file
 
 To activate cheat codes, the last parameter must be either "snausty" (normal
 cheat mode) or "cheaton" (cheat codes use [LSHIFT]-[LCTRL] instead of both
