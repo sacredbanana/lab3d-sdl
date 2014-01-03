@@ -28,6 +28,10 @@ makezip() {
     rm -rf $zpath
 }
 
+copy_source() {
+    cp -a adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c setup.c subs.c adlibemu.h demo.h lab3d.h Makefile ken $1
+}
+
 copy_tex() {
     cp -a wallparams.ini hires $1
 }
@@ -56,9 +60,10 @@ copy_data() {
     cp dist/data-files/* $cpath
 }
 
-makezip zip win32 winbin data
-makezip zip win32-all winbin data tex
-makezip tar lin32 linbin32 data
-makezip tar lin32-all linbin32 data tex
-makezip tar lin64 linbin32 data
-makezip tar lin64-all linbin64 data tex
+makezip tar src source data tex
+makezip zip win32 winbin data tex
+#makezip zip win32-all winbin data tex
+makezip tar lin32 linbin32 data tex
+#makezip tar lin32-all linbin32 data tex
+makezip tar lin64 linbin64 data tex
+#makezip tar lin64-all linbin64 data tex
