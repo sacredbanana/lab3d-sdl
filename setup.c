@@ -288,7 +288,7 @@ static int action_key_default[ACTION_LAST]={
     /* ACTION_MENU_SELECT2 */  SDLK_KP_ENTER,
     /* ACTION_MENU_SELECT3 */  SDLK_SPACE,
     /* ACTION_MENU_CANCEL  */  SDLK_ESCAPE,
-    /* ACTION_REWIND       */  SDLK_m,
+    /* ACTION_REWIND       */  SDLK_r,
     /* ACTION_ADVANCE      */  SDLK_n
 };
 

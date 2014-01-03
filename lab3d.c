@@ -110,6 +110,49 @@ void delmonster(int i) {
     mshock[i] = mshock[mnum];
 }
 
+void debuginfo(void) {
+    int x = 0, y = 2, bultime, ptime, gtime, graytime, bluetime;
+
+    if (newkeystatus(SDLK_F11)) {
+        if (!(showdebug & 2))
+            showdebug ^= 3;
+    } else {
+        showdebug &= 1;
+    }
+    if (!showdebug)
+        return;
+
+#define dbg(v) snprintf(textbuf, sizeof(textbuf), "%-12s: %d\n", #v, v); textprint(x,y,(char)96); y += 10
+    mixing=1;
+    wipeoverlay(0,0,361,statusbaryoffset);
+    snprintf(textbuf, sizeof(textbuf), "%02d:%04d %02d:%04d %4d %3d:%03d\n", 
+             posx>>10, posx&1023, posy>>10, posy&1023, ang&2047,
+             scoreclock / 240, scoreclock % 240);
+    textprint(x,y,(char)96); y += 10;
+    
+    snprintf(textbuf, sizeof(textbuf), "%4d    %4d    %4d\n", 
+             vel, svel, angvel);
+    textprint(x,y,(char)96); y += 10;
+
+    bultime = (lastbulshoot+240-(firepowers[bulchoose]<<5)) - totalclock;
+    if (bultime < 0) bultime = 0;
+
+    ptime = purpletime > totalclock ? totalclock - purpletime : 0;
+    gtime = greentime > totalclock ? totalclock - greentime : 0;
+    graytime = capetime[0] > totalclock ? totalclock - capetime[0] : 0;
+    bluetime = capetime[1] > totalclock ? totalclock - capetime[1] : 0;
+
+    snprintf(textbuf, sizeof(textbuf), "%3d %5d %5d %5d %5d\n", 
+             bultime, ptime/24, gtime/24, graytime/24, bluetime/24);
+    textprint(x,y,(char)96); y += 10;
+
+    strcpy(textbuf, "+");
+    textprint(360/2 - 4, 120, (char)96);
+    
+    mixing=0;
+#undef dbg    
+}
+
 void drawvolumebar(int vol,int type,float level) {
     if (level>0.5) level=0.5;
     glEnable(GL_BLEND);
@@ -344,6 +387,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
         }
 
         picrot(posx, posy, posz, ang);
+        debuginfo();
         statusbaralldraw();
         SDL_GL_SwapWindow(mainwindow);
     }
@@ -746,6 +790,7 @@ int main(int argc,char **argv)
         }
 
         picrot(posx,posy,posz,ang);
+        debuginfo();
         
     demo_continue_entry:
 

@@ -1399,8 +1399,16 @@ void setup_stereo(int s) {
 
 void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
     int i;
-    int sep = -16;
-    int asep = 4;
+    if (newkeystatus(SDLK_1)) {
+        g_stereo_sep -= 1;
+        printf("sep = %d\n", g_stereo_sep);
+    } else if (newkeystatus(SDLK_2)) {
+        g_stereo_sep += 1;
+        printf("sep = %d\n", g_stereo_sep);
+    }
+    int sep = g_stereo_sep >> 3;
+    int asep = stereo == 2 ? 0 : 4;
+
     if (!stereo) {
         _picrot(posxs, posys, poszs, angs, aspw, asph);
     } else {

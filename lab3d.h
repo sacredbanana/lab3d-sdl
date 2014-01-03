@@ -398,6 +398,8 @@ EXTERN unsigned char psounds[16];
 EXTERN unsigned char psoundpan[16];
 EXTERN K_UINT32 psoundnum;
 
+EXTERN char showdebug;
+
 EXTERN demofile_t *demoplaying, *demorecording;
 
 /* Temporary table... */
@@ -788,6 +790,8 @@ SDL_mutex *soundmutex,*timermutex;
 #define JOY_FLAG_AXIS 0x20000000
 #define JOY_MASK 0x1FFFFFFF
 #define ACTION_UNBOUND -1
+
+EXTERN int g_stereo_sep;
 
 EXTERN int action_key[ACTION_LAST];
 EXTERN int action_joystick[ACTION_LAST];
