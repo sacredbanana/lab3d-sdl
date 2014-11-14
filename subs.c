@@ -198,10 +198,12 @@ if (cur_##type && action_##type[keydef] != ACTION_UNBOUND) {            \
         int value = SDL_##sdltype##GetAxis(cur_##type, which);          \
         int neg = act & JOY_FLAG_NEG ? 1 : 0;                           \
         if (neg) value = -value;                                        \
-        if (value > deadzone)                                           \
-            value = ((int)(value - deadzone) * (32767.0 / (32767.0 - deadzone))); \
-        else                                                            \
+        if (value < low_deadzone)                                       \
             value = 0;                                                  \
+        else if (value > high_deadzone)                                 \
+            value = 32767;                                              \
+        else                                                            \
+            value = ((int)(value - low_deadzone) * (32767.0 / (high_deadzone - low_deadzone))); \
         if (pressval == 1) {                                            \
             unsigned int mask = 1 << which;                             \
             if (value >= 12*1024) {                                     \
@@ -225,7 +227,8 @@ if (cur_##type && action_##type[keydef] != ACTION_UNBOUND) {            \
 }
 
 int getkeypressure(int keydef, int pressval, int runpressval) {
-    int deadzone = 6000;
+    int low_deadzone = 6000;
+    int high_deadzone = 32767 - 700;
     if (action_key[keydef] != ACTION_UNBOUND) {
         if (newkeystatus(action_key[keydef])) {
             if (pressval == runpressval)
