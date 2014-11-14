@@ -16,48 +16,48 @@ static void draw_mainmenu(void);
 
 #ifdef WIN32
 #define HAVE_DESKTOP
-HRESULT CreateLink(LPCSTR lpszPathObj, 
+HRESULT CreateLink(LPCSTR lpszPathObj,
                    LPSTR lpszPathLink, LPSTR lpszDesc,
-                   LPSTR lpszArgs) { 
-    HRESULT hres; 
-    IShellLink* psl; 
+                   LPSTR lpszArgs) {
+    HRESULT hres;
+    IShellLink* psl;
     char p[MAX_PATH];
- 
+
     CoInitialize(NULL);
-    hres = CoCreateInstance(&CLSID_ShellLink, NULL, 
+    hres = CoCreateInstance(&CLSID_ShellLink, NULL,
                             CLSCTX_INPROC_SERVER, &IID_IShellLink,
-                            (void *)&psl); 
-    if (SUCCEEDED(hres)) { 
-        IPersistFile* ppf; 
-        
+                            (void *)&psl);
+    if (SUCCEEDED(hres)) {
+        IPersistFile* ppf;
+
         GetCurrentDirectory(MAX_PATH, p);
-        psl->lpVtbl->SetWorkingDirectory(psl, p); 
-        hres=psl->lpVtbl->SetPath(psl, lpszPathObj); 
+        psl->lpVtbl->SetWorkingDirectory(psl, p);
+        hres=psl->lpVtbl->SetPath(psl, lpszPathObj);
 
-        psl->lpVtbl->SetArguments(psl, lpszArgs); 
+        psl->lpVtbl->SetArguments(psl, lpszArgs);
 
-        psl->lpVtbl->SetDescription(psl, lpszDesc); 
- 
-        hres = psl->lpVtbl->QueryInterface(psl, &IID_IPersistFile, 
-                                           (void *)&ppf); 
- 
-        if (SUCCEEDED(hres)) { 
-            WORD wsz[MAX_PATH]; 
- 
+        psl->lpVtbl->SetDescription(psl, lpszDesc);
+
+        hres = psl->lpVtbl->QueryInterface(psl, &IID_IPersistFile,
+                                           (void *)&ppf);
+
+        if (SUCCEEDED(hres)) {
+            WORD wsz[MAX_PATH];
+
             fprintf(stderr,"Trying to save shortcut...\n");
-            MultiByteToWideChar(CP_ACP, 0, lpszPathLink, -1, 
-                                wsz, MAX_PATH); 
+            MultiByteToWideChar(CP_ACP, 0, lpszPathLink, -1,
+                                wsz, MAX_PATH);
 
-            hres = ppf->lpVtbl->Save(ppf, wsz, TRUE); 
+            hres = ppf->lpVtbl->Save(ppf, wsz, TRUE);
             ppf->lpVtbl->Release(ppf);
             if (SUCCEEDED(hres))
                 fprintf(stderr,"Done.\n");
-        } 
-        psl->lpVtbl->Release(psl); 
-    } 
+        }
+        psl->lpVtbl->Release(psl);
+    }
     CoUninitialize();
-    return hres; 
-} 
+    return hres;
+}
 
 void createshortcut(char* errbuf, int errlen) {
     ITEMIDLIST *l;
@@ -151,7 +151,7 @@ int create_desktop_file(char* path) {
         free(cwd);
         return 0;
     }
-    
+
     fprintf(f, "[Desktop Entry]\n");
     fprintf(f, "Categories=Game;ArcadeGame;\n");
     fprintf(f, "Encoding=UTF-8\n");
@@ -531,7 +531,7 @@ int resolutionmenu(int alts,int start,char titles[][30],int def) {
     if (def>=alts) def=0;
 
     drawmenu(304,j,menu);
-    
+
     for(i=0;i<alts;i++) {
         strcpy(textbuf,titles[i]);
         textprint(71,120-6*alts+12*i,lab3dversion?32:34);
@@ -615,7 +615,7 @@ void customresolution(void) {
     int x,y;
 
     drawinputbox();
-    finalisemenu();    
+    finalisemenu();
     sprintf(&textbuf[0],"Enter screen width:");
     textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
     x=getnumber();
@@ -827,7 +827,7 @@ static void joy_instruction(const char* inst) {
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
     strcpy(textbuf,"or press any key to cancel;");
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
-    
+
     strcpy(textbuf,"press BACKSPACE to delete");
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
     finalisemenu();
@@ -842,7 +842,7 @@ static void ctrl_instruction(const char* inst) {
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
     strcpy(textbuf,"or press any key to cancel;");
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
-    
+
     strcpy(textbuf,"press BACKSPACE to delete");
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
     finalisemenu();
@@ -871,7 +871,7 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
         }
         strcpy(textbuf, "Return");
         textprint(31, 13 + 12 * j, lab3dversion ? 32 : 34);
-    
+
         strcpy(textbuf,"Use cursor keys / left stick to select.");
         textprint(23,208,lab3dversion?32:34);
 
@@ -1002,7 +1002,7 @@ static void draw_mainmenu(void) {
         strcpy(textbuf,"Return");
     else
         strcpy(textbuf,"Exit setup");
-        
+
     n += 12; textprint(51,n,lab3dversion?128:130);
 
     n = 220;
@@ -1105,7 +1105,7 @@ void configure(void) {
     switch(music) {
         case 2:
             musicsource=1;
-            break;	    
+            break;
         case 1:
             musicsource=2;
             break;
@@ -1158,7 +1158,7 @@ void configure_screen_size(void) {
             if (div1<1) {
                 fprintf(stderr,
                         "Warning: resolution must be 320x200 or more"
-                        " for integer scaling.\n");	    
+                        " for integer scaling.\n");
                 virtualscreenwidth=360;
                 virtualscreenheight=240;
             } else {
@@ -1498,9 +1498,9 @@ void loadsettings(void) {
     if (!key_settings[0].name) {
         int i;
         for (i = 0; i < ACTION_LAST; i++) {
-            key_settings[i].name = joystick_settings[i].name = 
+            key_settings[i].name = joystick_settings[i].name =
                 controller_settings[i].name = action_enum_names[i];
-            key_settings[i].i1 = joystick_settings[i].i1 = 
+            key_settings[i].i1 = joystick_settings[i].i1 =
                 controller_settings[i].i1 = i;
             key_settings[i].load = _load_key;
             key_settings[i].save = _save_key;
@@ -1629,10 +1629,10 @@ void setup(void) {
         SDL_SetWindowIcon(mainwindow, icon);
 
     maincontext = SDL_GL_CreateContext(mainwindow);
-    
+
     if (maincontext == NULL) {
         fatal_error("Could not create GL context.");
-    }	
+    }
 
     SDL_SetWindowBrightness(mainwindow, 1.0); /* Zap gamma correction. */
 
@@ -1640,7 +1640,7 @@ void setup(void) {
     virtualscreenheight=240;
 
     largescreentexture=0;
-                                                              
+
     if (largescreentexture) {
         /* One large 512x512 texture. */
 
@@ -1653,7 +1653,7 @@ void setup(void) {
         screenbufferheight=746;
     }
 
-    screenbuffer=malloc(screenbufferwidth*screenbufferheight);    
+    screenbuffer=malloc(screenbufferwidth*screenbufferheight);
     screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
 
     linecompare(479);
@@ -1663,7 +1663,7 @@ void setup(void) {
         SDL_Quit();
         exit(-1);
     }
-    
+
     fprintf(stderr,"Loading configuration file...\n");
 
     loadtables();
@@ -1760,7 +1760,7 @@ void setup(void) {
         /* The ingame palette is stored in this GIF! */
         kgif(1);
         memcpy(spritepalette,palette,768);
-        
+
         kgif(0);
         settransferpalette();
         fprintf(stderr,"Loading graphics...\n");
@@ -1772,7 +1772,7 @@ void setup(void) {
     glDrawBuffer(GL_FRONT);
 
     setupmenu(0);
-  
+
     savesettings();
     SDL_Quit();
     exit(0);

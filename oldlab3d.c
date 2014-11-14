@@ -45,17 +45,17 @@ void oldmain(void)
     fade(63);
     oldintroduction();
     visiblescreenyoffset=0;
-  
+
     while (getkeydefstat(ACTION_MENU) == 0)
     {
         PollInputs();
         /* Check cheat keys... */
 
         if ((keystatus[42] > 0) && (keystatus[54] > 0) && (cheatenable == 1))
-            cheatkeysdown = 1;	
+            cheatkeysdown = 1;
         else if ((keystatus[42] > 0) && (keystatus[29] > 0) && (cheatenable == 2))
             cheatkeysdown=1;
-        else	    
+        else
             cheatkeysdown = 0;
 
         if (death < 4095)
@@ -157,7 +157,7 @@ void oldmain(void)
         sortcnt = 0;
         SDL_LockMutex(soundmutex);
         SDL_LockMutex(timermutex);
-        
+
         /* Speed cap at 2 ticks/frame (about 120 fps). */
         if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 2)) {
             SDL_UnlockMutex(soundmutex);
@@ -1050,7 +1050,7 @@ void oldmain(void)
                     }
                     ksay(24);
                     inhibitrepeat=1;
-                }		
+                }
             }
             i=0;
             if ((!inhibitrepeat)) {
@@ -1783,7 +1783,7 @@ void oldmain(void)
                 musicon();
                 for(n=-2;n>=-4;n--)
                 {
-                    kgif(n);	
+                    kgif(n);
                     SetVisibleScreenOffset(0);
                     SDL_GL_SwapWindow(mainwindow);
                     setnewkeystatus(SDLK_ESCAPE, 0);
@@ -1849,7 +1849,7 @@ void oldmain(void)
                 while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
                 {
                     PollInputs();
-            
+
                     if (newkeystatus(SDLK_1)) {
                         i=0;
                         m = 1;
@@ -1914,11 +1914,11 @@ void oldmain(void)
                 pageoffset = j;
                 m = 0;
                 ototclock = totalclock;
-        
+
                 while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
                 {
                     PollInputs();
-            
+
                     if (newkeystatus(SDLK_1)) {
                         oldloadgame(0);
                         m = 1;
@@ -2060,7 +2060,7 @@ void oldmain(void)
                 fade(j);
                 ShowPartialOverlay(0,0,360,statusbaryoffset,0);
                 mixing=0;
-        
+
                 fade(27);
 
                 SDL_GL_SwapWindow(mainwindow);
@@ -2077,7 +2077,7 @@ void oldmain(void)
             lastbarchange = 1;
             SDL_LockMutex(timermutex);
             clockspeed = 0;
-            SDL_UnlockMutex(timermutex);      
+            SDL_UnlockMutex(timermutex);
             scoreclock = 0;
             scorecount = 0;
             olddrawscore(scorecount);
@@ -2188,7 +2188,7 @@ void olddrawlife(void)
         life = 0;
     if (life > 4095)
         life = 4095;
-    /* TODO: Write only to horizontal X offsets that are 1 or 2 (mod 4). */ 
+    /* TODO: Write only to horizontal X offsets that are 1 or 2 (mod 4). */
     if ((life&0xfc0) < (oldlife&0xfc0)) {
         col=0;
         x=((life>>6)+13)<<2;
@@ -2199,7 +2199,7 @@ void olddrawlife(void)
         x=((oldlife>>6)+13)<<2;
         blocks=(life>>6)-(oldlife>>6);
     }
-  
+
     if (blocks!=0) {
         c=(screenbuffer+y*screenbufferwidth+x+1);
         for(n=0;n<blocks;n++) {
@@ -2249,7 +2249,7 @@ K_INT16 oldloadgame(K_INT16 gamenum)
     readLE16(fil,&bulchoose,2);
     readLE16(fil,&keys[0],4);
     if (lab3dversion==1)
-        readLE16(fil,&coins,2);	
+        readLE16(fil,&coins,2);
     readLE16(fil,&compass,2);
     readLE16(fil,&cheated,2);
     readLE16(fil,&heatpos,2);
@@ -2372,7 +2372,7 @@ K_INT16 oldsavegame(K_INT16 gamenum)
     filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
     filename[6] = 'e', filename[7] = gamenum+48;
     filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-    filename[11] = 't', filename[12] = 0;	
+    filename[11] = 't', filename[12] = 0;
 
     unlink(filename);
 
@@ -2395,7 +2395,7 @@ K_INT16 oldsavegame(K_INT16 gamenum)
     writeLE16(fil,&bulchoose,2);
     writeLE16(fil,&keys[0],4);
     if (lab3dversion==1)
-        writeLE16(fil,&coins,2);	
+        writeLE16(fil,&coins,2);
     writeLE16(fil,&compass,2);
     writeLE16(fil,&cheated,2);
     writeLE16(fil,&heatpos,2);
@@ -2658,7 +2658,7 @@ K_INT16 oldintroduction(void)
                         lastunlock = 1;
                         lastshoot = 1;
                         lastbarchange = 1;
-                        SetVisibleScreenOffset(0);	
+                        SetVisibleScreenOffset(0);
                         oldstatusbaralldraw();
                         return(0);
                     }
@@ -2735,7 +2735,7 @@ K_INT16 oldintroduction(void)
     clockspeed = 0;
     scoreclock = 0;
     scorecount = 0;
-    SetVisibleScreenOffset(0);	
+    SetVisibleScreenOffset(0);
     oldstatusbaralldraw();
     return 0;
 }
@@ -2832,7 +2832,7 @@ K_INT16 oldcheckhitwall(K_UINT16 oposx,K_UINT16 oposy,K_UINT16 posix,
    s pixels big from the monster at (mx,my) as seen by the player in (px,py)
    at angle a. Return 1 on success, 0 on failure (out of range). */
 int getendexplosionpos(K_UINT16 *x, K_UINT16 *y, K_UINT16 mx,
-                       K_UINT16 my, K_UINT16 px, K_UINT16 py, 
+                       K_UINT16 my, K_UINT16 px, K_UINT16 py,
                        K_INT32 s, K_INT16 a) {
     double z, tx, ty;
     K_INT32 n=
@@ -2841,12 +2841,12 @@ int getendexplosionpos(K_UINT16 *x, K_UINT16 *y, K_UINT16 mx,
     if (n>0) {
         z=((double)2684354560.0)/((double)n)/((double)s);
         tx=px+z*(mx-px);
-        ty=py+z*(my-py);	
+        ty=py+z*(my-py);
         if ((tx>0.1)&&(ty>0.1)&&(tx<65534.9)&&(ty<65534.9)) {
             *x=tx;
             *y=ty;
             return 1;
-        } else return 0;	    
+        } else return 0;
     } else return 0;
 }
 
@@ -2856,7 +2856,7 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
     K_INT32 revtotalclock, revototclock;
 
     K_UINT16 x, y;
-    
+
     revototclock = -1;
     revtotalclock = 0;
     brightness = 63;
@@ -2874,7 +2874,7 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
         if ((revtotalclock < 480) && (revtotalclock>0))
         {
             if (((posx|1023) != (mxpos|1023)) || ((posy|1023) != (mypos|1023)))
-                if (getendexplosionpos(&x, &y, mxpos, mypos, posx, posy, 
+                if (getendexplosionpos(&x, &y, mxpos, mypos, posx, posy,
                                        revtotalclock>>1, ang))
                     checkobj(x,y,posx,posy,ang,44);
         }

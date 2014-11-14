@@ -325,7 +325,7 @@ Very few comments have been included in the code; most are code that has been
 commented out.
 
 A lot of functions that don't return values are declared int(...) instead of
-void(...). 
+void(...).
 
 Some of the monster names date back to Walken, so they may seem a bit odd to
 someone unfamiliar with the history of Ken's Labyrinth.
@@ -484,7 +484,7 @@ Timing is done using an SDL timer callback. As SDL can not guarantee
 sufficient accuracy to provide a 240 Hz callback, the current time is checked
 every time the callback is executed, and the original KSM handler code run an
 amount of times corresponding to the duration that has elapsed. This smooths
-out most of the timer inaccuracy. 
+out most of the timer inaccuracy.
 
 10 ms delays have been added to places where the original game simply runs as
 quickly as possible to keep the speed in check. In the future, proper timing
@@ -527,7 +527,7 @@ interpolation) to 44 KHz before playback.
 
 My modifications didn't make the code much more readable. Sorry. I introduced
 several global variables to keep track of various graphics states; most of
-these exist solely to compensate for oddities in the original code. 
+these exist solely to compensate for oddities in the original code.
 
 Generally speaking, I tried to change as little as possible of the original
 code, which means that the graphics code design is almost nonexistent; most of

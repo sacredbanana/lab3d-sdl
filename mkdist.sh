@@ -15,7 +15,7 @@ makezip() {
     zpath=$XPATH/$zipname
     cpath=$zpath/LAB3D-SDL-$VERS
     mkdir -p $cpath
-    
+
     shift; shift
     for j; do
         "copy_$j" $cpath;

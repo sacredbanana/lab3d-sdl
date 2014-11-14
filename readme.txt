@@ -25,7 +25,7 @@ Improvements over the original Ken's Labyrinth:
 - Many bug fixes.
 
         Credits
-	-------  
+	-------
 
 Design, code and Adlib emulation by:	LAB3D/SDL code by:
 Ken Silverman				Jan Lönnberg
@@ -164,7 +164,7 @@ Fixed bugs:
 	Version	0.931 - 04/10/2002
 	--------------------------
 
-Changes: 
+Changes:
 
 - Sound buffer sizes now selected in milliseconds.
 - Changed default sound buffer size to 11.8 ms.
@@ -179,7 +179,7 @@ Changes:
 	Version	0.94 - 30/10/2002
 	-------------------------
 
-Changes: 
+Changes:
 
 - Rewrote status bar code for efficient status bar sliding and variable
   padding of status bar.
@@ -192,7 +192,7 @@ Changes:
 	Version	0.941 - 11/11/2002
 	--------------------------
 
-Changes: 
+Changes:
 
 - Improved OpenGL diagnostics output to help solve compatibility problems.
 - Added 1280x960 mode to setup program.
