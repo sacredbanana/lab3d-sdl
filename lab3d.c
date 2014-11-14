@@ -112,7 +112,9 @@ void delmonster(int i) {
 
 void debuginfo(void) {
     int x = 0, y = 2, bultime, ptime, gtime, graytime, bluetime;
-
+    int accelf;
+    int accels;
+    int accelt;
     if (newkeystatus(SDLK_F11)) {
         if (!(showdebug & 2))
             showdebug ^= 3;
@@ -121,17 +123,24 @@ void debuginfo(void) {
     }
     if (!showdebug)
         return;
+    accelf = (getkeypressure(ACTION_FORWARD, 16384, 32767) - getkeypressure(ACTION_BACKWARD, 16384, 32767)) * 256 / 32767.0;
+    accels = (getkeypressure(ACTION_MOVELEFT, 16384, 32767) - getkeypressure(ACTION_MOVERIGHT, 16384, 32767)) * 256 / 32767.0;
+    accelt = (getkeypressure(ACTION_RIGHT, 16384, 32767) - getkeypressure(ACTION_LEFT, 16384, 32767)) * 36 / 32767.0;
 
 #define dbg(v) snprintf(textbuf, sizeof(textbuf), "%-12s: %d\n", #v, v); textprint(x,y,(char)96); y += 10
     mixing=1;
     wipeoverlay(0,0,361,statusbaryoffset);
-    snprintf(textbuf, sizeof(textbuf), "%02d:%04d %02d:%04d %4d %3d:%03d\n", 
+    snprintf(textbuf, sizeof(textbuf), "%02d:%04d %02d:%04d %4d %3d:%03d\n",
              posx>>10, posx&1023, posy>>10, posy&1023, ang&2047,
              scoreclock / 240, scoreclock % 240);
     textprint(x,y,(char)96); y += 10;
-    
-    snprintf(textbuf, sizeof(textbuf), "%4d    %4d    %4d\n", 
+
+    snprintf(textbuf, sizeof(textbuf), "%4d    %4d    %4d\n",
              vel, svel, angvel);
+    textprint(x,y,(char)96); y += 10;
+
+    snprintf(textbuf, sizeof(textbuf), "%4d    %4d    %4d\n",
+             accelf, accels, accelt);
     textprint(x,y,(char)96); y += 10;
 
     bultime = (lastbulshoot+240-(firepowers[bulchoose]<<5)) - totalclock;
