@@ -151,15 +151,15 @@ void debuginfo(void) {
     graytime = capetime[0] > totalclock ? totalclock - capetime[0] : 0;
     bluetime = capetime[1] > totalclock ? totalclock - capetime[1] : 0;
 
-    snprintf(textbuf, sizeof(textbuf), "%3d %5d %5d %5d %5d\n", 
+    snprintf(textbuf, sizeof(textbuf), "%3d %5d %5d %5d %5d\n",
              bultime, ptime/24, gtime/24, graytime/24, bluetime/24);
     textprint(x,y,(char)96); y += 10;
 
     strcpy(textbuf, "+");
     textprint(360/2 - 4, 120, (char)96);
-    
+
     mixing=0;
-#undef dbg    
+#undef dbg
 }
 
 void drawvolumebar(int vol,int type,float level) {
@@ -172,7 +172,7 @@ void drawvolumebar(int vol,int type,float level) {
     gluOrtho2D(0.0, 360.0, -15+30*type, 225+30*type);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-        
+
     glBegin(GL_QUADS);
     glColor4f(0,0,0,level);
     glVertex2s(96,110);
@@ -267,7 +267,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
             advance_pressed = 0;
         if (!getkeydefstat(ACTION_USE))
             use_pressed = 0;
-            
+
         if (pause != oldpause) {
             oldpause = pause;
             if (pause) {
@@ -313,7 +313,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
                     }
                 }
                 opsoundnum = psoundnum;
-                
+
                 if (td >= 0)
                     democlock += td * dir;
                 /*fprintf(stderr, "%5d %d %d %d %d\n", democlock, td, posx, posy, ang);*/
@@ -370,7 +370,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
         if (oscillate3 == 3) oscillate3 = 0;
         oscillate5 = tcshf & 7;
         if (oscillate5 > 4) oscillate5 = 8 - oscillate5;
-            
+
         /* These two increment as fast as the game can display - just assume 60fps for now */
         tcshf = totalclock >> 2;
         animate6 = totalclock % 6;
@@ -433,13 +433,13 @@ int main(int argc,char **argv)
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
         ((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
-        close(fil);	
+        close(fil);
         lab3dversion=2; /* Version 1.0 detected. */
         rnumwalls=192;
         fprintf(stderr, "Ken's Labyrinth version 1.0 detected.\n");
     } else if (((fil = open("boards.dat",O_RDONLY|O_BINARY,0)) != -1)||
                ((fil = open("BOARDS.DAT",O_RDONLY|O_BINARY,0)) != -1)) {
-        close(fil);	
+        close(fil);
         lab3dversion=1; /* Version 1.1 detected. */
         rnumwalls=0xe0;
         fprintf(stderr, "Ken's Labyrinth version 1.1 detected.\n");
@@ -510,7 +510,7 @@ int main(int argc,char **argv)
                 cmd_loadgame = j;
                 introskip = 1;
             }
-            
+
             demorecording = demofile_open(argv[++i], demovars, 1, k);
         }
         else if ((strcmp(argv[i],"-play")==0)&&(i+1<argc)) {
@@ -678,7 +678,7 @@ int main(int argc,char **argv)
                     /* Game over, man! */
 
                     fade(0);
-                    
+
                     glClearColor(0,0,0,0);
                     glClear(GL_COLOR_BUFFER_BIT);
 
@@ -800,7 +800,7 @@ int main(int argc,char **argv)
 
         picrot(posx,posy,posz,ang);
         debuginfo();
-        
+
     demo_continue_entry:
 
         if ((death<4095)&&(lifevests == 0))
@@ -824,7 +824,7 @@ int main(int argc,char **argv)
         sortcnt = 0;
         SDL_LockMutex(soundmutex);
         SDL_LockMutex(timermutex);
-        
+
         /* Speed cap at 2 ticks/frame (about 120 fps). */
         if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < (demorecording ? 4 : 2))) {
             SDL_UnlockMutex(soundmutex);
@@ -978,7 +978,7 @@ int main(int argc,char **argv)
             // y = (int)((clockspd*sintable[bulang[i]])>>13);
             y=(K_INT16)((clockspd*sintable[bulang[i]&1023])>>13);
             if (bulang[i]&1024) y=-y;
-            
+
             if (bulkind[i] == 15)
             {
                 x -= (x>>1);
@@ -1463,7 +1463,7 @@ int main(int argc,char **argv)
         tempbuf[mrotbuf[0]] = 20;
         j = 1;				     //j is stop (end of nodes)
 
-        /* This block converted from asm... Apparently, it does a sort of 
+        /* This block converted from asm... Apparently, it does a sort of
            breadth-first search on neighbouring board squares up to a distance
            of 20 squares, limited by walls. Translation: it works out which
            squares are in the same room within 20 squares, and their distance
@@ -1825,11 +1825,11 @@ int main(int argc,char **argv)
                     }
                 }
                 if (mstat[i] == monzor || mstat[i] == monke2 || mstat[i] == monan2) {
-                    
+
                     if (tempbuf[((mposx[i]>>10)<<6)|(mposy[i]>>10)]) {
                         bossmonster = i + 1;
                     }
-                    
+
                 }
                 if (mstat[i] == monzor)
                     if ((mshot[i] < 24) && (mshock[i] == 0) && ((rand()&1023) <= clockspd))
@@ -1925,7 +1925,7 @@ int main(int argc,char **argv)
         /* Handle action button presses... */
 
         waterstat = 0;
-        if (((getkeydefstat(ACTION_USE) > 0) || 
+        if (((getkeydefstat(ACTION_USE) > 0) ||
              ((bstatus&2) > 0)) && (death == 4095)) {
             /*printf("use!!! ihr=%d ds=%d\n", inhibitrepeat, doorstat);*/
             if (!inhibitrepeat)
@@ -2554,7 +2554,7 @@ int main(int argc,char **argv)
                     ksay(2);
             }
         }
-        
+
         /* In centre of square (used to check for falling down holes)? */
 
         i = (board[x][y]&1023);
@@ -2572,12 +2572,12 @@ int main(int argc,char **argv)
         /* Check cheat keys... */
 
         if ((keystatus[42] > 0) && (keystatus[54] > 0) && (cheatenable == 1))
-            cheatkeysdown = 1;	
+            cheatkeysdown = 1;
         else if ((keystatus[42] > 0) && (keystatus[29] > 0) && (cheatenable == 2))
             cheatkeysdown=1;
-        else	    
+        else
             cheatkeysdown = 0;
-        
+
         /* Check for goodies... */
 
         if ((keystatus[19] > 0) && (cheatkeysdown == 1)) {
@@ -2846,7 +2846,7 @@ int main(int argc,char **argv)
         }
         else
             justwarped = 0;
-        
+
         /* Fade... */
 
         if (death == 4095)
@@ -3257,12 +3257,12 @@ int main(int argc,char **argv)
                 }
             x = getkeydefstat(ACTION_PAUSE);
             y = 1;
-            while ((x <= y) && 
-                   (getkeydefstatlock(ACTION_MENU) == 0) && 
-                   (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) && 
-                   (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && 
-                   (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) && 
-                   (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && 
+            while ((x <= y) &&
+                   (getkeydefstatlock(ACTION_MENU) == 0) &&
+                   (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                   (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+                   (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                   (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
                    (bstatus == 0))
             {
                 PollInputs();
@@ -3316,7 +3316,7 @@ int main(int argc,char **argv)
             mixing=1;
 
             loadstory(boardnum);
-            
+
             mixing=0;
 
             clearkeydefstat(ACTION_MENU);
@@ -3356,7 +3356,7 @@ int main(int argc,char **argv)
                 fade(j);
                 ShowPartialOverlay(0,0,360,statusbaryoffset,0);
                 mixing=0;
-                
+
                 fade(27);
 
                 SDL_GL_SwapWindow(mainwindow);
@@ -3415,7 +3415,7 @@ int main(int argc,char **argv)
         {
             SDL_LockMutex(soundmutex); /* Paranoid, I know... */
             mute = 1 - mute;
-            if ((mute == 1) && (musicsource == 1)) { 
+            if ((mute == 1) && (musicsource == 1)) {
 #ifdef WIN32
                 midiOutReset(sequencerdevice);
 #endif
@@ -3535,7 +3535,7 @@ int main(int argc,char **argv)
                 if (vidmode == 0)
                     linecompare(statusbar);
                 SDL_LockMutex(timermutex);
-                clockspeed = 0;	
+                clockspeed = 0;
                 SDL_UnlockMutex(timermutex);
             }
             else
@@ -3596,7 +3596,7 @@ int main(int argc,char **argv)
             if (musicvolumevisible<0)
                 musicvolumevisible=0;
         }
-            
+
         if (ototclock <= 0)
             ototclock++;
         else
@@ -3608,7 +3608,7 @@ int main(int argc,char **argv)
 
         SDL_GL_SwapWindow(mainwindow);
     }
-    
+
     /* End of main loop. End of game. Tidy up things... */
 
     if (frames>0)

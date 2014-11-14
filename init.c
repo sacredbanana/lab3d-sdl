@@ -78,10 +78,10 @@ void initialize()
         SDL_SetWindowIcon(mainwindow, icon);
 
     maincontext = SDL_GL_CreateContext(mainwindow);
-    
+
     if (maincontext == NULL) {
         fatal_error("Could not create GL context.");
-    }	
+    }
 
     SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
     SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE,&realg);
@@ -114,7 +114,7 @@ void initialize()
             realr,realg,realb,realz);
 
     largescreentexture = 1;
-                                                              
+
     if (largescreentexture) {
         /* One large 512x512 texture. */
 
@@ -135,7 +135,7 @@ void initialize()
     if (screenbuffer==NULL) {
         fatal_error("Could not create screen buffer");
     }
-    
+
     fprintf(stderr,"Loading tables/settings...\n");
 
     loadtables();
@@ -189,7 +189,7 @@ void initialize()
     }
 
     if (speechstatus >= 2)
-    {	
+    {
         if (((i = open("sounds.kzp",O_BINARY|O_RDONLY,0)) != -1)||
             ((i = open("SOUNDS.KZP",O_BINARY|O_RDONLY,0)) != -1)) {
             fstat(i, &fstats);
@@ -228,10 +228,10 @@ void initialize()
         want.channels=channels;
         want.samples=soundblocksize;
         want.userdata=NULL;
-        want.callback=AudioCallback;	
+        want.callback=AudioCallback;
         soundbytespertick=(channels*want.freq*2)/240;
-        soundtimerbytes=0;	
-        
+        soundtimerbytes=0;
+
         SDL_OpenAudio(&want,NULL);
 
         reset_dsp();
@@ -336,11 +336,11 @@ void initialize()
             kgif(1);
 
         fade(63);
-    }  
+    }
 
     SetVisibleScreenOffset(0);
     SDL_GL_SwapWindow(mainwindow);
-    
+
     if (moustat == 0)
         moustat = setupmouse();
     if (!introskip) {
@@ -376,7 +376,7 @@ void initialize()
             j = kgif(2);
             if (j)
                 kgif(0);
-        
+
             fade(63);
             l = 25200;
             i = 1;
@@ -471,7 +471,7 @@ void initialize()
     lastshoot = 1;
     lastbarchange = 1;
     hiscorenamstat = 0;
-    
+
     /* Shareware/registered check... */
 
     if (lab3dversion) {

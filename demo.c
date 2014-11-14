@@ -92,7 +92,7 @@ demofile_t* demofile_open(const char* filename, demo_vardef_t* vars, int record,
             return d;
         }
     }
-    
+
     demofile_close(d);
     return NULL;
 }
@@ -136,7 +136,7 @@ static int demofile_write(demofile_t* d, const void* data, int size) {
         return gzwrite(d->gzfil, data, size);
     else
         return fwrite(data, 1, size, d->rawfil);
-        
+
 }
 
 static int demofile_write_hdr(demofile_t* d, int size, int clock) {
@@ -151,7 +151,7 @@ static int demofile_read_frame(demofile_t* d) {
     int readsize, timediff;
     Uint8 *delta, *rle, *delta_end, hdr[4];
     Uint64 *tdelta, *tdata;
-    
+
     if ((j = demofile_read(d, hdr, 4)) < 4) {
         return -1;
     }
@@ -224,7 +224,7 @@ int demofile_advance(demofile_t* d, int dir) {
     if (dir == -1) {
         if (!demofile_rewindable(d))
             return -1;
-        
+
         demofile_seek(d, -2);
         demofile_read(d, hdr, 2);
         prevsize = get16(hdr);
@@ -301,9 +301,9 @@ static int demofile_read_fileheader(demofile_t* d, demo_vardef_t* vars, const ch
     if (d->format > 1)
         return 0;
 
-    if (demofile_read(d, hdr, 4) < 4) 
+    if (demofile_read(d, hdr, 4) < 4)
         return 0;
-    
+
     nvars = get16(hdr);
     d->buffer_size = get16(hdr + 2);
 
@@ -417,7 +417,7 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
 
     pos = 0;
     for (cvardef = vars; cvardef->name; cvardef++) {
-        
+
         cvartrack->ptr = cvardef->ptr;
         cvartrack->elemsize = cvardef->elemsize;
         cvartrack->cnt = cvardef->cnt;
@@ -497,7 +497,7 @@ void demofile_write_frame(demofile_t* d, int timediff) {
     Uint8 *ldata, *delta, *rle, *rle_end;
     Uint8 hdr[2];
     vartrack_t* ct;
-    
+
     ldata = d->cur_data;
     delta = d->delta_buf;
 
@@ -561,7 +561,7 @@ void demofile_write_frame(demofile_t* d, int timediff) {
 /*
 static int demofile_read_frame(demofile_t* d, Uint8* hdr, int dir) {
     int prev_ofs, readsize;
-    
+
     if (demo->format == 1) {
         if (demofile_read(d, hdr, 2) < 2)
             return 0;

@@ -259,7 +259,7 @@ int getkeydefstatlock(int keydef) {
     if (val)
         action_repeat_lock[keydef] = 0xFFFFFFFF;
     return val;
-        
+
 }
 
 int _repeatkeydef(int keydef, int startms, int repms) {
@@ -332,7 +332,7 @@ void loadboard()
         } else {
             fprintf(stderr, "Can't find boards.dat.\n");
             SDL_Quit();
-            exit(1);	
+            exit(1);
         }
     } else {
         if (((fil = open("boards.kzp", O_RDONLY|O_BINARY, 0)) != -1)||
@@ -346,14 +346,14 @@ void loadboard()
             for(i=0;i<(boardnum<<1);i++)
                 templong += ((long)(boleng[i]+2));
             lseek(fil, templong, SEEK_SET);
-        
+
             for(i=1;i<=256;i++) {
                 lzwbuf[i]=i&255;
                 lzwbuf2[i]=i;
             }
             lzwbuf2[0]=0;
             lzwbuf[0]=0;
-        
+
             for(i=0;i<2;i++)
             {
                 unsigned char* boardp = ((unsigned char*)(board)) + (i << 12);
@@ -361,7 +361,7 @@ void loadboard()
                 compleng = boleng[(boardnum<<1)+i];
                 readLE16(fil, &strtot, 2);
                 read(fil, &tempbuf[0], compleng);
-                
+
                 if (strtot > 0)
                 {
                     tempbuf[compleng] = 0;
@@ -374,11 +374,11 @@ void loadboard()
                     goalstr = 512;
                     numbits = 9;
                     do
-                    {		
+                    {
                         dat=(((tempbuf[bytecnt2])|
                               ((K_UINT16)(tempbuf[bytecnt2+1]))<<8)>>bitcnt)&
                             ((1<<numbits)-1);
-                        
+
 /*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
                     >>bitcnt)&
                     ((1<<numbits)-1);*/
@@ -387,32 +387,32 @@ void loadboard()
                                   ((1<<((bitcnt+numbits)&15))-1))<<
                                 (16-bitcnt);
                         }
-                        
+
                         bitcnt+=numbits;
                         bytecnt2+=bitcnt>>3;
                         bitcnt&=7;
-                        
+
                         lzwbuf2[currstr]=dat;
-                        
+
                         while(dat>=256) {
                             stack[stackp++]=lzwbuf[dat];
-                        
+
                             dat=lzwbuf2[dat];
                         }
-                        
+
                         lzwbuf[currstr-1]=dat;
                         lzwbuf[currstr]=dat;
-                        
+
                         dat=lzwbuf2[dat];
                         stack[stackp++]=dat;
-                        
+
                         while(stackp>0) {
                             stackp--;
                             if (bytecnt1<4096)
                                 boardp[bytecnt1++]=
                                     stack[stackp];
                         }
-                        
+
                         currstr++;
                         if (currstr == goalstr)
                         {
@@ -450,7 +450,7 @@ void loadboard()
     }
     glBindTexture(GL_TEXTURE_2D, texName[map-1]);
     checkGLStatus();
-        
+
     TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -669,7 +669,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
         psoundpan[psoundnum & 15] = pan > 255 ? 255 : pan;
         psoundnum++;
     }
-    
+
     if (!soundpan) pan=128;
 
     SDL_LockMutex(soundmutex);
@@ -685,7 +685,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
 
     sndfiloffs=readlong(SoundFile+(2+filenum*6));
     leng=readshort(SoundFile+(6+filenum*6));
-        
+
     DumpSound(SoundFile+sndfiloffs, leng, ((FeedPoint+blocksize)&65535), pan);
     SDL_UnlockMutex(soundmutex);
     return 0;
@@ -1495,7 +1495,7 @@ void loadwalls(int replace)
                     fatal_error("wallparams.ini:%d: Invalid key: %s", curline, key);
                 }
                 //printf("key='%s' val='%s'\n", key, val);
-                
+
             }
         }
         fclose(params);
@@ -1523,7 +1523,7 @@ void loadwalls(int replace)
 
         for(i=1;i<=256;i++) {
             lzwbuf[i]=i&255;
-            lzwbuf2[i]=i;		
+            lzwbuf2[i]=i;
         }
         lzwbuf2[0]=0;
         lzwbuf[0]=0;
@@ -1563,11 +1563,11 @@ void loadwalls(int replace)
                               ((1<<((bitcnt+numbits)&15))-1))<<
                             (16-bitcnt);
                     }
-                                
+
                     bitcnt+=numbits;
                     bytecnt2+=bitcnt>>3;
                     bitcnt&=7;
-                                
+
                     lzwbuf2[currstr]=dat;
 
                     while(dat>=256) {
@@ -1575,13 +1575,13 @@ void loadwalls(int replace)
 
                         dat=lzwbuf2[dat];
                     }
-                                
+
                     lzwbuf[currstr-1]=dat;
                     lzwbuf[currstr]=dat;
-                                
+
                     dat=lzwbuf2[dat];
                     stack[stackp++]=dat;
-                                
+
                     while(stackp>0) {
                         stackp--;
                         if (bytecnt1<4096)
@@ -1627,7 +1627,7 @@ void loadwalls(int replace)
                     fprintf(stderr, "Screen buffer draw OK.\n");
             } else {
                 glDrawBuffer(GL_FRONT);
-                
+
                 if (i==128) {
                     fade(63);
                 }
@@ -1637,16 +1637,16 @@ void loadwalls(int replace)
 
             if (lab3dversion) {
                 if (i < (rnumwalls>>1)) {
-                    screenbuffer[screenbufferwidth*219+j]=255;		
+                    screenbuffer[screenbufferwidth*219+j]=255;
                 }
                 else {
                     j-=rnumwalls>>1;
                     screenbuffer[screenbufferwidth*219+j]=0;
                 }
                 UploadPartialOverlay(j, 219, 1, 1);
-            } else {	
+            } else {
                 if (i < (rnumwalls>>1)) {
-                    screenbuffer[screenbufferwidth*199+j]=255;		
+                    screenbuffer[screenbufferwidth*199+j]=255;
                 }
                 else {
                     j-=rnumwalls>>1;
@@ -1705,10 +1705,10 @@ void loadwalls(int replace)
                 walltexcoord[i][1]=1.0;
 
                 glGenTextures(1, &texName[i]);
-                
+
                 glBindTexture(GL_TEXTURE_2D, texName[i]);
                 checkGLStatus();
-                
+
                 if (wrapmode) {
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
                 } else {
@@ -1716,41 +1716,41 @@ void loadwalls(int replace)
                 }
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilt);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);	
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);
                 checkGLStatus();
-                
+
                 glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
                 checkGLStatus();
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 checkGLStatus();
-                
+
                 /* Replace door1 with colour test image. */
-                
-#ifdef COLOURTEST	
+
+#ifdef COLOURTEST
                 if (i==door1-1) {
                     for(j=0;j<64;j++)
                         for(k=0;k<64;k++)
                             walsegg[j*64+k]=((j>>2)<<4)|(k>>2);
                 }
 #endif
-                
+
                 TextureConvert(walsegg, RGBATexture, bmpkind[i+1]);
-                
+
                 if (debugmode)
                     fprintf(stderr, "Trying to upload texture.\n");
-                
+
                 if (anisotropic)
                     SetAnisotropic();
                 BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
-                
+
                 if (debugmode)
                     fprintf(stderr, "Upload texture complete.\n");
-                
+
                 if (i==gameover-1) {
                     /* Keep two copies of this; one for walls, the other for spinning
                        overlay text. */
                     glGenTextures(1, &gameoversprite);
-                
+
                     glBindTexture(GL_TEXTURE_2D, gameoversprite);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -1758,14 +1758,14 @@ void loadwalls(int replace)
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                                     fullfilter);
                     TextureConvert(walsegg, RGBATexture, 4);
-                
+
                     if (anisotropic)
                         SetAnisotropic();
                     BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
                 }
-        
+
                 checkGLStatus();
-        
+
                 /*	    printf("Wall number %d:\n", i);
 
                         for(k=0;k<64;k++) {
@@ -1817,9 +1817,9 @@ pressakey();
         TransitionTexture(2, 3, 0);
         TransitionTexture(6, 7, 8);
         TransitionTexture(8, 9, 6);
-        
+
         /* Set up end of game rainbow. */
-        
+
         TransitionTexture(424, 425, 426);
         TransitionTexture(47, 424, 425);
         TransitionTexture(425, 426, 47);
@@ -1866,7 +1866,7 @@ void TransitionTexture(int left, int texture, int right) {
     for(x=0;x<2;x++) {
 
         glGenTextures(1, &splitTexName[texnum][x]);
-        
+
         glBindTexture(GL_TEXTURE_2D, splitTexName[texnum][x]);
         checkGLStatus();
 
@@ -1874,13 +1874,13 @@ void TransitionTexture(int left, int texture, int right) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                        fullfilter);	
+                        fullfilter);
         checkGLStatus();
 
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         checkGLStatus();
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        checkGLStatus();	
+        checkGLStatus();
 
         /* Add code here to upload two textures from texdata, one with cols
            0-63, other 2-65. */
@@ -1888,9 +1888,9 @@ void TransitionTexture(int left, int texture, int right) {
         glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
         glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        
+
         BuildMipmaps((Uint32*)(texdata+x*512), 64, 64, 1, 10);
-        
+
         checkGLStatus();
     }
     splitTexNum[texnum++]=texture;
@@ -1925,12 +1925,12 @@ void TextureConvert(unsigned char *from, unsigned char *to, Sint16 type) {
     int x, y;
 
     for(x=0;x<64;x++)
-        for(y=0;y<64;y++) {	
+        for(y=0;y<64;y++) {
             if ((type>1)&&(*(f))==255) {
-                *(t++)=0;		
-                *(t++)=0;		
-                *(t++)=0;		
-                *(t++)=0;		
+                *(t++)=0;
+                *(t++)=0;
+                *(t++)=0;
+                *(t++)=0;
             } else {
                 *(t++)=spritepalette[(*f)*3]<<2;
                 *(t++)=spritepalette[(*f)*3+1]<<2;
@@ -1949,12 +1949,12 @@ void TextureConvert(unsigned char *from, unsigned char *to, Sint16 type) {
   int x, y;
 
   for(x=0;x<64;x++)
-  for(y=0;y<64;y++) {	
+  for(y=0;y<64;y++) {
   if ((type>1)&&(*(f))==255) {
   *(t++)=AverageColour(from, x, y, 0);
   *(t++)=AverageColour(from, x, y, 1);
   *(t++)=AverageColour(from, x, y, 2);
-  *(t++)=0;		
+  *(t++)=0;
   } else {
   *(t++)=spritepalette[(*f)*3]<<2;
   *(t++)=spritepalette[(*f)*3+1]<<2;
@@ -1983,7 +1983,7 @@ K_INT16 loadgame(K_INT16 gamenum)
         filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
         filename[6] = 'e', filename[7] = gamenum+48;
         filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
-        filename[11] = 't', filename[12] = 0;	
+        filename[11] = 't', filename[12] = 0;
 
         if((fil=open(filename, O_RDONLY|O_BINARY, 0))==-1)
             return -1;
@@ -2358,7 +2358,7 @@ void drawintroduction() {
         if (pickskiltime < 0)
         {
             SetVisibleScreenOffset(introplc);
-        
+
 /*	    if (dalasti < 424)
             {*/
             wipeoverlay(0, 174, 361, 20);
@@ -2470,7 +2470,7 @@ void introduction(K_INT16 songnum)
     ototclock = -1;
     totalclock = 1;
     introplc = 5;
-    
+
     if (!introskip) {
         musicon();
         if (saidwelcome == 0)
@@ -2586,7 +2586,7 @@ void introduction(K_INT16 songnum)
                 settransferpalette();
                 loadgame(loadsavegameplace);
                 wipeoverlay(0, 0, 361, statusbaryoffset);
-                fade(63);		
+                fade(63);
                 return;
             }
             if (j == MAINMENU_EXIT)
@@ -2603,10 +2603,10 @@ void introduction(K_INT16 songnum)
             clockspeed = 0;
             SDL_UnlockMutex(timermutex);
         }
-        if ((getkeydefstatlock(ACTION_MENU_CANCEL) != 0) || 
-            (getkeydefstatlock(ACTION_MENU_SELECT1) != 0) || 
+        if ((getkeydefstatlock(ACTION_MENU_CANCEL) != 0) ||
+            (getkeydefstatlock(ACTION_MENU_SELECT1) != 0) ||
             (getkeydefstatlock(ACTION_MENU_SELECT2) != 0) ||
-            (getkeydefstatlock(ACTION_MENU_SELECT3) != 0) || 
+            (getkeydefstatlock(ACTION_MENU_SELECT3) != 0) ||
             (bstatus != 0))
         {
             if (dai < 420)
@@ -3157,7 +3157,7 @@ void ksmhandler(void)
             }
             if (musicsource == 2)
                 for(i=0;i<bufnum;i+=2)
-                {		
+                {
                     outdata(0, databuf[i], databuf[i+1]);
                 }
         }
@@ -3320,7 +3320,7 @@ void checkhitwall(K_UINT16 oposx, K_UINT16 oposy, K_UINT16 posix,
             if (tempbuf[((xpos+xdir)>>8)+((ypos&0xff00)>>2)]==0)
                 xpos+=xdir;
         }
-        
+
         cnty+=yinc;
         j=cnty>>8;
         cnty&=255;
@@ -3782,7 +3782,7 @@ void fade(K_INT16 brightness)
 
         /* Factors can't exceed 1.0, so we scale them all (makes the hurting
            a bit darker, but a lot easier/faster). */
-        
+
         greenfactor/=redfactor;
         bluefactor/=redfactor;
         redfactor=1.0;
@@ -3904,7 +3904,7 @@ K_INT16 kgif(K_INT16 filenum)
             numpals = numcols+numcols+numcols;
             for(j=0;j<numpals;j++)
                 palette[j]=tempbuf[j+gifdatacnt];
-                        
+
             gifdatacnt += numpals;
         }
         gifdatacnt++;
@@ -3915,7 +3915,7 @@ K_INT16 kgif(K_INT16 filenum)
         bitcnt = 0;
         for(i=1;i<=numcols;i++) {
             lzwbuf[i]=i&255;
-            lzwbuf2[i]=i;		
+            lzwbuf2[i]=i;
         }
         lzwbuf2[0]=0;
         lzwbuf[0]=0;
@@ -3946,11 +3946,11 @@ K_INT16 kgif(K_INT16 filenum)
                       ((1<<((bitcnt+numbits)&15))-1))<<
                     (16-bitcnt);
             }
-                
+
             bitcnt+=numbits;
             bytecnt+=bitcnt>>3;
             bitcnt&=7;
-                
+
             if (bytecnt > blocklen-3)
             {
                 writeshort((unsigned char *)lincalc,
@@ -3979,7 +3979,7 @@ K_INT16 kgif(K_INT16 filenum)
                     memcpy(((unsigned char *)lincalc)+i+k,
                            tempbuf,
                            ((gifdatacnt=blocklen-k)+1)&~1);
-                                        
+
                 }
                 bytecnt = 0;
                 blocklen += i;
@@ -3997,20 +3997,20 @@ K_INT16 kgif(K_INT16 filenum)
                 numbitgoal = (numcols<<1);
             }
             else
-            {		
+            {
                 lzwbuf2[currstr]=dat;
                 while(dat>=firstring) {
                     stack[stackp++]=lzwbuf[dat];
 
                     dat=lzwbuf2[dat];
                 }
-                                
+
                 lzwbuf[currstr-1]=dat&255;
                 lzwbuf[currstr]=dat&255;
-                                
+
                 dat=lzwbuf2[dat];
                 stack[stackp++]=dat;
-                                
+
                 while(stackp>0) {
                     stackp--;
 
@@ -4119,10 +4119,10 @@ void ConvertPartialOverlay(int sx, int sy, int w, int h) {
     for(y=0;y<h;y++, f+=skip, t+=(skip*4))
         for(x=0;x<w;x++) {
             if ((*(f))==255 && ingame) {
-                *(t++)=0;		
-                *(t++)=0;		
-                *(t++)=0;		
-                *(t++)=0;		
+                *(t++)=0;
+                *(t++)=0;
+                *(t++)=0;
+                *(t++)=0;
             } else {
                 *(t++)=ipalr[*f];
                 *(t++)=ipalg[*f];
@@ -4172,7 +4172,7 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
                 rr=lr+w-1;
                 tr=y-62*i;
                 br=tr+h-1;
-                
+
                 if (rr<0) continue;
                 if (lr>63) continue;
                 if (br<0) continue;
@@ -4270,16 +4270,16 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-        
+
     if (largescreentexture) {
         tx1=((float)x)/(float)(screenbufferwidth);
         tx2=((float)(x+w))/(float)screenbufferwidth;
-        
+
         ty1=((float)y)/(float)(screenbufferheight);
         ty2=((float)(y+h))/(float)screenbufferheight;
 
         y-=visiblescreenyoffset;
-        
+
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
         glBegin(GL_QUADS);
         glColor3f(redfactor, greenfactor, bluefactor);
@@ -4311,7 +4311,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
                 rr=lr+w-1;
                 tr=y-62*i;
                 br=tr+h-1;
-                
+
                 if (rr<(j>0)) continue;
                 if (lr>(63-(j<5))) continue;
                 if (br<(i>0)) continue;
@@ -4324,7 +4324,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
                 tx1=((float)lr)/64.0;
                 tx2=((float)(rr+1))/64.0;
-                
+
                 ty1=((float)tr)/64.0;
                 ty2=((float)(br+1))/64.0;
 
@@ -4696,7 +4696,7 @@ static int default_hiscores() {
     int level, pos;
     char buf[16];
     K_INT32 score=0;
-    
+
     FILE* f;
     memset(buf, 0, 16);
     f = fopen("hiscore.dat", "wb");
@@ -4965,10 +4965,10 @@ void hiscorecheck()
     finalisemenu();
     glFlush();
     glDrawBuffer(GL_BACK);
-    while ((getkeydefstatlock(ACTION_MENU_CANCEL) == 0) && 
-           (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && 
-           (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) && 
-           (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && 
+    while ((getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+           (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+           (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+           (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
            (bstatus == 0)) {
         PollInputs();
         SDL_Delay(10);
@@ -5183,7 +5183,7 @@ unsigned char BMPHeader[54]={0x42, 0x4d, 0, 0, 0, 0, 0, 0,
                              0, 0, 0, 0, 0, 0};
 
 /* Write a DWORD (32-bit int) to BMP header. */
-                        
+
 void bmpheaderwrite(int offset, K_UINT32 value) {
     int a;
 
@@ -5215,7 +5215,7 @@ void screencapture()
 
     bmpheaderwrite(0x12, screenwidth);
     bmpheaderwrite(0x16, screenheight);
-        
+
     if (screen!=NULL) {
         glReadPixels(0, 0, screenwidth, screenheight, GL_BGR, GL_UNSIGNED_BYTE,
                      screen);
@@ -5360,7 +5360,7 @@ K_INT16 mainmenu()
             {
                 /* Redraw whatever was beneath the menu. Double buffer to
                    avoid annoying flicker. */
-                if (sortcnt == -1) {		
+                if (sortcnt == -1) {
                     spriteyoffset=20;
                     glDrawBuffer(GL_BACK);
                     checkGLStatus();
@@ -5484,7 +5484,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
             esckeystate |= 1;
         if (getkeydefstatlock(ACTION_MENU_SELECT1) || getkeydefstatlock(ACTION_MENU_SELECT2) || getkeydefstatlock(ACTION_MENU_SELECT3))
             esckeystate |= 2;
-            
+
         if ((obstatus == 0) && (bstatus > 0))
             esckeystate |= (bstatus^3);
         glFlush();
@@ -5549,7 +5549,7 @@ void drawmenu(K_INT16 xsiz, K_INT16 ysiz, K_INT16 walnume)
         for(i=0;i<menuwidth;i++)
             *(buf+=screenbufferwidth)=239;
         UploadPartialOverlay(menuleft, menutop, menuwidth, menuheight);
-        
+
         return;
     }
 
@@ -6232,7 +6232,7 @@ Uint16 getkeypress(int* key) {
     {
         ProcessEvent(&event);
         switch(event.type)
-        {	
+        {
             case SDL_KEYDOWN:
                 *key = event.key.keysym.sym;
                 return 1;
@@ -6252,11 +6252,13 @@ void FindJoysticks() {
     if (!joyenable) return;
     for (i = 0; i < SDL_NumJoysticks(); ++i) {
         if (SDL_IsGameController(i)) {
+            fprintf(stderr, "Controller at %d\n", i);
             if (!cur_controller) {
                 cur_controller = SDL_GameControllerOpen(i);
                 cur_controller_index = i;
             }
         } else {
+            fprintf(stderr, "Joystick at %d\n", i);
             if (!cur_joystick) {
                 cur_joystick = SDL_JoystickOpen(i);
                 cur_joystick_index = i;
@@ -6274,7 +6276,7 @@ void ProcessEvent(SDL_Event* event) {
     int sk, scan;
 
     switch(event->type)
-    {	
+    {
         case SDL_QUIT:
             quitgame=1;
             break;
@@ -6316,7 +6318,7 @@ void ProcessEvent(SDL_Event* event) {
                 keystatus[scan] = 1;
             }
             setnewkeystatus(sk, 1);
-            break;		
+            break;
         case SDL_KEYUP:
             sk=event->key.keysym.sym;
             scan = get_pckey(sk);
@@ -6358,7 +6360,7 @@ unsigned char readmouse(int *x, int *y) {
 void quit() {
 
     savesettings();
-    
+
     if (demorecording) {
         demofile_close(demorecording);
         demorecording = NULL;
