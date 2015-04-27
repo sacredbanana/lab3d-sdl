@@ -1,11 +1,11 @@
 OBJS=subs.o init.o graphx.o lab3d.o setup.o adlibemu.o oldlab3d.o demo.o
 
-WARNFLAGS=-Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable
+WARNFLAGS=-Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
 
 default: ken.bin
 
 %.o: %.c lab3d.h
-	gcc -DUSE_OSS -g $(WARNFLAGS) -fstrict-aliasing `sdl2-config --cflags` -O2 -o $@ -c $<
+	gcc -DUSE_OSS -g $(WARNFLAGS) -fno-aggressive-loop-optimizations -fno-strict-aliasing `sdl2-config --cflags` -O2 -o $@ -c $<
 
 
 ken.bin: $(OBJS)
