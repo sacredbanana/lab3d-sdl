@@ -1,6 +1,6 @@
 CC := gcc
 
-BIN  = lab3d
+BIN  = ken.bin
 SRCS = $(wildcard *.c)
 OBJS = $(SRCS:%.c=%.o)
 
