@@ -1,15 +1,20 @@
-OBJS=subs.o init.o graphx.o lab3d.o setup.o adlibemu.o oldlab3d.o demo.o
+CC := gcc
 
-WARNFLAGS=-Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
+BIN  = lab3d
+SRCS = $(wildcard *.c)
+OBJS = $(SRCS:%.c=%.o)
 
-default: ken.bin
-
-%.o: %.c lab3d.h
-	gcc -DUSE_OSS -g $(WARNFLAGS) -fno-aggressive-loop-optimizations -fno-strict-aliasing `sdl2-config --cflags` -O2 -o $@ -c $<
+WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
+OPTFLAGS  = -O2 -fno-aggressive-loop-optimizations -fno-strict-aliasing
 
 
-ken.bin: $(OBJS)
-	gcc -o ken.bin $(OBJS) `sdl2-config --libs` -lz -lSDL2_image -lGL -lGLU -lm
+all: $(BIN)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(BIN) $(OBJS)
+
+$(BIN): $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(shell sdl2-config --libs) -lSDL2_image -lGL -lGLU -lm -lz
+
+%.o: %.c
+	$(CC) -DUSE_OSS -g $(WARNFLAGS) $(OPTFLAGS) $(CFLAGS) $(CPPFLAGS) $(shell sdl2-config --cflags) -o $@ -c $<
