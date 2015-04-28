@@ -461,7 +461,40 @@ int main(int argc,char **argv)
     debugmode=0;
 
     for(i=1;i<argc;i++) {
-        if ((strcmp(argv[i],"-res")==0)&&(i+4<argc)) {
+        if ((strcmp(argv[i],"-V")==0)||(strcmp(argv[i],"-version")==0)) {
+            quit();
+            return 0;
+        }
+        else if ((strcmp(argv[i],"-h")==0)||(strcmp(argv[i],"-help")==0)) {
+            printf("\n");
+            printf("Command line options:\n");
+            printf(" -h, -help                Print this help.\n");
+            printf(" -V, -version             Print detected game version.\n");
+            printf(" -res <w> <h> <virtual w> <virtual h>\n");
+            printf("                          Set screen resolution.  Default: 800 600 360 240\n");
+            printf(" -asp <aspw> <asph>       Aspect ratio correction.  Default: 1.0 1.0\n");
+            printf(" -win                     Start in window mode.\n");
+            printf(" -fullscreen              Start in fullscreen mode.\n");
+            printf(" -nearest                 Use nearest neighbor texture resize filter.\n");
+            printf(" -trilinear               Use trilinear texture resize filter.\n");
+            printf(" -stereo                  Enable stereoscopic view.\n");
+            printf(" -gmmusic                 Use General MIDI for music.\n");
+            printf(" -admusic                 Use Adlib emulation for music.\n");
+            printf(" -nomusic                 Don't play music.\n");
+            printf(" -sound                   Enable sound.\n");
+            printf(" -nosound                 Disable sound.\n");
+            printf(" -skip                    Skip intro sequence and start a new game right away.\n");
+            printf(" -load <slot>             Load a saved game from one of the 8 available slots.\n");
+            printf(" -record <slot> <dem>     Load a game (slot 1-8) and record a demo.\n");
+            printf("                          If <slot> is set to 0 a new game will be started.\n");
+            printf(" -recordx <slot> <dem>    Same as -record but saves an uncompressed demo file.\n");
+            printf(" -play <dem>              Play a demo file.\n");
+            printf(" -setup                   Start in settings menu.\n");
+            printf(" -v, -debug               Verbose output.\n");
+            quit();
+            return 0;
+        }
+        else if ((strcmp(argv[i],"-res")==0)&&(i+4<argc)) {
             screenwidth=atoi(argv[++i]);
             screenheight=atoi(argv[++i]);
             virtualscreenwidth=atof(argv[++i]);
@@ -485,6 +518,9 @@ int main(int argc,char **argv)
                 aspw=1.0; asph=1.0;
             }
         }
+        else if (strcmp(argv[i],"-skip")==0) {
+            introskip = 1;
+        }
         else if ((strcmp(argv[i],"-load")==0)&&(i+1<argc)) {
             j = atoi(argv[++i]);
 
@@ -493,12 +529,8 @@ int main(int argc,char **argv)
                 introskip = 1;
             }
         }
-        else if ((strcmp(argv[i],"-stereo")==0)&&(i+1<argc)) {
-            j = atoi(argv[++i]);
-
-            if (j > 0 && j <= 2) {
-                stereo = j;
-            }
+        else if (strcmp(argv[i],"-stereo")==0) {
+            stereo = 1;
         }
         else if (((k=(strcmp(argv[i],"-recordx")==0)) ||
                   (strcmp(argv[i],"-record")==0))
@@ -540,7 +572,8 @@ int main(int argc,char **argv)
             speechstatus=0;
         else if (strcmp(argv[i],"-setup")==0)
             setup();
-        else if (strcmp(argv[i],"-debug")==0)
+        else if ((strcmp(argv[i],"-debug")==0) ||
+                 (strcmp(argv[i],"-v")==0))
             debugmode=1;
     }
 
