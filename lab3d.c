@@ -404,7 +404,21 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
 
 int main(int argc,char **argv)
 {
-    K_INT16 i;
+    char ksmfile[15], hitnet, cheatkeysdown, won;
+    K_INT16 i, j, jj, k, m=0, n=0, x, y, brd0, brd1, brd2, brd3, incenter=0;
+    K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
+    K_INT32 templong;
+
+    K_INT32 standvel=0;
+    K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
+
+    K_INT16 bx; /* Converted from asm. */
+    K_UINT32 frames=0,timeused=0;
+    K_INT16 soundvolumevisible=0,musicvolumevisible=0;
+    int fil;
+    int cmd_loadgame = 0;
+    int stereo = 0;
+
     for(i=1;i<argc;i++) {
         if ((strcmp(argv[i],"-V")==0)||(strcmp(argv[i],"-version")==0)) {
             printf("LAB3D/SDL version 3.0\n");
@@ -438,21 +452,6 @@ int main(int argc,char **argv)
             return 0;
         }
     }
-
-    char ksmfile[15], hitnet, cheatkeysdown, won;
-    K_INT16 j, jj, k, m=0, n=0, x, y, brd0, brd1, brd2, brd3, incenter=0;
-    K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
-    K_INT32 templong;
-
-    K_INT32 standvel=0;
-    K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
-
-    K_INT16 bx; /* Converted from asm. */
-    K_UINT32 frames=0,timeused=0;
-    K_INT16 soundvolumevisible=0,musicvolumevisible=0;
-    int fil;
-    int cmd_loadgame = 0;
-    int stereo = 0;
 
     clockspd=0;
 
