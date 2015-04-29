@@ -2,7 +2,7 @@ CC := gcc
 
 BIN  = ken.exe
 SRCS = $(wildcard *.c)
-OBJS = $(SRCS:%.c=%.obj)
+OBJS = $(SRCS:%.c=%.obj) icon.obj
 
 WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
 OPTFLAGS  = -O3 -fno-aggressive-loop-optimizations -fno-strict-aliasing
@@ -20,7 +20,7 @@ all: $(BIN)
 clean:
 	rm -f $(BIN) $(OBJS)
 
-$(BIN): icon.obj $(OBJS)
+$(BIN): $(OBJS)
 	$(PREFIX)$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
 	$(PREFIX)strip -s $@
 
