@@ -1,19 +1,19 @@
 CC := gcc
 
 BIN  = ken.exe
-SRCS = $(wildcard *.c)
+SRCS = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c setup.c subs.c
 OBJS = $(SRCS:%.c=%.obj) icon.obj
 
 WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
 OPTFLAGS  = -O3 -fno-aggressive-loop-optimizations -fno-strict-aliasing
 
-#SDL_CFLAGS=`sdl-config --cflags`
-#SDL_LDFLAGS=`sdl-config --libs`
-
-MINGW_PATH  = c:\mingw32\
+#MINGW_PATH  = c:/mingw32
+MINGW_PATH  = /usr/i686-w64-mingw32
+CC          = $(MINGW_PATH)/bin/gcc
+WINDRES     = $(MINGW_PATH)/bin/windres
+STRIP       = $(MINGW_PATH)/bin/strip
 SDL_CFLAGS  = -I$(MINGW_PATH)/include/SDL2
 SDL_LDFLAGS = -L$(MINGW_PATH)/lib -lmingw32 -lSDL2main -lSDL2 -mwindows
-
 
 all: $(BIN)
 
@@ -21,12 +21,11 @@ clean:
 	rm -f $(BIN) $(OBJS)
 
 $(BIN): $(OBJS)
-	$(PREFIX)$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
-	$(PREFIX)strip -s $@
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
+	$(STRIP) -s $@
 
 icon.obj:
-	$(PREFIX)windres -i ken.rc -o $@
+	$(WINDRES) -i ken.rc -o $@
 
 %.obj: %.c
-	$(PREFIX)$(CC) $(WARNFLAGS) $(OPTFLAGS) $(CFLAGS) $(CPPFLAGS) $(SDL_CFLAGS) -o $@ -c $<
-
+	$(CC) $(WARNFLAGS) $(OPTFLAGS) $(CFLAGS) $(CPPFLAGS) $(SDL_CFLAGS) -o $@ -c $<
