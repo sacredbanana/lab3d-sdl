@@ -1,25 +1,32 @@
-OBJS=subs.obj init.obj graphx.obj lab3d.obj setup.obj adlibemu.obj icon.obj oldlab3d.obj demo.obj
+CC := gcc
+
+BIN  = ken.exe
+SRCS = $(wildcard *.c)
+OBJS = $(SRCS:%.c=%.obj) icon.obj
+
+WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
+OPTFLAGS  = -O3 -fno-aggressive-loop-optimizations -fno-strict-aliasing
 
 #SDL_CFLAGS=`sdl-config --cflags`
 #SDL_LDFLAGS=`sdl-config --libs`
 
-MINGW_PATH=c:\mingw32\
-PREFIX=
+MINGW_PATH  = c:\mingw32\
+SDL_CFLAGS  = -I$(MINGW_PATH)/include/SDL2
+SDL_LDFLAGS = -L$(MINGW_PATH)/lib -lmingw32 -lSDL2main -lSDL2 -mwindows
 
-SDL_CFLAGS=-I$(MINGW_PATH)/include/SDL2
-SDL_LDFLAGS=-L$(MINGW_PATH)/lib -lmingw32 -lSDL2main -lSDL2 -mwindows
 
-default: $(OBJS)
-	$(PREFIX)gcc -O3 -o ken.exe $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
-	$(PREFIX)strip -s ken.exe
+all: $(BIN)
 
 clean:
-	rm -f $(OBJS)
+	rm -f $(BIN) $(OBJS)
 
-icon.obj: ken.ico ken.rc
-	$(PREFIX)windres -i ken.rc -o icon.obj
+$(BIN): $(OBJS)
+	$(PREFIX)$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
+	$(PREFIX)strip -s $@
 
-%.obj: %.c lab3d.h
-	$(PREFIX)gcc -Wall -Wno-pointer-sign -O3 $(SDL_CFLAGS) -o $@ -c $<
+icon.obj:
+	$(PREFIX)windres -i ken.rc -o $@
 
+%.obj: %.c
+	$(PREFIX)$(CC) $(WARNFLAGS) $(OPTFLAGS) $(CFLAGS) $(CPPFLAGS) $(SDL_CFLAGS) -o $@ -c $<
 
