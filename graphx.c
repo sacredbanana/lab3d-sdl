@@ -445,6 +445,77 @@ void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
     }
 }
 
+static void normalize(float v[3])
+{
+    float r;
+
+    r = sqrt( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
+    if (r == 0.0) return;
+
+    v[0] /= r;
+    v[1] /= r;
+    v[2] /= r;
+}
+
+static void cross(float v1[3], float v2[3], float result[3])
+{
+    result[0] = v1[1]*v2[2] - v1[2]*v2[1];
+    result[1] = v1[2]*v2[0] - v1[0]*v2[2];
+    result[2] = v1[0]*v2[1] - v1[1]*v2[0];
+}
+
+static void __gluMakeIdentityf(GLfloat m[16])
+{
+    m[0+4*0] = 1; m[0+4*1] = 0; m[0+4*2] = 0; m[0+4*3] = 0;
+    m[1+4*0] = 0; m[1+4*1] = 1; m[1+4*2] = 0; m[1+4*3] = 0;
+    m[2+4*0] = 0; m[2+4*1] = 0; m[2+4*2] = 1; m[2+4*3] = 0;
+    m[3+4*0] = 0; m[3+4*1] = 0; m[3+4*2] = 0; m[3+4*3] = 1;
+}
+
+void GLAPI
+gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
+     GLdouble centery, GLdouble centerz, GLdouble upx, GLdouble upy,
+     GLdouble upz)
+{
+    int i;
+    float forward[3], side[3], up[3];
+    GLfloat m[4][4] = {};
+ 
+    forward[0] = centerx - eyex;
+    forward[1] = centery - eyey;
+    forward[2] = centerz - eyez;
+ 
+    up[0] = upx;
+    up[1] = upy;
+    up[2] = upz;
+ 
+    normalize(forward);
+ 
+    /* Side = forward x up */
+    cross(forward, up, side);
+    normalize(side);
+ 
+    /* Recompute up as: up = side x forward */
+    cross(side, forward, up);
+ 
+    __gluMakeIdentityf(&m[0][0]);
+    
+    m[0][0] = side[0];
+    m[1][0] = side[1];
+    m[2][0] = side[2];
+ 
+    m[0][1] = up[0];
+    m[1][1] = up[1];
+    m[2][1] = up[2];
+ 
+    m[0][2] = -forward[0];
+    m[1][2] = -forward[1];
+    m[2][2] = -forward[2];
+ 
+    glMultMatrixf(&m[0][0]);
+    glTranslated(-eyex, -eyey, -eyez);
+}
+
 /* Draw an ingame view, as seen from (posxs,posys,poszs) in direction
    angs. */
 
@@ -603,7 +674,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
+    glOrtho(0.0, (GLfloat)360, 0.0, (GLfloat)240, -1.0, 1.0);
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity( );
@@ -1426,7 +1497,7 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+        glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
 
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity( );
@@ -1592,10 +1663,10 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(-(virtualscreenwidth-360)/2,
+    glOrtho(-(virtualscreenwidth-360)/2,
                360+(virtualscreenwidth-360)/2,
                -(virtualscreenheight-240)/2,
-               240+(virtualscreenheight-240)/2);
+               240+(virtualscreenheight-240)/2, -1.0, 1.0);
 //    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
 
     glMatrixMode( GL_MODELVIEW );

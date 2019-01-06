@@ -1483,7 +1483,11 @@ void loadsettings(void) {
     char buf[256];
     char *key, *val;
     int curline = 0;
+    #ifdef __SWITCH__
+    const char* filename = "settings_switch.ini";
+    #else
     const char* filename = "settings.ini";
+    #endif
 
     setting_section_t* cursection = NULL;
     setting_t* cursetting = NULL;
