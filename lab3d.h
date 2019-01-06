@@ -16,8 +16,14 @@
 
 #include "SDL.h"
 
+#ifdef __SWITCH__
+#include <EGL/egl.h>
+#include "glad/glad.h"
+#include <switch.h>
+#else
 #include <SDL_opengl.h>
 #include <GL/glu.h>
+#endif
 
 #ifndef GL_BGR
 /* MSVC compatibility hack (some versions have out-of-date OpenGL headers). */
@@ -219,6 +225,13 @@ typedef Sint16 K_INT16;
 #define episodesign3on 447
 #define endtext 448
 //SORTWALLEND
+
+#ifndef ENABLE_NXLINK
+#define TRACE(fmt,...) ((void)0)
+#else
+#include <unistd.h>
+#define TRACE(fmt,...) printf("%s: " fmt "\n", __PRETTY_FUNCTION__, ## __VA_ARGS__)
+#endif
 
 enum {
     ACTION_FORWARD,
@@ -455,7 +468,7 @@ EXTERN SDL_TimerID timer;
 
 /* Overlay buffer... */
 EXTERN unsigned char *screenbuffer;
-EXTERN unsigned int *screenbuffer32;
+EXTERN uint32_t *screenbuffer32;
 EXTERN int screenbufferwidth,screenbufferheight;
 EXTERN int screenwidth,screenheight;
 EXTERN float virtualscreenwidth,virtualscreenheight;
@@ -463,6 +476,16 @@ EXTERN GLuint screenbuffertexture; /* One big texture. */
 EXTERN GLuint screenbuffertextures[72]; /* 72 small textures. */
 EXTERN int largescreentexture;
 EXTERN int walltol,neardist;
+
+/* Nintendo Switch globals, defines and functions... */
+#ifdef __SWITCH__
+EXTERN NWindow *win;
+EXTERN EGLDisplay s_display;
+EXTERN EGLContext s_context;
+EXTERN EGLSurface s_surface;
+#define SDL_GL_SwapWindow(mainwindow) eglSwapBuffers(s_display, s_surface)
+static void configureResolution();
+#endif
 
 /* MIDI stuff... */
 #ifdef WIN32

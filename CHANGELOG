@@ -1,3 +1,6 @@
+3.1: 2019-19-01
+  * Created a port for Nintendo Switch
+
 3.0: 2014-01-03
   * Upgraded to SDL2.
   * New settings format - now actually readable, and easier to add to in the

@@ -12,8 +12,7 @@ void initialize()
     K_UINT16 l;
     char *v;
     time_t tnow;
-    SDL_Surface *icon;
-
+    
     SDL_AudioSpec want;
     FILE *file;
     struct stat fstats;
@@ -34,6 +33,8 @@ void initialize()
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
 
+    #ifndef __SWITCH__
+    SDL_Surface *icon;
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
@@ -47,14 +48,12 @@ void initialize()
 
     SDL_ShowCursor(0);
 
-    fprintf(stderr,"Activating video...\n");
-
     icon = SDL_LoadBMP("ken.bmp");
     if (icon == NULL) {
         fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
     }
 
-
+    fprintf(stderr,"Activating video...\n");
 
     if (mainwindow != NULL)
         fatal_error("window already created (init)");
@@ -93,13 +92,18 @@ void initialize()
     fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
     fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
     //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
-
     fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
     //fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
 
     if (reald==0) {
         fatal_error("Double buffer not available.");
     }
+
+    fprintf(stderr,
+            "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
+            realr,realg,realb,realz);
+
+    #endif
 
     SDL_SetWindowBrightness(mainwindow, gammalevel);
 
@@ -108,10 +112,6 @@ void initialize()
     } else {
         walltol=32; neardist=16;
     }
-
-    fprintf(stderr,
-            "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
-            realr,realg,realb,realz);
 
     largescreentexture = 1;
 

@@ -8,12 +8,20 @@ through Adlib emulation or MIDI (MIDI only on Windows, Linux and other
 operating systems with OSS-compatible sound APIs).
 
 This code has been tested on Windows 98, Windows ME, Windows XP,
-SuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8) and
-FreeBSD 4.7.
+SuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8),
+FreeBSD 4.7 and Nintendo Switch.
+
+Nintendo Switch instructions:
+* Install DevKitPro
+* Compile this project with `make -f Makefile.Switch`.
+* Copy all the .kzp and .dat files from Ken's Labyrinth and place them in 
+the folder that contains the nro file.
+* Put the `settings_switch.ini` file from this repository and place it in the
+folder that contains the nro file.
 
 Improvements over the original Ken's Labyrinth:
 
-- Runs natively on 32-bit Windows or Unix.
+- Runs natively on 32-bit Windows, Unix or Nintendo Switch.
 - Supports big-endian CPUs.
 - Uses OpenGL to provide hardware accelerated, anti-aliased graphics with
   trilinear interpolation in true colour (where available).
@@ -24,14 +32,16 @@ Improvements over the original Ken's Labyrinth:
 - Game controller support.
 - Many bug fixes.
 
-        Credits
+    Credits
 	-------
 
 Design, code and Adlib emulation by:	LAB3D/SDL code by:
-Ken Silverman				Jan Lönnberg
+Ken Silverman				Jan Lï¿½nnberg
 http://www.advsys.net/ken		http://koti.mbnet.fi/lonnberg/
 					Katie Stafford
                                         https://ktpanda.org/
+Nintendo Switch port:		Cameron Armstrong (Nightfox)
+										http://minotaurcreative.net/
 
 Artwork by:				Board maps by:
 Mikko Iho				Andrew Cotter
