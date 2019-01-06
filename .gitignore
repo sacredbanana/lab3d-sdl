@@ -34,3 +34,13 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Visual Studio Code
+.vscode
+
+# Ken files
+*.dat
+*.kzp
+
+# MacOS files
+.DS_Store

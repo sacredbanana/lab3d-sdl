@@ -115,11 +115,14 @@ void checkGLStatus()
     GLenum errCode;
     const GLubyte *errString;
 
-    if ((errCode=glGetError())!=GL_NO_ERROR) {
+    while ((errCode=glGetError())!=GL_NO_ERROR) {
+        #ifdef __SWITCH__
+        fprintf(stderr, "OpenGL Error: %d\n", errCode);
+        #else
         errString=gluErrorString(errCode);
         fprintf(stderr, "OpenGL Error: %s\n", errString);
+        #endif
     }
-
 }
 
 void ConvertPartialOverlay(int x, int y, int w, int h);
@@ -808,7 +811,7 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
     if (musicsource==2) {
         /* mute=2: stop music, but don't mute. */
         if ((mute!=1)&&musicstatus)
-            preparesound (stream, rl*2*4);
+            preparesound(stream, rl*2*4);
         else
             memset(stream, 0, rl*2*4);
         j1=FeedPoint;
@@ -1095,7 +1098,9 @@ static void SetAnisotropic(void) {
 
 }
 
+#ifndef __SWITCH__
 #define USE_GLU_MIPMAPS
+#endif
 
 #ifdef USE_GLU_MIPMAPS
 
@@ -2733,6 +2738,37 @@ void introduction(K_INT16 songnum)
     statusbaralldraw();
 }
 
+#ifdef __SWITCH__
+static void configureResolution()
+{
+    int width, height;
+
+    // Calculate the target resolution depending on the operation mode:
+    // - In handheld mode, we render at 720p (which is the native screen resolution).
+    // - In docked mode, we render at full 1080p (which is outputted to a compatible HDTV screen).
+    switch (appletGetOperationMode())
+    {
+        default:
+        case AppletOperationMode_Handheld:
+            width = 1280;
+            height = 720;
+            break;
+        case AppletOperationMode_Docked:
+            width = 1920;
+            height = 1080;
+            break;
+    }
+
+    // Apply the resolution, and configure the correct GL viewport.
+    // We want to render to the top left corner of the framebuffer (other areas will
+    // remain unused when rendering at a smaller resolution than the framebuffer).
+    // Note that glViewport expects the coordinates of the bottom-left corner of
+    // the viewport, so we have to calculate that too.
+    nwindowSetCrop(win, 0, 0, width, height);
+    glViewport(0, 1080-height, width, height);
+}
+#endif
+
 /* Load KSM file... */
 
 K_INT16 loadmusic(char *filename)
@@ -2783,8 +2819,8 @@ K_INT16 loadmusic(char *filename)
             firstime = 0;
         }
     }
-    if (((infile=open("songs.kzp", O_RDONLY|O_BINARY, 0))==-1)&&
-        ((infile=open("SONGS.KZP", O_RDONLY|O_BINARY, 0))==-1))
+    if (((infile = open("songs.kzp", O_RDONLY|O_BINARY, 0))==-1)&&
+        ((infile = open("SONGS.KZP", O_RDONLY|O_BINARY, 0))==-1))
         return(-1);
     readLE16(infile, &numfiles, 2);
     i = 0;
@@ -2804,13 +2840,11 @@ K_INT16 loadmusic(char *filename)
     }
     if (j == 1)
     {
-
         close(infile);
         return(-1);
     }
 
     filoffs=readlong(buffer+8);
-
     lseek(infile, filoffs, SEEK_SET);
     read(infile, &trinst[0], 16);
     read(infile, &trquant[0], 16);
@@ -2821,6 +2855,15 @@ K_INT16 loadmusic(char *filename)
     readLE32(infile, note, numnotes*4);
     close(infile);
     numchans = 9-trchan[11]*3;
+
+    // Instruments 3, 23 & 64 are silent on Nintendo Switch for an unknown reason. 
+    // Substitute for other instruments that sound similar for now
+    for (int chan = 0; chan < numchans; chan++) {
+        if (trinst[chan] == 3 ||
+        trinst[chan] == 64) trinst[chan] = 6;
+        if (trinst[chan] == 23) trinst[chan] = 2;
+    }
+
     if (musicsource == 1)
         setmidiinsts();
     if (musicsource == 2)
@@ -3844,7 +3887,7 @@ K_INT16 kgif(K_INT16 filenum)
     } else {
         if (((fil = open("lab3d.kzp", O_RDONLY|O_BINARY, 0)) == -1)&&
             ((fil = open("LAB3D.KZP", O_RDONLY|O_BINARY, 0)) == -1))
-            return(-1);
+                return(-1);
     }
 
     rowpos = 0;
@@ -4250,22 +4293,28 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     vt2=floor(statusbaryoffset+statusbaryvisible+statusbaryoffset-y);
 
     if (statusbar==1)
-        gluOrtho2D(vl,
+        glOrtho(vl,
                    vl+virtualscreenwidth,
                    vt2,
-                   vt2-virtualscreenheight);
+                   vt2-virtualscreenheight,
+                   -1.0,
+                   1.0);
     else if (statusbar==2) {
-        gluOrtho2D(vl+340.0-x,
+        glOrtho(vl+340.0-x,
                    vl+virtualscreenwidth+340.0-x,
                    vt2,
-                   vt2-virtualscreenheight);
+                   vt2-virtualscreenheight,
+                   -1.0,
+                   1.0);
         x=340; y=statusbaryoffset;
     }
     else
-        gluOrtho2D(vl,
+        glOrtho(vl,
                    vl+virtualscreenwidth,
                    vt1,
-                   vt1-virtualscreenheight);
+                   vt1-virtualscreenheight,
+                   -1.0,
+                   1.0);
 
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
     glMatrixMode(GL_MODELVIEW);
@@ -4709,7 +4758,8 @@ static int default_hiscores() {
                     case 1: strcpy(buf, "Andy C.     "); score = 900000; break;
                     case 2: strcpy(buf, "Alan S.     "); score = 800000; break;
                     case 3: strcpy(buf, "Mahesh J.   "); score = 700000; break;
-                    case 4: memset(buf, 0, 12); score = 0;
+                    case 4: strcpy(buf, "Cameron A.  "); score = 600000; break;
+                    case 5: memset(buf, 0, 12); score = 0;
                 }
                 writelong(buf + 12, score);
             }
@@ -5041,6 +5091,11 @@ void getname()
     ch = 0;
     clearkeydefstat(ACTION_MENU);
     clearkeydefstat(ACTION_MENU_CANCEL);
+
+    // We have no keyboard on the Switch so we will fill out the name in code for now
+    #ifdef __SWITCH__
+    strcpy(hiscorenam, "Ken");
+    #else
     SDL_StartTextInput();
     while ((ch != 13) && (ch != 27))
     {
@@ -5103,6 +5158,7 @@ void getname()
     i = j-1;
     while ((hiscorenam[i] == 32) && (i >= 0))
         hiscorenam[i--] = 0;
+    #endif
     if ((hiscorenam[0] == 0) || (ch == 27))
     {
         hiscorenamstat = 0;
@@ -6248,6 +6304,14 @@ Uint16 getkeypress(int* key) {
 }
 
 void FindJoysticks() {
+    #ifdef __SWITCH__
+    cur_joystick_index = 0;
+    cur_controller = SDL_GameControllerOpen(0);
+    cur_controller_index = 0;
+    joystat = 1;
+    return;
+    #endif
+
     int i;
     if (!joyenable) return;
     for (i = 0; i < SDL_NumJoysticks(); ++i) {
@@ -6274,7 +6338,7 @@ void FindJoysticks() {
 
 void ProcessEvent(SDL_Event* event) {
     int sk, scan;
-
+    
     switch(event->type)
     {
         case SDL_QUIT:
@@ -6333,8 +6397,13 @@ void ProcessEvent(SDL_Event* event) {
 }
 
 void PollInputs() {
+    // If Nintendo Switch, poll to see if user has changed mode from portable/docked
+    #ifdef __SWITCH__
+    configureResolution();
+    hidScanInput();
+    #endif
+
     SDL_Event event;
-    //printf ("poll %d\n", i++);
     while(SDL_PollEvent(&event))
     {
         ProcessEvent(&event);

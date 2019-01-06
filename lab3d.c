@@ -169,7 +169,7 @@ void drawvolumebar(int vol,int type,float level) {
     glDisable(GL_DEPTH_TEST);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(0.0, 360.0, -15+30*type, 225+30*type);
+    glOrtho(0.0, 360.0, -15+30*type, 225+30*type, -1.0, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -402,8 +402,161 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
     }
 }
 
+#ifdef __SWITCH__
+static void setMesaConfig() {
+    // Uncomment below to disable error checking and save CPU time (useful for production):
+    // setenv("MESA_NO_ERROR", "1", 1);
+
+    // Uncomment below to enable Mesa logging:
+    setenv("EGL_LOG_LEVEL", "debug", 1);
+    setenv("MESA_VERBOSE", "all", 1);
+    setenv("NOUVEAU_MESA_DEBUG", "1", 1);
+
+    // Uncomment below to enable shader debugging in Nouveau:
+    setenv("NV50_PROG_OPTIMIZE", "0", 1);
+    setenv("NV50_PROG_DEBUG", "1", 1);
+    setenv("NV50_PROG_CHIPSET", "0x120", 1);
+}
+
+//-----------------------------------------------------------------------------
+// nxlink support
+//-----------------------------------------------------------------------------
+
+static int s_nxlinkSock = -1;
+
+static void initNxLink()
+{
+    if (R_FAILED(socketInitializeDefault()))
+        return;
+
+    s_nxlinkSock = nxlinkStdio();
+    if (s_nxlinkSock >= 0)
+        TRACE("printf output now goes to nxlink server");
+    else
+        socketExit();
+}
+
+static void deinitNxLink()
+{
+    if (s_nxlinkSock >= 0)
+    {
+        close(s_nxlinkSock);
+        socketExit();
+        s_nxlinkSock = -1;
+    }
+}
+
+void userAppInit()
+{
+    initNxLink();
+}
+
+void userAppExit()
+{
+    deinitNxLink();
+}
+
+static bool initEgl(NWindow* win)
+{
+    // Connect to the EGL default display
+    s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (!s_display)
+    {
+        TRACE("Could not connect to display! error: %d", eglGetError());
+        goto _fail0;
+    }
+    // Initialize the EGL display connection
+    eglInitialize(s_display, NULL, NULL);
+    // Select OpenGL as the desired graphics API
+    if (eglBindAPI(EGL_OPENGL_API) == EGL_FALSE)
+    {
+        TRACE("Could not set API! error: %d", eglGetError());
+        goto _fail1;
+    }
+    // Get an appropriate EGL framebuffer configuration
+    EGLConfig config;
+    EGLint numConfigs;
+    static const EGLint framebufferAttributeList[] =
+    {
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_RED_SIZE,     8,
+        EGL_GREEN_SIZE,   8,
+        EGL_BLUE_SIZE,    8,
+        EGL_ALPHA_SIZE,   8,
+        EGL_DEPTH_SIZE,   24,
+        EGL_STENCIL_SIZE, 0,
+        EGL_NONE
+    };
+    eglChooseConfig(s_display, framebufferAttributeList, &config, 1, &numConfigs);
+    if (numConfigs == 0)
+    {
+        TRACE("No config found! error: %d", eglGetError());
+        goto _fail1;
+    }
+    // Create an EGL window surface
+    s_surface = eglCreateWindowSurface(s_display, config, win, NULL);
+    if (!s_surface)
+    {
+        TRACE("Surface creation failed! error: %d", eglGetError());
+        goto _fail1;
+    }
+    // Create an EGL rendering context
+    static const EGLint contextAttributeList[] =  {
+		EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT,
+        EGL_CONTEXT_MAJOR_VERSION, 4,
+        EGL_CONTEXT_MINOR_VERSION, 3,
+		EGL_NONE
+	};
+    s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, contextAttributeList);
+    if (!s_context)
+    {
+        TRACE("Context creation failed! error: %d", eglGetError());
+        goto _fail2;
+    }
+    // Connect the context to the surface
+    eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+    return true;
+
+_fail2:
+    eglDestroySurface(s_display, s_surface);
+    s_surface = NULL;
+_fail1:
+    eglTerminate(s_display);
+    s_display = NULL;
+_fail0:
+    return false;
+}
+
+static void deinitEgl()
+{
+    if (s_display)
+    {
+        eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (s_context)
+        {
+            eglDestroyContext(s_display, s_context);
+            s_context = NULL;
+        }
+        if (s_surface)
+        {
+            eglDestroySurface(s_display, s_surface);
+            s_surface = NULL;
+        }
+        eglTerminate(s_display);
+        s_display = NULL;
+    }
+}
+#endif
+
 int main(int argc,char **argv)
 {
+    #ifdef __SWITCH__
+    #ifdef ENABLE_NXLINK
+    // Set mesa configuration (useful for debugging)
+    setMesaConfig();
+    #endif
+    #endif
+
     char ksmfile[15], hitnet, cheatkeysdown, won;
     K_INT16 i, j, jj, k, m=0, n=0, x, y, brd0, brd1, brd2, brd3, incenter=0;
     K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
@@ -459,11 +612,27 @@ int main(int argc,char **argv)
 
     /* Initialise SDL; */
 
-    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|
+    SDL_Init(SDL_INIT_TIMER|
              SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
 
+    #ifdef __SWITCH__
+    win = nwindowGetDefault();
+    nwindowSetDimensions(win, 1920, 1080);
+     // Initialize EGL on the default window
+    if (!initEgl(win)) {
+        return EXIT_FAILURE;
+    }
+
+	gladLoadGL();
+    if (s_context == NULL)
+        TRACE("Could not create GL context.");
+    
+    eglSwapInterval(s_display, 1);
+    #else
+    SDL_InitSubSystem(SDL_INIT_VIDEO);
     if (SDL_GL_LoadLibrary(NULL) != 0)
         fatal_error("Could not dynamically open OpenGL library: %s", SDL_GetError());
+    #endif
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
         ((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
@@ -618,7 +787,6 @@ int main(int argc,char **argv)
         setup_stereo(stereo);
 
     /* Introduction... */
-
     kgif(1);
     introduction(0);
 

@@ -1,0 +1,11 @@
+{
+  "title": "Ken's Labyrinth",
+  "author": "Ken Silverman, Jan Lonnberg, Jared Stafford, Cameron Armstrong (Nightfox)",
+  "category": "game",
+  "version": "3.1.0",
+  "url": "https://github.com/sacredbanana/lab3d-sdl",
+  "license": "n/a",
+  "description": "This is an enhanced version of the MS-DOS classic 3D shooter Ken's Labyrinth.",
+  "details": "Kens Labyrinth is graphically similar to Id Software's Wolfenstein 3D in that the levels were designed using a grid-based plane, resulting in perpendicular walls and textureless floors and ceilings. Arguably its most astounding feature was the existence of interactive sprites and textures, like slot machines. This move towards engines allowing greater interactivity was later elaborated upon by Silverman's Build engine.\\n\\nFeatures all 3 episodes of the full game totaling 30 levels. The graphics have also been improved with HD support running at a smooth 60fps. The textures have also been upgraded.",
+  "changelog": "3.1: 2019-19-01\\n  * Created a port for Nintendo Switch\\n\\n3.0: 2014-01-03\\n  * Upgraded to SDL2.\\n  * New settings format - now actually readable, and easier to add to in the\\n    future.\\n  * Unified joystick and keyboard support - most UI functions can now be\\n    operated by controller or joystick (except for entering text). Joysticks and\\n    controllers can be plugged and unplugged while the game is running.\\n  * Setup can now be accessed from the main menu. Changes to controls\\n    take effect immediately, all other settings require restart.\\n  * New -load option to load a savegame directly.\\n  * Beta support for demo recording and playback.\\n  * Initial support for red-blue anaglyph stereo.\\n  * Fixed bug where only the top half of scrolling image on the title screen was\\n    displayed.\\n  * Fixed bug where menus would go black after switching away and back.\\n  * Added new \"cycle weapon\" key.\\n  * Added direct strafe keys.\\n\\n2.32-2005-10-31:\\n  * Added anisotropic filtering option, which reduces the blurring on walls when\\n    viewed from an angle.\\n\\n2.32-2005-05-30:\\n  * Made warp transparent\\n  * Created binary package for Linux\\n\\n2.32-2005-02-18:\\n  * Removed textures based on GIMP patterns\\n  * New Pov-Ray rendered robot\\n  * New Ken-face textures\\n  * New gold & silver doors"
+}
