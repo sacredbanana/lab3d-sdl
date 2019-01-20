@@ -32,16 +32,16 @@ Improvements over the original Ken's Labyrinth:
 - Game controller support.
 - Many bug fixes.
 
-    Credits
+    	Credits
 	-------
 
 Design, code and Adlib emulation by:	LAB3D/SDL code by:
-Ken Silverman				Jan L�nnberg
+Ken Silverman				Jan Lönnberg
 http://www.advsys.net/ken		http://koti.mbnet.fi/lonnberg/
 					Jared Stafford
                                         https://jspenguin.org/
-Nintendo Switch port:		Cameron Armstrong (Nightfox)
-										http://minotaurcreative.net/
+Nintendo Switch port:			Cameron Armstrong (Nightfox)
+					http://minotaurcreative.net/
 
 Artwork by:				Board maps by:
 Mikko Iho				Andrew Cotter
