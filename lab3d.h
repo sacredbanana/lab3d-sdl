@@ -485,6 +485,13 @@ EXTERN EGLContext s_context;
 EXTERN EGLSurface s_surface;
 #define SDL_GL_SwapWindow(mainwindow) eglSwapBuffers(s_display, s_surface)
 void configureResolution();
+void setMesaConfig();
+void initNxLink();
+void deinitNxLink();
+void userAppInit();
+void userAppExit();
+bool initEgl(NWindow* win);
+void deinitEgl();
 #endif
 
 /* MIDI stuff... */
