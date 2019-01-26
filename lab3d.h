@@ -432,7 +432,7 @@ EXTERN K_INT16 statusbar, statusbargoal, doorx, doory, doorstat;
 EXTERN K_INT16 fadehurtval, fadewarpval;
 EXTERN K_INT32 ototclock, totalclock, purpletime, greentime, capetime[2];
 EXTERN K_INT32 scoreclock, scorecount;
-EXTERN unsigned char textbuf[41];
+EXTERN char textbuf[52];
 EXTERN K_INT16 musicsource, midiscrap;
 EXTERN K_UINT32 musicstatus, count, countstop;
 EXTERN K_UINT16 numnotes, speed, drumstat, numchans, nownote;
@@ -460,7 +460,7 @@ EXTERN K_INT16 ang, startang, angvel, yourhereoldpos;
 EXTERN K_INT16 vel, mxvel, myvel, svel, maxvel;
 EXTERN K_INT16 posz, hvel, lastunlock, lastshoot, saidwelcome;
 EXTERN K_UINT16 convavailpages, convwalls;
-EXTERN char gamehead[8][27], gamexist[8];
+EXTERN unsigned char gamehead[8][27], gamexist[8];
 
 /* SDL timer... */
 
@@ -484,7 +484,7 @@ EXTERN EGLDisplay s_display;
 EXTERN EGLContext s_context;
 EXTERN EGLSurface s_surface;
 #define SDL_GL_SwapWindow(mainwindow) eglSwapBuffers(s_display, s_surface)
-static void configureResolution();
+void configureResolution();
 #endif
 
 /* MIDI stuff... */
