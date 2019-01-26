@@ -454,7 +454,7 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
         if (!d->gzfil) return 0;
     }
 
-    strcpy(hdr, "KENDEMO");
+    strcpy((char *)hdr, "KENDEMO");
     hdr[7] = d->format;
     if (demofile_write(d, hdr, 8) < 8) return 0;
 

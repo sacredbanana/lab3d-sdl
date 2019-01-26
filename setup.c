@@ -400,7 +400,7 @@ static int action_group_actions[] = {
     -1
 };
 
-static char *okmenu[] = { "OK" };
+// static char *okmenu[] = { "OK" };
 
 static char *inputdevicemenu[4] = {
     "Keyboard only",
@@ -1018,8 +1018,7 @@ static void draw_mainmenu(void) {
 }
 
 void setupmenu(int ingame) {
-    int quit=0,sel=0,j;
-    char errbuf[64];
+    int quit=0,sel=0;
     setup_ingame = ingame;
 
     while(!quit) {
@@ -1073,12 +1072,12 @@ void setupmenu(int ingame) {
                         break;
                     case 13:
 #ifdef HAVE_DESKTOP
-                        errbuf[0] = 0;
+                        char errbuf[0] = 0;
                         createshortcut(errbuf, sizeof(errbuf) - 1);
                         if (!errbuf[0]) {
                             strcpy(errbuf, "Shortcuts created.");
                         }
-                        j = 0;
+                        int j = 0;
                         selectionmenu(1, okmenu, &j, errbuf);
                         break;
                     case 14:
@@ -1260,26 +1259,26 @@ static int _save_float(const char* key, FILE* f, setting_t* set) {
     return 0;
 }
 
-static int _load_enum(const char* key, char* svalue, setting_t* set) {
-    int val = get_enum(svalue, (enumpair*)set->p2);
-    if (val == -1) {
-        return _parse_int(svalue, (int*)set->p1);
-    }
-    *((int*)set->p1) = val;
-    return 0;
-}
+// static int _load_enum(const char* key, char* svalue, setting_t* set) {
+//     int val = get_enum(svalue, (enumpair*)set->p2);
+//     if (val == -1) {
+//         return _parse_int(svalue, (int*)set->p1);
+//     }
+//     *((int*)set->p1) = val;
+//     return 0;
+// }
 
-static int _save_enum(const char* key, FILE* f, setting_t* set) {
-    enumpair* cur = (enumpair*)set->p2;
-    while (cur->name) {
-        if (cur->value == *((int*)set->p1)) {
-            fprintf(f, "%s = %s\n", key, cur->name);
-            return 0;
-        }
-        cur++;
-    }
-    return _save_int(key, f, set);
-}
+// static int _save_enum(const char* key, FILE* f, setting_t* set) {
+//     enumpair* cur = (enumpair*)set->p2;
+//     while (cur->name) {
+//         if (cur->value == *((int*)set->p1)) {
+//             fprintf(f, "%s = %s\n", key, cur->name);
+//             return 0;
+//         }
+//         cur++;
+//     }
+//     return _save_int(key, f, set);
+// }
 
 static int _string_or_int(char* val, char** strval, int* ival) {
     char *end = val + strlen(val) - 1;
@@ -1420,10 +1419,10 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
 }
 
 
-static int _save_blankline(const char* key, FILE* f, setting_t* set) {
-    fprintf(f, "\n");
-    return 0;
-}
+// static int _save_blankline(const char* key, FILE* f, setting_t* set) {
+//     fprintf(f, "\n");
+//     return 0;
+// }
 
 #define INTSETTING(name, gvar) { #name, _load_int, _save_int, &gvar }
 #define XINTSETTING(name, gvar) { #name, _load_int, NULL, &gvar }
@@ -1578,7 +1577,7 @@ void savesettings(void) {
 void setup(void) {
     K_INT16 i, j, k, walcounter;
     K_UINT16 l;
-    char *v;
+    unsigned char *v;
     SDL_Surface *icon;
     SDL_Rect displaybounds;
 
