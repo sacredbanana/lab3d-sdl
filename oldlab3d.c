@@ -29,8 +29,8 @@ void oldmain(void)
     K_INT16 thvel, tsvel;
     char cheatkeysdown;
 
-    K_INT32 fwdvel=0, sidevel=0, standvel=0;
-    K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
+    // K_INT32 fwdvel=0, sidevel=0, standvel=0;
+    // K_INT32 dfwdvel=0, dsidevel=0, dturnvel=0, dstandvel=0;
 
     clockspd=0;
 
@@ -2332,7 +2332,7 @@ K_INT16 oldloadgame(K_INT16 gamenum)
     read(fil,&chanfreq,18);
     close(fil);
     for(i=0;i<4096;i++)
-        walseg[79][i]=board[0][i]&255;
+        walseg[79][i]=*(((K_INT16 *)board)+i)&255;
     if ((vidmode == 0) && (statusbargoal > 400))
     {
         statusbar -= 80;
@@ -2472,7 +2472,7 @@ K_INT16 oldsavegame(K_INT16 gamenum)
 
 K_INT16 oldintroduction(void)
 {
-    K_UINT16 plc, plcinc;
+    K_UINT16 plc;
     K_INT16 lasti, i, j, m, fil;
 
     wipeoverlay(0,0,361,statusbaryoffset);
@@ -2515,7 +2515,7 @@ K_INT16 oldintroduction(void)
     plc = 0;
     if (vidmode == 0)
         plc = 1805;
-    plcinc = 0;
+    // plcinc = 0;
     musicon();
     if (saidwelcome == 0)
     {

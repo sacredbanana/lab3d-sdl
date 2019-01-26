@@ -10,14 +10,13 @@ void initialize()
 {
     K_INT16 i, j, k, walcounter, oclockspeed;
     K_UINT16 l;
-    char *v;
+    unsigned char *v;
     time_t tnow;
     
     SDL_AudioSpec want;
     FILE *file;
     struct stat fstats;
 
-    int realr,realg,realb,realz,reald;
     long sndsize;
 
     statusbaryoffset=250;
@@ -33,7 +32,11 @@ void initialize()
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
 
+    walltol=32;
+    neardist=16;
+
     #ifndef __SWITCH__
+    int realr,realg,realb,realz,reald;
     SDL_Surface *icon;
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
@@ -103,15 +106,13 @@ void initialize()
             "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
             realr,realg,realb,realz);
 
+    if (realz<24) {
+        walltol=256;
+        neardist=128;
+    }
     #endif
 
     SDL_SetWindowBrightness(mainwindow, gammalevel);
-
-    if (realz<24) {
-        walltol=256; neardist=128;
-    } else {
-        walltol=32; neardist=16;
-    }
 
     largescreentexture = 1;
 

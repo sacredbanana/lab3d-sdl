@@ -477,7 +477,6 @@ gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
      GLdouble centery, GLdouble centerz, GLdouble upx, GLdouble upy,
      GLdouble upz)
 {
-    int i;
     float forward[3], side[3], up[3];
     GLfloat m[4][4] = {};
  
@@ -523,7 +522,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 {
     unsigned char shadecoffs;
     K_INT16 i, j, k, x, y;
-    K_INT16 yy, endyy, temp;
+    K_INT16 yy, temp;
     K_INT32 x1, y1, x2, y2;
     K_INT16 xc, yc;
 
@@ -633,11 +632,11 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     if (vidmode == 0) {
         yy = 9000;
-        endyy = 0;
+        // endyy = 0;
     }
     else {
         yy = 10800;
-        endyy = 0;
+        // endyy = 0;
     }
 
     /* These two textures change all the time, but we don't want to waste time

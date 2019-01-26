@@ -113,13 +113,12 @@ void seqbuf_dump ()
 void checkGLStatus()
 {
     GLenum errCode;
-    const GLubyte *errString;
 
     while ((errCode=glGetError())!=GL_NO_ERROR) {
         #ifdef __SWITCH__
         fprintf(stderr, "OpenGL Error: %d\n", errCode);
         #else
-        errString=gluErrorString(errCode);
+        const GLubyte *errString = gluErrorString(errCode);
         fprintf(stderr, "OpenGL Error: %s\n", errString);
         #endif
     }
@@ -442,9 +441,8 @@ void loadboard()
 #endif
 
     /* Generate map texture... */
-
     for(i=0;i<4096;i++)
-        walseg[map-1][i]=board[0][i]&255;
+        walseg[map-1][i]=*(((K_INT16 *)board)+i)&255;
 
     if (lab3dversion) {
         spritepalette[0]=63;
@@ -2284,7 +2282,7 @@ static K_UINT16 introplc;
 
 void drawintroduction() {
     K_INT32 dai=totalclock>>2;
-    K_INT16 k, m;
+    K_INT16 m;
 
     if ((dai >= 0) && (dai < 300))
     {
@@ -2352,10 +2350,11 @@ void drawintroduction() {
                 m = 20;
             else
                 m = 0;
+            /*
             k = 0;
             if (numboards == 10)
                 k = 32;
-            /*
+        
               statusbardraw(sharemessplc, k, 64-sharemessplc, 32, m, 32, sharewaremessage);
               statusbardraw(0, k, 64-sharemessplc, 32, 256+m+sharemessplc, 32, sharewaremessage);*/
             sharemessplc--;
@@ -2739,7 +2738,7 @@ void introduction(K_INT16 songnum)
 }
 
 #ifdef __SWITCH__
-static void configureResolution()
+void configureResolution()
 {
     int width, height;
 
@@ -2773,7 +2772,7 @@ static void configureResolution()
 
 K_INT16 loadmusic(char *filename)
 {
-    char buffer[256], instbuf[11];
+    unsigned char buffer[256], instbuf[11];
     int infile;
     K_INT16 i, j, k, numfiles;
     K_INT32 filoffs;
@@ -3435,7 +3434,7 @@ unsigned char textpalette[48]={
 
 void wingame(K_INT16 episode)
 {
-    K_UINT16 l, startx, starty;
+    K_UINT16 startx, starty;
     K_INT16 oldmute;
     K_INT32 revtotalclock, revototclock, templong;
 
@@ -3546,14 +3545,14 @@ void wingame(K_INT16 episode)
                     SDL_UnlockMutex(timermutex);
 
                     death = 4096;
-                    if ((vidmode == 0) && (statusbar < 399))
-                    {
-                        l = times90[((unsigned)statusbar+1)>>1]+5;
-                    }
-                    if ((vidmode == 1) && (statusbar < 479))
-                    {
-                        l = times90[((unsigned)statusbar+1)>>1];
-                    }
+                    // if ((vidmode == 0) && (statusbar < 399))
+                    // {
+                    //     l = times90[((unsigned)statusbar+1)>>1]+5;
+                    // }
+                    // if ((vidmode == 1) && (statusbar < 479))
+                    // {
+                    //     l = times90[((unsigned)statusbar+1)>>1];
+                    // }
                     fade(63);
                     setdarkenedpalette();
                     glClearColor( 0, 0, 0, 0 );
@@ -3630,10 +3629,9 @@ void wingame(K_INT16 episode)
 void winallgame()
 {
     K_INT16 leavewin;
-    K_INT32 revtotalclock, revototclock;
+    K_INT32 revtotalclock;
 
     ingame=0;
-    revototclock = 1;
     revtotalclock = 1;
     linecompare(479);
     musicoff();
@@ -3691,7 +3689,6 @@ void winallgame()
             pressakey();
             leavewin = 1;
         }
-        revototclock = revtotalclock;
         SDL_LockMutex(timermutex);
         if (clockspeed==0) {
             SDL_UnlockMutex(timermutex);
@@ -3807,9 +3804,6 @@ void updateoverlaypalette(K_UINT16 start, K_UINT16 amount, unsigned char *cols) 
 
 void fade(K_INT16 brightness)
 {
-    int old;
-    old=fadelevel;
-
     fadelevel=brightness;
 
     if (brightness == 63) {
@@ -3831,7 +3825,6 @@ void fade(K_INT16 brightness)
         greenfactor/=redfactor;
         bluefactor/=redfactor;
         redfactor=1.0;
-
     }
 }
 
@@ -3850,10 +3843,10 @@ void showcompass(K_INT16 compang)
 K_INT16 kgif(K_INT16 filenum)
 {
     unsigned char header[13], imagestat[10], bitcnt, numbits;
-    unsigned char globalflag, localflag, backg, chunkind;
-    K_INT16 i, j, k, x, y, xdim, ydim;
+    unsigned char globalflag, localflag, chunkind;
+    K_INT16 i, j, k, x, y, ydim;
     K_INT16 numcols, numpals, fil, blocklen;
-    K_UINT16 rowpos, numlines, gifdatacnt, firstring, currstr, bytecnt, numbitgoal;
+    K_UINT16 gifdatacnt, firstring, currstr, bytecnt, numbitgoal;
 
     K_UINT16 stack[LZW_STACK_SIZE];
     K_UINT16 stackp=0, dat;
@@ -3892,11 +3885,9 @@ K_INT16 kgif(K_INT16 filenum)
                 return(-1);
     }
 
-    rowpos = 0;
     if (filenum == 1)
     {
         lseek(fil, giflen1, SEEK_SET);
-        rowpos = 5;
     }
     if (filenum == 2)
         lseek(fil, giflen1+giflen2, SEEK_SET);
@@ -3913,7 +3904,7 @@ K_INT16 kgif(K_INT16 filenum)
     globalflag = header[10];
     numcols = (1<<((globalflag&7)+1));
     firstring = numcols+2;
-    backg = header[11];
+    // backg = header[11];
     if (header[12] != 0)
         return(-1);
     if ((globalflag&128) > 0)
@@ -3941,7 +3932,7 @@ K_INT16 kgif(K_INT16 filenum)
         for(j=0;j<9;j++)
             imagestat[j] = tempbuf[j+gifdatacnt];
         gifdatacnt += 9;
-        xdim = imagestat[4]+(imagestat[5]<<8);
+        // xdim = imagestat[4]+(imagestat[5]<<8);
         ydim = imagestat[6]+(imagestat[7]<<8);
         localflag = imagestat[8];
         if ((localflag&128) > 0)
@@ -3953,8 +3944,6 @@ K_INT16 kgif(K_INT16 filenum)
             gifdatacnt += numpals;
         }
         gifdatacnt++;
-        numlines = 200;
-
 
         x = 20, y = (filenum==2)?0:20;
         bitcnt = 0;
@@ -4763,7 +4752,7 @@ static int default_hiscores() {
                     case 4: strcpy(buf, "Cameron A.  "); score = 600000; break;
                     case 5: memset(buf, 0, 12); score = 0;
                 }
-                writelong(buf + 12, score);
+                writelong((unsigned char*)buf + 12, score);
             }
             fwrite(buf, 1, 16, f);
         }
@@ -5054,7 +5043,7 @@ void setuptextbuf(K_INT32 templong)
 
 void getname()
 {
-    int ch, uni;
+    int ch;
     K_INT16 i, j;
 
     /* Apparently, the program is supposed to remember the name you used last
@@ -5098,6 +5087,7 @@ void getname()
     #ifdef __SWITCH__
     strcpy(hiscorenam, "Ken");
     #else
+    int uni;
     SDL_StartTextInput();
     while ((ch != 13) && (ch != 27))
     {
@@ -5657,12 +5647,12 @@ void creditsmenu()
 
 void bigstorymenu()
 {
-    K_INT16 i, j, k, n, nowenterstate, lastenterstate, quitstat, bstatus, obstatus;
+    K_INT16 i, j, k, nowenterstate, lastenterstate, quitstat, bstatus, obstatus;
 
-    if (vidmode == 0)
-        n = 0;
-    else
-        n = 20;
+    // if (vidmode == 0)
+    //     n = 0;
+    // else
+    //     n = 20;
     if (boardnum < 10) j = -32, k = -27;
     else if (boardnum < 20) j = -26, k = -24;
     else j = -23, k = -22;
@@ -6483,12 +6473,15 @@ void quit() {
     if (cur_controller)
         SDL_GameControllerClose(cur_controller);
 
+    deinitEgl();
     SDL_Quit();
 
     exit(0);
 }
 
+#ifndef log2
 #define log2(a) (log(a)/log(2))
+#endif
 
 void randoinsts()
 {

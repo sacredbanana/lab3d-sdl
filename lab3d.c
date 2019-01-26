@@ -200,11 +200,11 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
     int democlock = 0;
     double demomsclock = 0;
     fade(63);
-    int cf = 0;
-    int done = 0;
+    // int cf = 0;
+    // int done = 0;
     int pausemode = rewinding, oldpause = 0, pause = 0;
     int oboardnum = rewinding ? boardnum : -1;
-    int advance_pressed = 1, rewind_pressed = 1, use_pressed = 1;
+    int advance_pressed = 1, use_pressed = 1; //rewind_pressed = 1
     K_UINT32 opsoundnum = 0xFFFFFFFF;
     unsigned char opsounds[16], opsoundpan[16];
     int rewindable = demofile_rewindable(demoplaying);
@@ -214,8 +214,8 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
     }
 
     while (1) {
-        double accelf;
-        int td, dir;
+        double accelf = 0.0;
+        int td, dir = 1;
         PollInputs();
 
         if (getkeydefstatlock(ACTION_MENU) || getkeydefstatlock(ACTION_MENU_CANCEL)) {
@@ -453,6 +453,7 @@ void userAppInit()
 
 void userAppExit()
 {
+    deinitEgl();
     deinitNxLink();
 }
 
@@ -527,7 +528,7 @@ _fail0:
     return false;
 }
 
-static void deinitEgl()
+void deinitEgl()
 {
     if (s_display)
     {
@@ -995,7 +996,7 @@ int main(int argc,char **argv)
               if (timediff > 4) timediff = 4;*/
             demofile_write_frame(demorecording, clockspd);
             if (demofile_rewindable(demorecording) && getkeydefstat(ACTION_REWIND)) {
-                int rc = playdemo(demorecording, NULL, 1);
+                playdemo(demorecording, NULL, 1);
                 clockspeed = 4;
             }
         }
