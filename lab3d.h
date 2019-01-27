@@ -492,6 +492,7 @@ void userAppInit();
 void userAppExit();
 bool initEgl(NWindow* win);
 void deinitEgl();
+void getUsername();
 #endif
 
 /* MIDI stuff... */
