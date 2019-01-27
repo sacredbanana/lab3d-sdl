@@ -1,3 +1,13 @@
+3.1.1: 2019-01-27
+  NOTE: If updating from 3.0.0 you will need to delete Ken2.nro because the new
+  executable has a different name.
+
+  * Switch - Renamed executable so that it appears properly in the homebrew menu in SX OS
+  * Switch - Swapped select and cancel buttons for menus
+  * Switch - Use Switch account name if user is signed in, "Ken" otherwise
+  * Switch - Improved use of depth buffer
+  * Switch - Quitting game from main menu now quits gracefully
+
 3.1: 2019-19-01
   * Created a port for Nintendo Switch
 

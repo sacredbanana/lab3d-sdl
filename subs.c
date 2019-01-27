@@ -5083,9 +5083,9 @@ void getname()
     clearkeydefstat(ACTION_MENU);
     clearkeydefstat(ACTION_MENU_CANCEL);
 
-    // We have no keyboard on the Switch so we will fill out the name in code for now
+    // We have no keyboard on the Switch so we will get the Switch username
     #ifdef __SWITCH__
-    strcpy(hiscorenam, "Ken");
+    getUsername();
     #else
     int uni;
     SDL_StartTextInput();
@@ -6694,5 +6694,66 @@ void deinitEgl()
         eglTerminate(s_display);
         s_display = NULL;
     }
+}
+
+void getUsername()
+{
+    Result rc=0;
+
+    u128 userID=0;
+    bool account_selected=0;
+    AccountProfile profile;
+    AccountUserData userdata;
+    AccountProfileBase profilebase;
+
+    memset(&userdata, 0, sizeof(userdata));
+    memset(&profilebase, 0, sizeof(profilebase));
+
+    strncpy(hiscorenam, "Ken", sizeof(hiscorenam));
+
+    rc = accountInitialize();
+    if (R_FAILED(rc)) {
+        TRACE("accountInitialize() failed: 0x%x\n", rc);
+    }
+
+    if (R_SUCCEEDED(rc)) {
+        rc = accountGetActiveUser(&userID, &account_selected);
+
+        if (R_FAILED(rc)) {
+            TRACE("accountGetActiveUser() failed: 0x%x\n", rc);
+        }
+        else if(!account_selected) {
+            TRACE("No user is currently selected.\n");
+            rc = -1;
+        }
+
+        if (R_SUCCEEDED(rc)) {
+            TRACE("Current userID: 0x%lx 0x%lx\n", (u64)(userID>>64), (u64)userID);
+
+            rc = accountGetProfile(&profile, userID);
+
+            if (R_FAILED(rc)) {
+                TRACE("accountGetProfile() failed: 0x%x\n", rc);
+            }
+        }
+
+        if (R_SUCCEEDED(rc)) {
+            rc = accountProfileGet(&profile, &userdata, &profilebase);//userdata is otional, see libnx acc.h.
+
+            if (R_FAILED(rc)) {
+                TRACE("accountProfileGet() failed: 0x%x\n", rc);
+            }
+
+            if (R_SUCCEEDED(rc)) {
+                strncpy(hiscorenam, profilebase.username, sizeof(hiscorenam)-1);//Even though profilebase.username usually has a NUL-terminator, don't assume it does for safety.
+
+                TRACE("Username: %s\n", hiscorenam);
+            }
+
+            accountProfileClose(&profile);
+        }
+    }
+
+accountExit();
 }
 #endif
