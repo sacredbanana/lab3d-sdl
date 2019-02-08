@@ -6473,7 +6473,9 @@ void quit() {
     if (cur_controller)
         SDL_GameControllerClose(cur_controller);
 
+    #ifdef __SWITCH__
     deinitEgl();
+    #endif
     SDL_Quit();
 
     exit(0);
