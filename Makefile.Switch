@@ -40,7 +40,7 @@ EXEFS_SRC	:=	exefs_src
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
-APP_VERSION	:= 3.1.0
+APP_VERSION	:= 3.1.2
 ICON		:= ken_icon_switch.jpg
 
 #---------------------------------------------------------------------------------

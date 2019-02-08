@@ -1,3 +1,7 @@
+3.1.2: 2019-02-08
+ * Upgraded the Adlib emulator to Ken's 64 bit compatible one resolving all music issues
+   such as silent or distorted instruments on some platforms
+
 3.1.1: 2019-01-27
   NOTE: If updating from 3.0.0 you will need to delete Ken2.nro because the new
   executable has a different name.
