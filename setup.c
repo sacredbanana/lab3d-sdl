@@ -400,7 +400,10 @@ static int action_group_actions[] = {
     -1
 };
 
-// static char *okmenu[] = { "OK" };
+#ifdef HAVE_DESKTOP
+static char *okmenu[] = { "OK" };
+#endif
+
 
 static char *inputdevicemenu[4] = {
     "Keyboard only",
@@ -1024,6 +1027,7 @@ void setupmenu(int ingame) {
     while(!quit) {
         draw_mainmenu();
 #ifdef HAVE_DESKTOP
+        char errbuf[64] = {0};
         if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,15)) < 0)
 #else
         if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,14)) < 0)
@@ -1070,9 +1074,8 @@ void setupmenu(int ingame) {
                     case 12:
                         setupscalingmodemenu();
                         break;
-                    case 13:
+                    case 13: ;
 #ifdef HAVE_DESKTOP
-                        char errbuf[0] = 0;
                         createshortcut(errbuf, sizeof(errbuf) - 1);
                         if (!errbuf[0]) {
                             strcpy(errbuf, "Shortcuts created.");
