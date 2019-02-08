@@ -2855,16 +2855,6 @@ K_INT16 loadmusic(char *filename)
     close(infile);
     numchans = 9-trchan[11]*3;
 
-    // Instruments 3, 23 & 64 are silent on Linux and Nintendo Switch for an unknown reason. 
-    // Substitute for other instruments that sound similar for now
-    #ifndef WIN32
-    for (int chan = 0; chan < numchans; chan++) {
-        if (trinst[chan] == 3 ||
-        trinst[chan] == 64) trinst[chan] = 6;
-        if (trinst[chan] == 23) trinst[chan] = 2;
-    }
-    #endif
-
     if (musicsource == 1)
         setmidiinsts();
     if (musicsource == 2)
