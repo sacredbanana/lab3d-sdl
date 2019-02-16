@@ -1,12 +1,12 @@
 #ifdef USE_OSS
-#define MUSIC_SOURCES 3
+#define MUSIC_SOURCES 4
 #else
 #ifdef WIN32
-#define MUSIC_SOURCES 3
+#define MUSIC_SOURCES 4
 #include "objbase.h"
 #include "shlobj.h"
 #else
-#define MUSIC_SOURCES 2
+#define MUSIC_SOURCES 3
 #endif
 #endif
 
@@ -437,10 +437,11 @@ static char *filtermenu[3] = {
     "No filtering"
 };
 
-static char *musicmenu[3] = {
+static char *musicmenu[4] = {
     "No music",
     "Adlib emulation",
-    "General MIDI",
+    "Adlib random instruments",
+    "General MIDI"
 };
 
 static char *soundmenu[2] = {
@@ -615,6 +616,9 @@ int getnumber(void) {
 }
 
 void customresolution(void) {
+    #ifdef __SWITCH__
+    return;
+    #endif
     int x,y;
 
     drawinputbox();
@@ -648,11 +652,15 @@ void setupsetfiltering(void) {
 }
 
 void setupsetmusic(void) {
+    int oldmusic = music;
     selectionmenu(MUSIC_SOURCES,musicmenu,&music, "Music");
+    if (music != oldmusic || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) resetaudio();
 }
 
 void setupsetsound(void) {
+    int oldsound = sound;
     selectionmenu(2,soundmenu,&sound, "Sound");
+    if (sound != oldsound) resetaudio();
 }
 
 void setupcheatmenu(void) {
@@ -660,15 +668,21 @@ void setupcheatmenu(void) {
 }
 
 void setupsetsoundchannels(void) {
+    int oldchannel = channel;
     selectionmenu(2,channelmenu,&channel, "Sound channels");
+    if (channel != oldchannel) resetaudio();
 }
 
 void setupsetmusicchannels(void) {
+    int oldmusicchannel = musicchannel;
     selectionmenu(2,channelmenu,&musicchannel, "Music channels");
+    if (musicchannel != oldmusicchannel) resetaudio();
 }
 
 void setupsoundblockmenu(void) {
+    int oldsoundblock = soundblock;
     selectionmenu(10,soundblockmenu,&soundblock, "Sound buffer");
+    if (soundblock != oldsoundblock) resetaudio();
 }
 
 void setuptimingmenu(void) {
@@ -1105,14 +1119,17 @@ void configure(void) {
 
     speechstatus = sound?2:0;
     switch(music) {
+        case 3:
+            musicsource = MUSIC_SOURCE_MIDI;
+            break;
         case 2:
-            musicsource=1;
+            musicsource = MUSIC_SOURCE_ADLIB_RANDOM;
             break;
         case 1:
-            musicsource=2;
+            musicsource = MUSIC_SOURCE_ADLIB;
             break;
         default:
-            musicsource=-1;
+            musicsource = MUSIC_SOURCE_NONE;
             break;
     }
     moustat = ((3-inputdevice)&1);
@@ -1128,7 +1145,7 @@ void configure(void) {
     musicpan=musicchannel;
 
     soundblocksize=/* channels* */
-        ((musicsource==2)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ);
+        ((musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) ? SOUNDBLOCKSIZE44KHZ : SOUNDBLOCKSIZE11KHZ);
     if (soundblock>0) {
         soundblocksize>>=4;
         soundblocksize<<=soundblock;
@@ -1485,11 +1502,7 @@ void loadsettings(void) {
     char buf[256];
     char *key, *val;
     int curline = 0;
-    #ifdef __SWITCH__
-    const char* filename = "settings_switch.ini";
-    #else
     const char* filename = "settings.ini";
-    #endif
 
     setting_section_t* cursection = NULL;
     setting_t* cursetting = NULL;
@@ -1498,8 +1511,13 @@ void loadsettings(void) {
 
     input = fopen(filename, "r");
 
-    if (input == NULL)
+    if (input == NULL) {
+        #ifdef __SWITCH__
+        input = fopen("romfs:/settings_switch.ini", "r");
+        #else
         setup();
+        #endif
+    }
 
     if (!key_settings[0].name) {
         int i;
@@ -1679,7 +1697,7 @@ void setup(void) {
     moustat = 1;
     joyenable = 1;
 
-    musicsource=-1;
+    musicsource= MUSIC_SOURCE_NONE;
     speechstatus=0;
 
     fprintf(stderr,"Allocating memory...\n");
