@@ -405,6 +405,9 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
 int main(int argc,char **argv)
 {
     #ifdef __SWITCH__
+    Result rc = romfsInit();
+    if (R_FAILED(rc))
+        TRACE("romfsInit failed: %08X\n", rc);
     #ifdef ENABLE_NXLINK
     // Set mesa configuration (useful for debugging)
     setMesaConfig();
@@ -466,7 +469,7 @@ int main(int argc,char **argv)
 
     /* Initialise SDL; */
 
-    SDL_Init(SDL_INIT_TIMER|
+    SDL_Init(SDL_INIT_TIMER|SDL_INIT_AUDIO|
              SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
 
     #ifdef __SWITCH__
@@ -585,11 +588,13 @@ int main(int argc,char **argv)
             partialfilter=GL_LINEAR;
         }
         else if (strcmp(argv[i],"-gmmusic")==0)
-            musicsource=1;
+            musicsource = MUSIC_SOURCE_MIDI;
         else if (strcmp(argv[i],"-admusic")==0)
-            musicsource=2;
+            musicsource = MUSIC_SOURCE_ADLIB;
+        else if (strcmp(argv[i],"-admusicran")==0)
+            musicsource = MUSIC_SOURCE_ADLIB_RANDOM;
         else if (strcmp(argv[i],"-nomusic")==0)
-            musicsource=-1;
+            musicsource = MUSIC_SOURCE_NONE;
         else if (strcmp(argv[i],"-sound")==0)
             speechstatus=2;
         else if (strcmp(argv[i],"-nosound")==0)
@@ -3471,7 +3476,7 @@ int main(int argc,char **argv)
         {
             SDL_LockMutex(soundmutex); /* Paranoid, I know... */
             mute = 1 - mute;
-            if ((mute == 1) && (musicsource == 1)) {
+            if ((mute == 1) && (musicsource == MUSIC_SOURCE_MIDI)) {
 #ifdef WIN32
                 midiOutReset(sequencerdevice);
 #endif

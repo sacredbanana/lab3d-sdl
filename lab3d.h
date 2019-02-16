@@ -289,6 +289,13 @@ enum {
     MAINMENU_LAST
 };
 
+enum {
+    MUSIC_SOURCE_NONE,
+    MUSIC_SOURCE_MIDI,
+    MUSIC_SOURCE_ADLIB,
+    MUSIC_SOURCE_ADLIB_RANDOM
+};
+
 #define KEY_REPEAT_START 250
 #define KEY_REPEAT 80
 
@@ -601,6 +608,8 @@ void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
                 K_INT16 walnume);
+void initaudio();
+void resetaudio();
 
 typedef struct {
     SDL_Keycode key;
@@ -753,6 +762,12 @@ EXTERN unsigned char *SoundFile;
 /* Sound output buffer... */
 EXTERN K_INT16 *SoundBuffer;
 EXTERN int FeedPoint;
+
+/* SDL Audio Device ID */
+SDL_AudioDeviceID audioDevice;
+
+/* Last played Music file */
+EXTERN char lastPlayedMusicFile[12];
 
 /* Various graphics kludges. */
 EXTERN int statusbaryoffset,spriteyoffset,visiblescreenyoffset,mixing;

@@ -663,7 +663,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     K_INT16 numfiles;
     K_UINT16 leng;
     K_INT32 sndfiloffs;
-    K_INT32 blocksize=(musicsource==2)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
+    K_INT32 blocksize=(musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
 
     if (!ui) {
         psounds[psoundnum & 15] = filenum;
@@ -799,14 +799,14 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
 
     SDL_LockMutex(soundmutex);
 
-    if (musicsource==2) len>>=2;
+    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) len>>=2;
 
     len>>=1;
     rl=len;
 
     if (FeedPoint+rl>=65536) rl=65536-FeedPoint;
 
-    if (musicsource==2) {
+    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
         /* mute=2: stop music, but don't mute. */
         if ((mute!=1)&&musicstatus)
             preparesound(stream, rl*2*4);
@@ -884,7 +884,7 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
     SDL_UnlockMutex(soundmutex);
 
     if (rl<len) {
-        if (musicsource==2)
+        if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
             AudioCallback(userdata, stream+rl, len-rl);
         else
             AudioCallback(userdata, stream+(rl<<2), (len-rl)<<2);
@@ -2099,7 +2099,7 @@ K_INT16 loadgame(K_INT16 gamenum)
 
     bossmonster = 0;
 
-    if (((i == -1) || (i > 2)) && (musicsource >= 0))
+    if (((i == -1) || (i > 2)) && (musicsource != MUSIC_SOURCE_NONE))
     {
         musicoff();
         loadmusic(filename);
@@ -2777,27 +2777,29 @@ K_INT16 loadmusic(char *filename)
     K_INT16 i, j, k, numfiles;
     K_INT32 filoffs;
 
+    strcpy(lastPlayedMusicFile, filename);
+
     FILE *file;
 
-    if (musicsource == -1)
+    if (musicsource == MUSIC_SOURCE_NONE)
         return(-1);
     if (firstime == 1)
     {
-        if (musicsource == 1)
+        if (musicsource == MUSIC_SOURCE_MIDI)
         {
             /* Open KSM->MIDI instrument translation table... */
 
             file=fopen("ksmmidi.txt", "rt");
             if (file==NULL) {
                 fprintf(stderr, "ksmmidi.txt not found; music disabled.\n");
-                musicsource=-1;
+                musicsource = MUSIC_SOURCE_NONE;
                 return -1;
             }
             for(i=0;i<256;i++)
                 fscanf(file, "%d", &gminst[i]);
             fclose(file);
         }
-        if (musicsource == 2)
+        if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
         {
             if(((infile=open("insts.dat", O_RDONLY|O_BINARY, 0))==-1)&&
                ((infile=open("INSTS.DAT", O_RDONLY|O_BINARY, 0))==-1))
@@ -2855,44 +2857,47 @@ K_INT16 loadmusic(char *filename)
     close(infile);
     numchans = 9-trchan[11]*3;
 
-    if (musicsource == 1)
-        setmidiinsts();
-    if (musicsource == 2)
-    {
-        if (trchan[11] == 0)
-        {
-            drumstat = 0;
-            outdata((char)0, (unsigned char)0xbd, (unsigned char)drumstat);
-        }
-        if (trchan[11] == 1)
-        {
-            for(i=0;i<11;i++)
-                instbuf[i] = inst[trinst[11]][i];
-            instbuf[1] = ((instbuf[1]&192)|((trvol[11])^63));
-            setinst(0, 6, instbuf[0], instbuf[1], instbuf[2], instbuf[3], instbuf[4], instbuf[5], instbuf[6], instbuf[7], instbuf[8], instbuf[9], instbuf[10]);
-            for(i=0;i<5;i++)
-                instbuf[i] = inst[trinst[12]][i];
-            for(i=5;i<11;i++)
-                instbuf[i] = inst[trinst[15]][i];
-            instbuf[1] = ((instbuf[1]&192)|((trvol[12])^63));
-            instbuf[6] = ((instbuf[6]&192)|((trvol[15])^63));
-            setinst(0, 7, instbuf[0], instbuf[1], instbuf[2], instbuf[3], instbuf[4], instbuf[5], instbuf[6], instbuf[7], instbuf[8], instbuf[9], instbuf[10]);
-            for(i=0;i<5;i++)
-                instbuf[i] = inst[trinst[14]][i];
-            for(i=5;i<11;i++)
-                instbuf[i] = inst[trinst[13]][i];
-            instbuf[1] = ((instbuf[1]&192)|((trvol[14])^63));
-            instbuf[6] = ((instbuf[6]&192)|((trvol[13])^63));
-            setinst(0, 8, instbuf[0], instbuf[1], instbuf[2], instbuf[3], instbuf[4], instbuf[5], instbuf[6], instbuf[7], instbuf[8], instbuf[9], instbuf[10]);
-            outdata((char)0, (unsigned char)0xa6, (unsigned char)(600&255));
-            outdata((char)0, (unsigned char)0xb6, (unsigned char)((600>>8)&223));
-            outdata((char)0, (unsigned char)0xa7, (unsigned char)(400&255));
-            outdata((char)0, (unsigned char)0xb7, (unsigned char)((400>>8)&223));
-            outdata((char)0, (unsigned char)0xa8, (unsigned char)(5510&255));
-            outdata((char)0, (unsigned char)0xb8, (unsigned char)((5510>>8)&223));
-            drumstat = 32;
-            outdata((char)0, (unsigned char)0xbd, (unsigned char)drumstat);
-        }
+    switch (musicsource) {
+        case MUSIC_SOURCE_MIDI:
+            setmidiinsts();
+            break;
+        case MUSIC_SOURCE_ADLIB_RANDOM:
+            for (int i = 0; i < numchans; i++)
+                trinst[i] = rand() % 85;
+        case MUSIC_SOURCE_ADLIB:
+            if (trchan[11] == 0) {
+                drumstat = 0;
+                outdata((char)0, (unsigned char)0xbd, (unsigned char)drumstat);
+            }
+            if (trchan[11] == 1) {
+                for(i=0;i<11;i++)
+                    instbuf[i] = inst[trinst[11]][i];
+                instbuf[1] = ((instbuf[1]&192)|((trvol[11])^63));
+                setinst(0, 6, instbuf[0], instbuf[1], instbuf[2], instbuf[3], instbuf[4], instbuf[5], instbuf[6], instbuf[7], instbuf[8], instbuf[9], instbuf[10]);
+                for(i=0;i<5;i++)
+                    instbuf[i] = inst[trinst[12]][i];
+                for(i=5;i<11;i++)
+                    instbuf[i] = inst[trinst[15]][i];
+                instbuf[1] = ((instbuf[1]&192)|((trvol[12])^63));
+                instbuf[6] = ((instbuf[6]&192)|((trvol[15])^63));
+                setinst(0, 7, instbuf[0], instbuf[1], instbuf[2], instbuf[3], instbuf[4], instbuf[5], instbuf[6], instbuf[7], instbuf[8], instbuf[9], instbuf[10]);
+                for(i=0;i<5;i++)
+                    instbuf[i] = inst[trinst[14]][i];
+                for(i=5;i<11;i++)
+                    instbuf[i] = inst[trinst[13]][i];
+                instbuf[1] = ((instbuf[1]&192)|((trvol[14])^63));
+                instbuf[6] = ((instbuf[6]&192)|((trvol[13])^63));
+                setinst(0, 8, instbuf[0], instbuf[1], instbuf[2], instbuf[3], instbuf[4], instbuf[5], instbuf[6], instbuf[7], instbuf[8], instbuf[9], instbuf[10]);
+                outdata((char)0, (unsigned char)0xa6, (unsigned char)(600&255));
+                outdata((char)0, (unsigned char)0xb6, (unsigned char)((600>>8)&223));
+                outdata((char)0, (unsigned char)0xa7, (unsigned char)(400&255));
+                outdata((char)0, (unsigned char)0xb7, (unsigned char)((400>>8)&223));
+                outdata((char)0, (unsigned char)0xa8, (unsigned char)(5510&255));
+                outdata((char)0, (unsigned char)0xb8, (unsigned char)((5510>>8)&223));
+                drumstat = 32;
+                outdata((char)0, (unsigned char)0xbd, (unsigned char)drumstat);
+            }
+
     }
     return 0;
 }
@@ -2910,7 +2915,7 @@ void musicon()
     unsigned char instbuf[11];
     K_UINT32 templong;
 
-    if (musicsource >= 0)
+    if (musicsource != MUSIC_SOURCE_NONE)
     {
         for(i=0;i<numchans;i++)
         {
@@ -2929,12 +2934,12 @@ void musicon()
                     j++;
                 }
             }
-        if (musicsource==1)
+        if (musicsource == MUSIC_SOURCE_MIDI)
             setmidiinsts();
         for(i=0;i<numchans;i++)
         {
-            if (musicsource == 2)
-            {
+            if (musicsource == MUSIC_SOURCE_ADLIB || MUSIC_SOURCE_ADLIB_RANDOM)
+            {   
                 for(j=0;j<11;j++)
                     instbuf[j] = inst[trinst[chantrack[i]]][j];
                 instbuf[1] = ((instbuf[1]&192)|(63-trvol[chantrack[i]]));
@@ -2975,7 +2980,7 @@ void musicoff()
             timer=0;
         }
     }
-    if (musicsource == 1) {
+    if (musicsource == MUSIC_SOURCE_MIDI) {
 #ifdef WIN32
         midiOutReset(sequencerdevice);
 #endif
@@ -2985,7 +2990,7 @@ void musicoff()
 #endif
         setmidiinsts();
     }
-    if (musicsource == 2)
+    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
         for(i=0;i<numchans;i++)
         {
             outdata((char)0, (unsigned char)(0xa0+i), (char)0);
@@ -3006,7 +3011,7 @@ void updateclock(void) {
 
     while(((lastTick+(4+(tickFrac==0)))<=now)||(lastTick>now)) {
         if (!soundtimer) clockspeed++;
-        if (musicsource!=2) ksmhandler();
+        if (musicsource != MUSIC_SOURCE_ADLIB && musicsource != MUSIC_SOURCE_ADLIB_RANDOM) ksmhandler();
         lastTick+=4+(tickFrac==0);
         tickFrac++;
         if (tickFrac==6) tickFrac=0;
@@ -3028,16 +3033,16 @@ void ksmhandler(void)
     K_UINT32 temp, templong;
 
     count++;
-    if ((count >= countstop) && (musicsource >= 0))
+    if ((count >= countstop) && (musicsource != MUSIC_SOURCE_NONE))
     {
         bufnum = 0;
         while (count >= countstop)
         {
             templong=note[nownote];
-            if (musicsource == 0)
+            if (musicsource == MUSIC_SOURCE_NONE)
                 if ((((templong>>8)&15) == 0) && ((templong&64) > 0))
                     databuf[bufnum++] = (unsigned char)(templong&63);
-            if (musicsource > 0)
+            if (musicsource != MUSIC_SOURCE_NONE)
             {
                 if (((templong&255) >= 1) && ((templong&255) <= 61))
                 {
@@ -3046,14 +3051,14 @@ void ksmhandler(void)
                         i++;
                     if (i < numchans)
                     {
-                        if (musicsource == 1)
+                        if (musicsource == MUSIC_SOURCE_MIDI)
                         {
                             databuf[bufnum++] = (unsigned char)(0x80)+i;
                             databuf[bufnum++] = (unsigned char)(templong&63)+
                                 23;
                             databuf[bufnum++] = (unsigned char)0;
                         }
-                        if (musicsource == 2)
+                        if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
                         {
                             databuf[bufnum++] = (unsigned char)(0xa0+i);
                             databuf[bufnum++] = (unsigned char)(adlibfreq[templong&63]&255);
@@ -3078,7 +3083,7 @@ void ksmhandler(void)
                             }
                         if (i < numchans)
                         {
-                            if (musicsource == 1)
+                            if (musicsource == MUSIC_SOURCE_MIDI)
                             {
                                 if (chanfreq[i]!=0) {
                                     databuf[bufnum++] = (unsigned char)
@@ -3092,7 +3097,7 @@ void ksmhandler(void)
                                 databuf[bufnum++] = (unsigned char)
                                     trvol[chantrack[i]]<<1;
                             }
-                            if (musicsource == 2)
+                            if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
                             {
                                 databuf[bufnum++] = (unsigned char)(0xa0+i);
                                 databuf[bufnum++] = (unsigned char)0;
@@ -3109,7 +3114,7 @@ void ksmhandler(void)
                     }
                     else
                     {
-                        if (musicsource == 1)
+                        if (musicsource == MUSIC_SOURCE_MIDI)
                         {
                             databuf[bufnum++] = (unsigned char)(0x99);
                             switch((templong>>8)&15)
@@ -3124,7 +3129,7 @@ void ksmhandler(void)
                             databuf[bufnum++] = (unsigned char)drumnum;
                             databuf[bufnum++] = (unsigned char)64;
                         }
-                        if (musicsource == 2)
+                        if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
                         {
                             freq = adlibfreq[templong&63];
                             switch((unsigned char)((templong>>8)&15))
@@ -3160,7 +3165,7 @@ void ksmhandler(void)
         }
         if (mute == 0)
         {
-            if (musicsource == 0)
+            if (musicsource == MUSIC_SOURCE_NONE)
             {
                 j = 0;
                 for(i=0;i<bufnum;i++)
@@ -3175,7 +3180,7 @@ void ksmhandler(void)
                     /* Removed: Beep at pcfreq[j]. */
                 }
             }
-            if (musicsource == 1) {
+            if (musicsource == MUSIC_SOURCE_MIDI) {
 #ifdef WIN32
                 for(i=0;i<bufnum;i+=3) {
                     midiOutShortMsg(sequencerdevice, databuf[i]|(databuf[i+1]<<8)|(databuf[i+2]<<16));
@@ -3189,7 +3194,7 @@ void ksmhandler(void)
                 SEQ_DUMPBUF();
 #endif
             }
-            if (musicsource == 2)
+            if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
                 for(i=0;i<bufnum;i+=2)
                 {
                     outdata(0, databuf[i], databuf[i+1]);
@@ -6465,6 +6470,7 @@ void quit() {
 
     #ifdef __SWITCH__
     deinitEgl();
+    romfsExit();
     #endif
     SDL_Quit();
 

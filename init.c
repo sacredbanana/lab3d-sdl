@@ -12,12 +12,7 @@ void initialize()
     K_UINT16 l;
     unsigned char *v;
     time_t tnow;
-    
-    SDL_AudioSpec want;
-    FILE *file;
     struct stat fstats;
-
-    long sndsize;
 
     statusbaryoffset=250;
     spriteyoffset=0;
@@ -158,92 +153,8 @@ void initialize()
         fatal_error("Could not allocate memory for music");
     }
 
-    if (musicsource==1) {
-        fprintf(stderr,"Opening music output...\n");
-#ifdef WIN32
-        if ((i=midiOutOpen(&sequencerdevice,MIDI_MAPPER,(DWORD)(NULL),
-                           (DWORD)(NULL),0))!=
-            MMSYSERR_NOERROR) {
-            fatal_error("Could not open MIDI output");
-        }
-#endif
-#ifdef USE_OSS
-        sequencerdevice=open("/dev/sequencer", O_WRONLY, 0);
-        if (sequencerdevice<0) {
-            fprintf(stderr,"Music failed opening /dev/sequencer.\n");
-            SDL_Quit();
-            exit(-1);
-        }
-        if (ioctl(sequencerdevice, SNDCTL_SEQ_NRMIDIS, &nrmidis) == -1) {
-            fatal_error("Can't get info about midi ports!");
-            SDL_Quit();
-            exit(-1);
-        }
-#endif
-    }
-
-    if (musicsource==2) {
-        fprintf(stderr,"Opening Adlib emulation for %s music (%s output)...\n",
-                musicpan?"stereo":"mono",(channels-1)?"stereo":"mono");
-        adlibinit(44100,channels,2);
-        adlibsetvolume(musicvolume*48);
-    }
-
-    if (speechstatus >= 2)
-    {
-        if (((i = open("sounds.kzp",O_BINARY|O_RDONLY,0)) != -1)||
-            ((i = open("SOUNDS.KZP",O_BINARY|O_RDONLY,0)) != -1)) {
-            fstat(i, &fstats);
-            sndsize = (int)(fstats.st_size);
-            fprintf(stderr, "Detected %ld byte sounds.\n", sndsize);
-            close(i);
-        } else sndsize=0;
-
-        SoundFile=malloc(sndsize);
-
-        SoundBuffer=malloc(65536*2);
-
-        if ((SoundFile==NULL)||(SoundBuffer==NULL)) {
-            fatal_error("Insufficient memory for sound.");
-        }
-
-        file=fopen("sounds.kzp","rb");
-        if (file==NULL) {
-            file=fopen("SOUNDS.KZP","rb");
-        }
-        if (file==NULL) {
-            fatal_error("Can not find sounds.kzp.");
-        }
-        if (fread(SoundFile,1,sndsize,file)!=sndsize) {
-            fatal_error("Error in sounds.kzp.");
-        }
-        fclose(file);
-
-        SDL_LockMutex(soundmutex);
-        fprintf(stderr,"Opening sound output in %s for %s sound effects...\n",
-                (channels-1)?"stereo":"mono",
-                soundpan?"stereo":"mono");
-
-        want.freq=(musicsource==2)?44100:11025;
-        want.format=AUDIO_S16SYS;
-        want.channels=channels;
-        want.samples=soundblocksize;
-        want.userdata=NULL;
-        want.callback=AudioCallback;
-        soundbytespertick=(channels*want.freq*2)/240;
-        soundtimerbytes=0;
-
-        SDL_OpenAudio(&want,NULL);
-
-        reset_dsp();
-
-        SDL_UnlockMutex(soundmutex);
-        SDL_PauseAudio(0);
-    } else {
-        if (soundtimer)
-            fprintf(stderr,"Warning: no sound, using system timer.\n");
-        soundtimer=0;
-    }
+    initaudio();
+        
     fprintf(stderr,"Allocating memory...\n");
     if (((lzwbuf = malloc(12304-8200)) == NULL)||
         ((lzwbuf2=malloc(8200))==NULL))
@@ -505,4 +416,117 @@ void initialize()
     }
     if (!introskip)
         musicoff();
+}
+
+void initaudio()
+{
+    FILE *file;
+    struct stat fstats;
+    long sndsize;
+    int i;
+
+    firstime = 1;
+
+    if (musicsource == MUSIC_SOURCE_MIDI) {
+        fprintf(stderr,"Opening music output...\n");
+#ifdef WIN32
+        if ((i=midiOutOpen(&sequencerdevice,MIDI_MAPPER,(DWORD)(NULL),
+                           (DWORD)(NULL),0))!=
+            MMSYSERR_NOERROR) {
+            fatal_error("Could not open MIDI output");
+        }
+#endif
+#ifdef USE_OSS
+        sequencerdevice=open("/dev/sequencer", O_WRONLY, 0);
+        if (sequencerdevice<0) {
+            fprintf(stderr,"Music failed opening /dev/sequencer.\n");
+            SDL_Quit();
+            exit(-1);
+        }
+        if (ioctl(sequencerdevice, SNDCTL_SEQ_NRMIDIS, &nrmidis) == -1) {
+            fatal_error("Can't get info about midi ports!");
+            SDL_Quit();
+            exit(-1);
+        }
+#endif
+    }
+
+    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
+        fprintf(stderr,"Opening Adlib emulation for %s music (%s output)...\n",
+                musicpan?"stereo":"mono",(channels-1)?"stereo":"mono");
+        adlibinit(44100,channels,2);
+        adlibsetvolume(musicvolume*48);
+    }
+
+    if (speechstatus >= 2)
+    {
+        if (((i = open("sounds.kzp",O_BINARY|O_RDONLY,0)) != -1)||
+            ((i = open("SOUNDS.KZP",O_BINARY|O_RDONLY,0)) != -1)) {
+            fstat(i, &fstats);
+            sndsize = (int)(fstats.st_size);
+            fprintf(stderr, "Detected %ld byte sounds.\n", sndsize);
+            close(i);
+        } else sndsize=0;
+
+        SoundFile=malloc(sndsize);
+
+        SoundBuffer=malloc(65536*2);
+
+        if ((SoundFile==NULL)||(SoundBuffer==NULL)) {
+            fatal_error("Insufficient memory for sound.");
+        }
+
+        file=fopen("sounds.kzp","rb");
+        if (file==NULL) {
+            file=fopen("SOUNDS.KZP","rb");
+        }
+        if (file==NULL) {
+            fatal_error("Can not find sounds.kzp.");
+        }
+        if (fread(SoundFile,1,sndsize,file)!=sndsize) {
+            fatal_error("Error in sounds.kzp.");
+        }
+        fclose(file);
+
+        SDL_LockMutex(soundmutex);
+        fprintf(stderr,"Opening sound output in %s for %s sound effects...\n",
+                (channels-1)?"stereo":"mono",
+                soundpan?"stereo":"mono");
+
+        SDL_AudioSpec want, have;
+        want.freq = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) ? 44100 : 11025;
+        want.format = AUDIO_S16SYS;
+        want.channels = channels;
+        want.samples = soundblocksize;
+        want.userdata = NULL;
+        want.callback = AudioCallback;
+        soundbytespertick = channels * want.freq * 2 / 240;
+        soundtimerbytes = 0;
+
+        audioDevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_CHANNELS_CHANGE | SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+        if (audioDevice == 0) {
+            TRACE("Failed to open audio: %s", SDL_GetError());
+        }
+
+        reset_dsp();
+
+        SDL_UnlockMutex(soundmutex);
+
+        SDL_PauseAudioDevice(audioDevice, 0);
+    } else {
+        if (soundtimer)
+            fprintf(stderr,"Warning: no sound, using system timer.\n");
+        soundtimer=0;
+    }
+}
+
+void resetaudio()
+{
+    SDL_CloseAudioDevice(audioDevice);
+    musicoff();
+    configure();
+    initaudio();
+    loadmusic(lastPlayedMusicFile);
+    musicon();
+    TRACE("Reset with %d channels", channels);
 }
