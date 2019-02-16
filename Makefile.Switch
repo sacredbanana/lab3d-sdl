@@ -37,10 +37,11 @@ SOURCES		:=	.
 DATA		:=	data
 INCLUDES	:=	.
 EXEFS_SRC	:=	exefs_src
+ROMFS		:= 	romfs
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
-APP_VERSION	:= 3.1.2
+APP_VERSION	:= 3.2.0
 ICON		:= ken_icon_switch.jpg
 
 #---------------------------------------------------------------------------------
