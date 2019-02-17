@@ -10,15 +10,13 @@ void initialize()
 {
     K_INT16 i, j, k, walcounter, oclockspeed;
     K_UINT16 l;
-    char *v;
+    unsigned char *v;
     time_t tnow;
-    SDL_Surface *icon;
-
+    
     SDL_AudioSpec want;
     FILE *file;
     struct stat fstats;
 
-    int realr,realg,realb,realz,reald;
     long sndsize;
 
     statusbaryoffset=250;
@@ -34,6 +32,12 @@ void initialize()
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
 
+    walltol=32;
+    neardist=16;
+
+    #ifndef __SWITCH__
+    int realr,realg,realb,realz,reald;
+    SDL_Surface *icon;
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
@@ -47,14 +51,12 @@ void initialize()
 
     SDL_ShowCursor(0);
 
-    fprintf(stderr,"Activating video...\n");
-
     icon = SDL_LoadBMP("ken.bmp");
     if (icon == NULL) {
         fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
     }
 
-
+    fprintf(stderr,"Activating video...\n");
 
     if (mainwindow != NULL)
         fatal_error("window already created (init)");
@@ -93,7 +95,6 @@ void initialize()
     fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
     fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
     //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
-
     fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
     //fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
 
@@ -101,17 +102,17 @@ void initialize()
         fatal_error("Double buffer not available.");
     }
 
-    SDL_SetWindowBrightness(mainwindow, gammalevel);
-
-    if (realz<24) {
-        walltol=256; neardist=128;
-    } else {
-        walltol=32; neardist=16;
-    }
-
     fprintf(stderr,
             "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
             realr,realg,realb,realz);
+
+    if (realz<24) {
+        walltol=256;
+        neardist=128;
+    }
+    #endif
+
+    SDL_SetWindowBrightness(mainwindow, gammalevel);
 
     largescreentexture = 1;
 

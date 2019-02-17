@@ -452,7 +452,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 {
     unsigned char shadecoffs;
     K_INT16 i, j, k, x, y;
-    K_INT16 yy, endyy, temp;
+    K_INT16 yy, temp;
     K_INT32 x1, y1, x2, y2;
     K_INT16 xc, yc;
 
@@ -562,11 +562,11 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     if (vidmode == 0) {
         yy = 9000;
-        endyy = 0;
+        // endyy = 0;
     }
     else {
         yy = 10800;
-        endyy = 0;
+        // endyy = 0;
     }
 
     /* These two textures change all the time, but we don't want to waste time
@@ -603,7 +603,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
+    glOrtho(0.0, (GLfloat)360, 0.0, (GLfloat)240, -1.0, 1.0);
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity( );
@@ -1426,7 +1426,7 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
 
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+        glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
 
         glMatrixMode( GL_MODELVIEW );
         glLoadIdentity( );
@@ -1592,10 +1592,10 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(-(virtualscreenwidth-360)/2,
+    glOrtho(-(virtualscreenwidth-360)/2,
                360+(virtualscreenwidth-360)/2,
                -(virtualscreenheight-240)/2,
-               240+(virtualscreenheight-240)/2);
+               240+(virtualscreenheight-240)/2, -1.0, 1.0);
 //    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
 
     glMatrixMode( GL_MODELVIEW );

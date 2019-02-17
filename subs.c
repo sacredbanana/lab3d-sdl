@@ -113,13 +113,15 @@ void seqbuf_dump ()
 void checkGLStatus()
 {
     GLenum errCode;
-    const GLubyte *errString;
 
-    if ((errCode=glGetError())!=GL_NO_ERROR) {
-        errString=gluErrorString(errCode);
+    while ((errCode=glGetError())!=GL_NO_ERROR) {
+        #ifdef __SWITCH__
+        fprintf(stderr, "OpenGL Error: %d\n", errCode);
+        #else
+        const GLubyte *errString = gluErrorString(errCode);
         fprintf(stderr, "OpenGL Error: %s\n", errString);
+        #endif
     }
-
 }
 
 void ConvertPartialOverlay(int x, int y, int w, int h);
@@ -439,9 +441,8 @@ void loadboard()
 #endif
 
     /* Generate map texture... */
-
     for(i=0;i<4096;i++)
-        walseg[map-1][i]=board[0][i]&255;
+        walseg[map-1][i]=*(((K_INT16 *)board)+i)&255;
 
     if (lab3dversion) {
         spritepalette[0]=63;
@@ -808,7 +809,7 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
     if (musicsource==2) {
         /* mute=2: stop music, but don't mute. */
         if ((mute!=1)&&musicstatus)
-            preparesound (stream, rl*2*4);
+            preparesound(stream, rl*2*4);
         else
             memset(stream, 0, rl*2*4);
         j1=FeedPoint;
@@ -1095,7 +1096,9 @@ static void SetAnisotropic(void) {
 
 }
 
+#ifndef __SWITCH__
 #define USE_GLU_MIPMAPS
+#endif
 
 #ifdef USE_GLU_MIPMAPS
 
@@ -2279,7 +2282,7 @@ static K_UINT16 introplc;
 
 void drawintroduction() {
     K_INT32 dai=totalclock>>2;
-    K_INT16 k, m;
+    K_INT16 m;
 
     if ((dai >= 0) && (dai < 300))
     {
@@ -2347,10 +2350,11 @@ void drawintroduction() {
                 m = 20;
             else
                 m = 0;
+            /*
             k = 0;
             if (numboards == 10)
                 k = 32;
-            /*
+        
               statusbardraw(sharemessplc, k, 64-sharemessplc, 32, m, 32, sharewaremessage);
               statusbardraw(0, k, 64-sharemessplc, 32, 256+m+sharemessplc, 32, sharewaremessage);*/
             sharemessplc--;
@@ -2733,11 +2737,42 @@ void introduction(K_INT16 songnum)
     statusbaralldraw();
 }
 
+#ifdef __SWITCH__
+void configureResolution()
+{
+    int width, height;
+
+    // Calculate the target resolution depending on the operation mode:
+    // - In handheld mode, we render at 720p (which is the native screen resolution).
+    // - In docked mode, we render at full 1080p (which is outputted to a compatible HDTV screen).
+    switch (appletGetOperationMode())
+    {
+        default:
+        case AppletOperationMode_Handheld:
+            width = 1280;
+            height = 720;
+            break;
+        case AppletOperationMode_Docked:
+            width = 1920;
+            height = 1080;
+            break;
+    }
+
+    // Apply the resolution, and configure the correct GL viewport.
+    // We want to render to the top left corner of the framebuffer (other areas will
+    // remain unused when rendering at a smaller resolution than the framebuffer).
+    // Note that glViewport expects the coordinates of the bottom-left corner of
+    // the viewport, so we have to calculate that too.
+    nwindowSetCrop(win, 0, 0, width, height);
+    glViewport(0, 1080-height, width, height);
+}
+#endif
+
 /* Load KSM file... */
 
 K_INT16 loadmusic(char *filename)
 {
-    char buffer[256], instbuf[11];
+    unsigned char buffer[256], instbuf[11];
     int infile;
     K_INT16 i, j, k, numfiles;
     K_INT32 filoffs;
@@ -2783,8 +2818,8 @@ K_INT16 loadmusic(char *filename)
             firstime = 0;
         }
     }
-    if (((infile=open("songs.kzp", O_RDONLY|O_BINARY, 0))==-1)&&
-        ((infile=open("SONGS.KZP", O_RDONLY|O_BINARY, 0))==-1))
+    if (((infile = open("songs.kzp", O_RDONLY|O_BINARY, 0))==-1)&&
+        ((infile = open("SONGS.KZP", O_RDONLY|O_BINARY, 0))==-1))
         return(-1);
     readLE16(infile, &numfiles, 2);
     i = 0;
@@ -2804,13 +2839,11 @@ K_INT16 loadmusic(char *filename)
     }
     if (j == 1)
     {
-
         close(infile);
         return(-1);
     }
 
     filoffs=readlong(buffer+8);
-
     lseek(infile, filoffs, SEEK_SET);
     read(infile, &trinst[0], 16);
     read(infile, &trquant[0], 16);
@@ -2821,6 +2854,7 @@ K_INT16 loadmusic(char *filename)
     readLE32(infile, note, numnotes*4);
     close(infile);
     numchans = 9-trchan[11]*3;
+
     if (musicsource == 1)
         setmidiinsts();
     if (musicsource == 2)
@@ -3390,7 +3424,7 @@ unsigned char textpalette[48]={
 
 void wingame(K_INT16 episode)
 {
-    K_UINT16 l, startx, starty;
+    K_UINT16 startx, starty;
     K_INT16 oldmute;
     K_INT32 revtotalclock, revototclock, templong;
 
@@ -3501,14 +3535,14 @@ void wingame(K_INT16 episode)
                     SDL_UnlockMutex(timermutex);
 
                     death = 4096;
-                    if ((vidmode == 0) && (statusbar < 399))
-                    {
-                        l = times90[((unsigned)statusbar+1)>>1]+5;
-                    }
-                    if ((vidmode == 1) && (statusbar < 479))
-                    {
-                        l = times90[((unsigned)statusbar+1)>>1];
-                    }
+                    // if ((vidmode == 0) && (statusbar < 399))
+                    // {
+                    //     l = times90[((unsigned)statusbar+1)>>1]+5;
+                    // }
+                    // if ((vidmode == 1) && (statusbar < 479))
+                    // {
+                    //     l = times90[((unsigned)statusbar+1)>>1];
+                    // }
                     fade(63);
                     setdarkenedpalette();
                     glClearColor( 0, 0, 0, 0 );
@@ -3585,10 +3619,9 @@ void wingame(K_INT16 episode)
 void winallgame()
 {
     K_INT16 leavewin;
-    K_INT32 revtotalclock, revototclock;
+    K_INT32 revtotalclock;
 
     ingame=0;
-    revototclock = 1;
     revtotalclock = 1;
     linecompare(479);
     musicoff();
@@ -3646,7 +3679,6 @@ void winallgame()
             pressakey();
             leavewin = 1;
         }
-        revototclock = revtotalclock;
         SDL_LockMutex(timermutex);
         if (clockspeed==0) {
             SDL_UnlockMutex(timermutex);
@@ -3762,9 +3794,6 @@ void updateoverlaypalette(K_UINT16 start, K_UINT16 amount, unsigned char *cols) 
 
 void fade(K_INT16 brightness)
 {
-    int old;
-    old=fadelevel;
-
     fadelevel=brightness;
 
     if (brightness == 63) {
@@ -3786,7 +3815,6 @@ void fade(K_INT16 brightness)
         greenfactor/=redfactor;
         bluefactor/=redfactor;
         redfactor=1.0;
-
     }
 }
 
@@ -3805,10 +3833,10 @@ void showcompass(K_INT16 compang)
 K_INT16 kgif(K_INT16 filenum)
 {
     unsigned char header[13], imagestat[10], bitcnt, numbits;
-    unsigned char globalflag, localflag, backg, chunkind;
-    K_INT16 i, j, k, x, y, xdim, ydim;
+    unsigned char globalflag, localflag, chunkind;
+    K_INT16 i, j, k, x, y, ydim;
     K_INT16 numcols, numpals, fil, blocklen;
-    K_UINT16 rowpos, numlines, gifdatacnt, firstring, currstr, bytecnt, numbitgoal;
+    K_UINT16 gifdatacnt, firstring, currstr, bytecnt, numbitgoal;
 
     K_UINT16 stack[LZW_STACK_SIZE];
     K_UINT16 stackp=0, dat;
@@ -3844,14 +3872,12 @@ K_INT16 kgif(K_INT16 filenum)
     } else {
         if (((fil = open("lab3d.kzp", O_RDONLY|O_BINARY, 0)) == -1)&&
             ((fil = open("LAB3D.KZP", O_RDONLY|O_BINARY, 0)) == -1))
-            return(-1);
+                return(-1);
     }
 
-    rowpos = 0;
     if (filenum == 1)
     {
         lseek(fil, giflen1, SEEK_SET);
-        rowpos = 5;
     }
     if (filenum == 2)
         lseek(fil, giflen1+giflen2, SEEK_SET);
@@ -3868,7 +3894,7 @@ K_INT16 kgif(K_INT16 filenum)
     globalflag = header[10];
     numcols = (1<<((globalflag&7)+1));
     firstring = numcols+2;
-    backg = header[11];
+    // backg = header[11];
     if (header[12] != 0)
         return(-1);
     if ((globalflag&128) > 0)
@@ -3896,7 +3922,7 @@ K_INT16 kgif(K_INT16 filenum)
         for(j=0;j<9;j++)
             imagestat[j] = tempbuf[j+gifdatacnt];
         gifdatacnt += 9;
-        xdim = imagestat[4]+(imagestat[5]<<8);
+        // xdim = imagestat[4]+(imagestat[5]<<8);
         ydim = imagestat[6]+(imagestat[7]<<8);
         localflag = imagestat[8];
         if ((localflag&128) > 0)
@@ -3908,8 +3934,6 @@ K_INT16 kgif(K_INT16 filenum)
             gifdatacnt += numpals;
         }
         gifdatacnt++;
-        numlines = 200;
-
 
         x = 20, y = (filenum==2)?0:20;
         bitcnt = 0;
@@ -4250,22 +4274,28 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     vt2=floor(statusbaryoffset+statusbaryvisible+statusbaryoffset-y);
 
     if (statusbar==1)
-        gluOrtho2D(vl,
+        glOrtho(vl,
                    vl+virtualscreenwidth,
                    vt2,
-                   vt2-virtualscreenheight);
+                   vt2-virtualscreenheight,
+                   -1.0,
+                   1.0);
     else if (statusbar==2) {
-        gluOrtho2D(vl+340.0-x,
+        glOrtho(vl+340.0-x,
                    vl+virtualscreenwidth+340.0-x,
                    vt2,
-                   vt2-virtualscreenheight);
+                   vt2-virtualscreenheight,
+                   -1.0,
+                   1.0);
         x=340; y=statusbaryoffset;
     }
     else
-        gluOrtho2D(vl,
+        glOrtho(vl,
                    vl+virtualscreenwidth,
                    vt1,
-                   vt1-virtualscreenheight);
+                   vt1-virtualscreenheight,
+                   -1.0,
+                   1.0);
 
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
     glMatrixMode(GL_MODELVIEW);
@@ -4709,9 +4739,10 @@ static int default_hiscores() {
                     case 1: strcpy(buf, "Andy C.     "); score = 900000; break;
                     case 2: strcpy(buf, "Alan S.     "); score = 800000; break;
                     case 3: strcpy(buf, "Mahesh J.   "); score = 700000; break;
-                    case 4: memset(buf, 0, 12); score = 0;
+                    case 4: strcpy(buf, "Cameron A.  "); score = 600000; break;
+                    case 5: memset(buf, 0, 12); score = 0;
                 }
-                writelong(buf + 12, score);
+                writelong((unsigned char*)buf + 12, score);
             }
             fwrite(buf, 1, 16, f);
         }
@@ -5002,7 +5033,7 @@ void setuptextbuf(K_INT32 templong)
 
 void getname()
 {
-    int ch, uni;
+    int ch;
     K_INT16 i, j;
 
     /* Apparently, the program is supposed to remember the name you used last
@@ -5041,6 +5072,12 @@ void getname()
     ch = 0;
     clearkeydefstat(ACTION_MENU);
     clearkeydefstat(ACTION_MENU_CANCEL);
+
+    // We have no keyboard on the Switch so we will get the Switch username
+    #ifdef __SWITCH__
+    getUsername();
+    #else
+    int uni;
     SDL_StartTextInput();
     while ((ch != 13) && (ch != 27))
     {
@@ -5103,6 +5140,7 @@ void getname()
     i = j-1;
     while ((hiscorenam[i] == 32) && (i >= 0))
         hiscorenam[i--] = 0;
+    #endif
     if ((hiscorenam[0] == 0) || (ch == 27))
     {
         hiscorenamstat = 0;
@@ -5599,12 +5637,12 @@ void creditsmenu()
 
 void bigstorymenu()
 {
-    K_INT16 i, j, k, n, nowenterstate, lastenterstate, quitstat, bstatus, obstatus;
+    K_INT16 i, j, k, nowenterstate, lastenterstate, quitstat, bstatus, obstatus;
 
-    if (vidmode == 0)
-        n = 0;
-    else
-        n = 20;
+    // if (vidmode == 0)
+    //     n = 0;
+    // else
+    //     n = 20;
     if (boardnum < 10) j = -32, k = -27;
     else if (boardnum < 20) j = -26, k = -24;
     else j = -23, k = -22;
@@ -6248,6 +6286,14 @@ Uint16 getkeypress(int* key) {
 }
 
 void FindJoysticks() {
+    #ifdef __SWITCH__
+    cur_joystick_index = 0;
+    cur_controller = SDL_GameControllerOpen(0);
+    cur_controller_index = 0;
+    joystat = 1;
+    return;
+    #endif
+
     int i;
     if (!joyenable) return;
     for (i = 0; i < SDL_NumJoysticks(); ++i) {
@@ -6274,7 +6320,7 @@ void FindJoysticks() {
 
 void ProcessEvent(SDL_Event* event) {
     int sk, scan;
-
+    
     switch(event->type)
     {
         case SDL_QUIT:
@@ -6333,8 +6379,13 @@ void ProcessEvent(SDL_Event* event) {
 }
 
 void PollInputs() {
+    // If Nintendo Switch, poll to see if user has changed mode from portable/docked
+    #ifdef __SWITCH__
+    configureResolution();
+    hidScanInput();
+    #endif
+
     SDL_Event event;
-    //printf ("poll %d\n", i++);
     while(SDL_PollEvent(&event))
     {
         ProcessEvent(&event);
@@ -6412,12 +6463,17 @@ void quit() {
     if (cur_controller)
         SDL_GameControllerClose(cur_controller);
 
+    #ifdef __SWITCH__
+    deinitEgl();
+    #endif
     SDL_Quit();
 
     exit(0);
 }
 
+#ifndef log2
 #define log2(a) (log(a)/log(2))
+#endif
 
 void randoinsts()
 {
@@ -6485,3 +6541,211 @@ void drawinputbox() {
     textbuf[1] = 0;
     textprint(261, 145+1, (char)0);
 }
+
+#ifdef __SWITCH__
+void setMesaConfig() {
+    // Uncomment below to disable error checking and save CPU time (useful for production):
+    // setenv("MESA_NO_ERROR", "1", 1);
+
+    // Uncomment below to enable Mesa logging:
+    setenv("EGL_LOG_LEVEL", "debug", 1);
+    setenv("MESA_VERBOSE", "all", 1);
+    setenv("NOUVEAU_MESA_DEBUG", "1", 1);
+
+    // Uncomment below to enable shader debugging in Nouveau:
+    setenv("NV50_PROG_OPTIMIZE", "0", 1);
+    setenv("NV50_PROG_DEBUG", "1", 1);
+    setenv("NV50_PROG_CHIPSET", "0x120", 1);
+}
+
+//-----------------------------------------------------------------------------
+// nxlink support
+//-----------------------------------------------------------------------------
+
+static int s_nxlinkSock = -1;
+
+void initNxLink()
+{
+    if (R_FAILED(socketInitializeDefault()))
+        return;
+
+    s_nxlinkSock = nxlinkStdio();
+    if (s_nxlinkSock >= 0)
+        TRACE("printf output now goes to nxlink server");
+    else
+        socketExit();
+}
+
+void deinitNxLink()
+{
+    if (s_nxlinkSock >= 0)
+    {
+        close(s_nxlinkSock);
+        socketExit();
+        s_nxlinkSock = -1;
+    }
+}
+
+void userAppInit()
+{
+    initNxLink();
+}
+
+void userAppExit()
+{
+    deinitEgl();
+    deinitNxLink();
+}
+
+bool initEgl(NWindow* win)
+{
+    // Connect to the EGL default display
+    s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    if (!s_display)
+    {
+        TRACE("Could not connect to display! error: %d", eglGetError());
+        goto _fail0;
+    }
+    // Initialize the EGL display connection
+    eglInitialize(s_display, NULL, NULL);
+    // Select OpenGL as the desired graphics API
+    if (eglBindAPI(EGL_OPENGL_API) == EGL_FALSE)
+    {
+        TRACE("Could not set API! error: %d", eglGetError());
+        goto _fail1;
+    }
+    // Get an appropriate EGL framebuffer configuration
+    EGLConfig config;
+    EGLint numConfigs;
+    static const EGLint framebufferAttributeList[] =
+    {
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_RED_SIZE,     8,
+        EGL_GREEN_SIZE,   8,
+        EGL_BLUE_SIZE,    8,
+        EGL_ALPHA_SIZE,   8,
+        EGL_DEPTH_SIZE,   24,
+        EGL_STENCIL_SIZE, 0,
+        EGL_NONE
+    };
+    eglChooseConfig(s_display, framebufferAttributeList, &config, 1, &numConfigs);
+    if (numConfigs == 0)
+    {
+        TRACE("No config found! error: %d", eglGetError());
+        goto _fail1;
+    }
+    // Create an EGL window surface
+    s_surface = eglCreateWindowSurface(s_display, config, win, NULL);
+    if (!s_surface)
+    {
+        TRACE("Surface creation failed! error: %d", eglGetError());
+        goto _fail1;
+    }
+    // Create an EGL rendering context
+    static const EGLint contextAttributeList[] =  {
+		EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT,
+        EGL_CONTEXT_MAJOR_VERSION, 4,
+        EGL_CONTEXT_MINOR_VERSION, 3,
+		EGL_NONE
+	};
+    s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, contextAttributeList);
+    if (!s_context)
+    {
+        TRACE("Context creation failed! error: %d", eglGetError());
+        goto _fail2;
+    }
+    // Connect the context to the surface
+    eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+    return true;
+
+_fail2:
+    eglDestroySurface(s_display, s_surface);
+    s_surface = NULL;
+_fail1:
+    eglTerminate(s_display);
+    s_display = NULL;
+_fail0:
+    return false;
+}
+
+void deinitEgl()
+{
+    if (s_display)
+    {
+        eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (s_context)
+        {
+            eglDestroyContext(s_display, s_context);
+            s_context = NULL;
+        }
+        if (s_surface)
+        {
+            eglDestroySurface(s_display, s_surface);
+            s_surface = NULL;
+        }
+        eglTerminate(s_display);
+        s_display = NULL;
+    }
+}
+
+void getUsername()
+{
+    Result rc=0;
+
+    u128 userID=0;
+    bool account_selected=0;
+    AccountProfile profile;
+    AccountUserData userdata;
+    AccountProfileBase profilebase;
+
+    memset(&userdata, 0, sizeof(userdata));
+    memset(&profilebase, 0, sizeof(profilebase));
+
+    strncpy(hiscorenam, "Ken", sizeof(hiscorenam));
+
+    rc = accountInitialize();
+    if (R_FAILED(rc)) {
+        TRACE("accountInitialize() failed: 0x%x\n", rc);
+    }
+
+    if (R_SUCCEEDED(rc)) {
+        rc = accountGetActiveUser(&userID, &account_selected);
+
+        if (R_FAILED(rc)) {
+            TRACE("accountGetActiveUser() failed: 0x%x\n", rc);
+        }
+        else if(!account_selected) {
+            TRACE("No user is currently selected.\n");
+            rc = -1;
+        }
+
+        if (R_SUCCEEDED(rc)) {
+            TRACE("Current userID: 0x%lx 0x%lx\n", (u64)(userID>>64), (u64)userID);
+
+            rc = accountGetProfile(&profile, userID);
+
+            if (R_FAILED(rc)) {
+                TRACE("accountGetProfile() failed: 0x%x\n", rc);
+            }
+        }
+
+        if (R_SUCCEEDED(rc)) {
+            rc = accountProfileGet(&profile, &userdata, &profilebase);//userdata is otional, see libnx acc.h.
+
+            if (R_FAILED(rc)) {
+                TRACE("accountProfileGet() failed: 0x%x\n", rc);
+            }
+
+            if (R_SUCCEEDED(rc)) {
+                strncpy(hiscorenam, profilebase.username, sizeof(hiscorenam)-1);//Even though profilebase.username usually has a NUL-terminator, don't assume it does for safety.
+
+                TRACE("Username: %s\n", hiscorenam);
+            }
+
+            accountProfileClose(&profile);
+        }
+    }
+
+accountExit();
+}
+#endif
