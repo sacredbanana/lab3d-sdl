@@ -31,7 +31,7 @@ I'm not sure about a few things in my code:
 #include <stdint.h>
 #if INTPTR_MAX == INT64_MAX
 #define IS64BIT
-#else
+#elif INTPTR_MAX != INT32_MAX
 #error Unknown pointer size or missing size macros!
 #endif
 

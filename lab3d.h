@@ -496,6 +496,7 @@ void getUsername();
 #endif
 
 /* libGLU reimplementation functions */
+#ifdef __SWITCH__
 void normalize(float v[3]);
 void cross(float v1[3], float v2[3], float result[3]);
 void __gluMakeIdentityf(GLfloat m[16]);
@@ -503,6 +504,7 @@ void GLAPI
 gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
      GLdouble centery, GLdouble centerz, GLdouble upx, GLdouble upy,
      GLdouble upz);
+#endif
 
 /* MIDI stuff... */
 #ifdef WIN32
