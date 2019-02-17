@@ -1,3 +1,20 @@
+3.1.2: 2019-02-08
+ * Upgraded the Adlib emulator to Ken's 64 bit compatible one resolving all music issues
+   such as silent or distorted instruments on some platforms
+
+3.1.1: 2019-01-27
+  NOTE: If updating from 3.0.0 you will need to delete Ken2.nro because the new
+  executable has a different name.
+
+  * Switch - Renamed executable so that it appears properly in the homebrew menu in SX OS
+  * Switch - Swapped select and cancel buttons for menus
+  * Switch - Use Switch account name if user is signed in, "Ken" otherwise
+  * Switch - Improved use of depth buffer
+  * Switch - Quitting game from main menu now quits gracefully
+
+3.1: 2019-19-01
+  * Created a port for Nintendo Switch
+
 3.0: 2014-01-03
   * Upgraded to SDL2.
   * New settings format - now actually readable, and easier to add to in the

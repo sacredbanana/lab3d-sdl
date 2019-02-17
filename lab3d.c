@@ -169,7 +169,7 @@ void drawvolumebar(int vol,int type,float level) {
     glDisable(GL_DEPTH_TEST);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(0.0, 360.0, -15+30*type, 225+30*type);
+    glOrtho(0.0, 360.0, -15+30*type, 225+30*type, -1.0, 1.0);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -200,11 +200,11 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
     int democlock = 0;
     double demomsclock = 0;
     fade(63);
-    int cf = 0;
-    int done = 0;
+    // int cf = 0;
+    // int done = 0;
     int pausemode = rewinding, oldpause = 0, pause = 0;
     int oboardnum = rewinding ? boardnum : -1;
-    int advance_pressed = 1, rewind_pressed = 1, use_pressed = 1;
+    int advance_pressed = 1, use_pressed = 1; //rewind_pressed = 1
     K_UINT32 opsoundnum = 0xFFFFFFFF;
     unsigned char opsounds[16], opsoundpan[16];
     int rewindable = demofile_rewindable(demoplaying);
@@ -214,8 +214,8 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
     }
 
     while (1) {
-        double accelf;
-        int td, dir;
+        double accelf = 0.0;
+        int td, dir = 1;
         PollInputs();
 
         if (getkeydefstatlock(ACTION_MENU) || getkeydefstatlock(ACTION_MENU_CANCEL)) {
@@ -404,6 +404,13 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
 
 int main(int argc,char **argv)
 {
+    #ifdef __SWITCH__
+    #ifdef ENABLE_NXLINK
+    // Set mesa configuration (useful for debugging)
+    setMesaConfig();
+    #endif
+    #endif
+
     char ksmfile[15], hitnet, cheatkeysdown, won;
     K_INT16 i, j, jj, k, m=0, n=0, x, y, brd0, brd1, brd2, brd3, incenter=0;
     K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
@@ -459,11 +466,27 @@ int main(int argc,char **argv)
 
     /* Initialise SDL; */
 
-    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|
+    SDL_Init(SDL_INIT_TIMER|
              SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
 
+    #ifdef __SWITCH__
+    win = nwindowGetDefault();
+    nwindowSetDimensions(win, 1920, 1080);
+     // Initialize EGL on the default window
+    if (!initEgl(win)) {
+        return EXIT_FAILURE;
+    }
+
+	gladLoadGL();
+    if (s_context == NULL)
+        TRACE("Could not create GL context.");
+    
+    eglSwapInterval(s_display, 1);
+    #else
+    SDL_InitSubSystem(SDL_INIT_VIDEO);
     if (SDL_GL_LoadLibrary(NULL) != 0)
         fatal_error("Could not dynamically open OpenGL library: %s", SDL_GetError());
+    #endif
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
         ((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
@@ -618,7 +641,6 @@ int main(int argc,char **argv)
         setup_stereo(stereo);
 
     /* Introduction... */
-
     kgif(1);
     introduction(0);
 
@@ -827,7 +849,7 @@ int main(int argc,char **argv)
               if (timediff > 4) timediff = 4;*/
             demofile_write_frame(demorecording, clockspd);
             if (demofile_rewindable(demorecording) && getkeydefstat(ACTION_REWIND)) {
-                int rc = playdemo(demorecording, NULL, 1);
+                playdemo(demorecording, NULL, 1);
                 clockspeed = 4;
             }
         }
