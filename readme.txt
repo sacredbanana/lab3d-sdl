@@ -15,13 +15,11 @@ Nintendo Switch instructions:
 * Install DevKitPro
 * Compile this project with `make -f Makefile.Switch`.
 * Copy all the .kzp and .dat files from Ken's Labyrinth and place them in 
-the folder that contains the nro file.
-* Put the `settings_switch.ini` file from this repository and place it in the
-folder that contains the nro file.
+  the folder that contains the nro file.
 
 Improvements over the original Ken's Labyrinth:
 
-- Runs natively on 32-bit Windows, Unix or Nintendo Switch.
+- Runs natively on 32-bit/64-bit Windows, Unix or Nintendo Switch.
 - Supports big-endian CPUs.
 - Uses OpenGL to provide hardware accelerated, anti-aliased graphics with
   trilinear interpolation in true colour (where available).
