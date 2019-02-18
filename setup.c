@@ -644,6 +644,9 @@ void setupinputdevices(void) {
 }
 
 void setupsetfullscreen(void) {
+    #ifdef __SWITCH__
+    return;
+    #endif
     selectionmenu(2, fullscreenmenu, &fullscr, NULL);
 }
 
@@ -978,8 +981,13 @@ static void draw_mainmenu(void) {
     n += 12; textprint(51,n,lab3dversion?32:34);
     strcpy(textbuf,"Configure Input");
     n += 12; textprint(51,n,lab3dversion?32:34);
+    #ifdef __SWITCH__
+    sprintf(textbuf,"Window size: %dx%d %s", screenwidth,
+            screenheight, appletGetOperationMode() == AppletOperationMode_Handheld ? "Handheld" : "Dock");
+    #else
     sprintf(textbuf,"Window size: %dx%d", window_width,
             window_height);
+    #endif
     n += 12; textprint(51,n,64);
     strcpy(textbuf,"Display type: ");
     strcat(textbuf,fullscreenmenu[fullscr]);
