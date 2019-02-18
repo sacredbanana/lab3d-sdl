@@ -1,8 +1,10 @@
-3.2.0: 2019-12-17
+3.2.0: 2019-12-18
 * New audio device selectable in the setup menu: Adlib random instruments. This will play
   the music tracks with randomly selected instruments. If you don't like the instrument settings
   you can select it again and it will load a different random set.
 * Changing audio settings now no longer requires you to quit the game. All changes are immediate
+* Switch - Now dynamically switches to 1080p from 720p when connecting to the dock and vice versa. 
+           The setup menu will also reflect the current mode.
 
 3.1.2: 2019-02-08
  * Upgraded the Adlib emulator to Ken's 64 bit compatible one resolving all music issues

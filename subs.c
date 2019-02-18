@@ -2740,7 +2740,8 @@ void introduction(K_INT16 songnum)
 #ifdef __SWITCH__
 void configureResolution()
 {
-    int width, height;
+    // Get current console status
+    appletMainLoop();
 
     // Calculate the target resolution depending on the operation mode:
     // - In handheld mode, we render at 720p (which is the native screen resolution).
@@ -2749,12 +2750,12 @@ void configureResolution()
     {
         default:
         case AppletOperationMode_Handheld:
-            width = 1280;
-            height = 720;
+            screenwidth = 1280;
+            screenheight = 720;
             break;
         case AppletOperationMode_Docked:
-            width = 1920;
-            height = 1080;
+            screenwidth = 1920;
+            screenheight = 1080;
             break;
     }
 
@@ -2763,8 +2764,8 @@ void configureResolution()
     // remain unused when rendering at a smaller resolution than the framebuffer).
     // Note that glViewport expects the coordinates of the bottom-left corner of
     // the viewport, so we have to calculate that too.
-    nwindowSetCrop(win, 0, 0, width, height);
-    glViewport(0, 1080-height, width, height);
+    nwindowSetCrop(win, 0, 0, screenwidth, screenheight);
+    glViewport(0, 1080-screenheight, screenwidth, screenheight);
 }
 #endif
 
