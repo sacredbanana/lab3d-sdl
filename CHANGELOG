@@ -1,3 +1,6 @@
+3.2.1: 2019-03-03
+* Anisotropic filtering now supported on Switch
+
 3.2.0: 2019-12-18
 * New audio device selectable in the setup menu: Adlib random instruments. This will play
   the music tracks with randomly selected instruments. If you don't like the instrument settings
