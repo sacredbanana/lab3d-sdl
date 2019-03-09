@@ -895,28 +895,23 @@ void oldmain(void)
             }
             if (moustat == 0)
                 bstatus|=readmouse(&mousx,&mousy);
-            if (getkeydefstat(ACTION_STRAFE) == 0)
-            {
-                if ((getkeydefstat(ACTION_LEFT)) && (angvel > -40))
+
+                if (!getkeydefstat(ACTION_STRAFE) && getkeydefstat(ACTION_LEFT) && (angvel > -40))
                     angvel -= 14;
-                if ((getkeydefstat(ACTION_RIGHT)) && (angvel < 40))
+                if (!getkeydefstat(ACTION_STRAFE) && getkeydefstat(ACTION_RIGHT) && (angvel < 40))
                     angvel += 14;
-            }
-            else
-            {
-                if (getkeydefstat(ACTION_LEFT))
+                if ((getkeydefstat(ACTION_STRAFE) && getkeydefstat(ACTION_LEFT)) || getkeydefstat(ACTION_MOVELEFT))
                 {
                     svel += 40;
                     if (svel > maxvel)
                         svel = maxvel;
                 }
-                if (getkeydefstat(ACTION_RIGHT))
+                if ((getkeydefstat(ACTION_STRAFE) && getkeydefstat(ACTION_RIGHT)) || getkeydefstat(ACTION_MOVERIGHT))
                 {
                     svel -= 40;
                     if (svel < -maxvel)
                         svel = -maxvel;
                 }
-            }
         }
         if (angvel < 0)
         {
@@ -1790,7 +1785,10 @@ void oldmain(void)
                     setnewkeystatus(SDLK_SPACE, 0);
                     setnewkeystatus(SDLK_RETURN, 0);
                     bstatus = 0;
-                    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) && (bstatus == 0)) {
+                    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                    (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                    (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                    (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0)) {
                         PollInputs();
                         if (moustat == 0)
                             bstatus=readmouse(NULL, NULL);
@@ -1846,7 +1844,10 @@ void oldmain(void)
                 m = 0;
                 n = 0;
                 ototclock = totalclock;
-                while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
+                while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
                 {
                     PollInputs();
 
@@ -1915,7 +1916,10 @@ void oldmain(void)
                 m = 0;
                 ototclock = totalclock;
 
-                while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
+                while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
                 {
                     PollInputs();
 
@@ -2004,7 +2008,10 @@ void oldmain(void)
                 ototclock = totalclock;
                 mixing=0;
                 SDL_GL_SwapWindow(mainwindow);
-                while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) && (bstatus == 0)) {
+                while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0)) {
                     PollInputs();
                     if (moustat == 0)
                         bstatus=readmouse(NULL, NULL);
@@ -2043,7 +2050,10 @@ void oldmain(void)
             setnewkeystatus(SDLK_SPACE, 0);
             setnewkeystatus(SDLK_RETURN, 0);
             bstatus=0;
-            while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) && (bstatus == 0))
+            while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+            (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0))
             {
                 PollInputs();
                 if (moustat == 0)
@@ -2140,6 +2150,10 @@ void oldmain(void)
                     if (newkeystatus(SDLK_SPACE) != 0)  j |= 1;
                     if (newkeystatus(SDLK_RETURN) != 0)  j |= 1;
                     if (newkeystatus(SDLK_y) != 0)  j |= 2;
+                    if (getkeydefstat(ACTION_MENU_SELECT1) != 0) j |= 2;
+                    if (getkeydefstat(ACTION_MENU_SELECT2) != 0) j |= 1;
+                    if (getkeydefstat(ACTION_MENU_SELECT3) != 0) j |= 1;
+                    if (getkeydefstat(ACTION_MENU_CANCEL) != 0) j |= 1;
                 }
                 if (j == 1)
                 {
@@ -2523,7 +2537,15 @@ K_INT16 oldintroduction(void)
         saidwelcome = 1;
     }
 
-    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) && (bstatus == 0))
+    while ((newkeystatus(SDLK_ESCAPE) == 0) &&
+            (newkeystatus(SDLK_SPACE) == 0) &&
+            (newkeystatus(SDLK_RETURN) == 0) &&
+            (getkeydefstatlock(ACTION_MENU) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
+            (bstatus == 0))
     {
         glClearColor(0,0,0,0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -2584,7 +2606,12 @@ K_INT16 oldintroduction(void)
             spridraw((int)180-64,(int)halfheight-64,(int)128<<2,(int)78);
             SDL_GL_SwapWindow(mainwindow);
             m = 0;
-            while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0))
+            while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                (getkeydefstatlock(ACTION_MENU) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
             {
                 PollInputs();
                 i=-1;
@@ -2864,7 +2891,10 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
     loadmusic("WINGAME");
     musicon();
     ksay(1);
-    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) && (bstatus == 0) && (brightness > 2))
+    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+        (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+        (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+        (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0) && (brightness > 2))
     {
         PollInputs();
         if (moustat == 0)
