@@ -5914,45 +5914,61 @@ void sodamenu()
 /* New credits instead of ordering info. */
 
 void orderinfomenu() {
-    drawmenu(320, 106, menu);
+    drawmenu(320, 172, menu);
 
     strcpy(textbuf,
            "\"Ken's Labyrinth\"");
-    textprint(30, 76, 32);
+    textprint(30, 48, 80);
     strcpy(textbuf, "Copyright (c) 1992-1993 Ken Silverman");
 
-    textprint(30, 86, 32);
+    textprint(30, 58, 32);
 
     strcpy(textbuf,
            "\"LAB3D/SDL\" conversion");
-    textprint(30, 96, 32);
+    textprint(30, 76, 80);
 
     /* Fonts only have 7-bit ASCII, and my surname needs a character not in
        this set. Fake the dots. */
 
     strcpy(textbuf,
            ".");
-    textprint(260, 100, 32);
-    textprint(264, 100, 32);
+    textprint(260, 80, 32);
+    textprint(264, 80, 32);
     strcpy(textbuf,
            "Copyright (c) 2002-2004 Jan Lonnberg");
+    textprint(30, 86, 32);
+
+    strcpy(textbuf,
+           "Copyright (c) 2013-2015 Jared Staffor");
+    textprint(30, 96, 32);
+
+    strcpy(textbuf,
+           "Copyright (c) 2019 Cameron Armstrong");
     textprint(30, 106, 32);
 
     strcpy(textbuf,
-           "http://icculus.org/LAB3D/");
-    textprint(30, 116, 32);
+            "http://icculus.org/LAB3D");
+    textprint(30, 116, 48);
+
+    strcpy(textbuf,
+           "gitlab.com/jspenguin/lab3d-sdl");
+    textprint(30, 126, 48);
+
+    strcpy(textbuf,
+            "github.com/sacredbanana/lab3d-sdl");
+    textprint(30, 136, 48);
 
     strcpy(textbuf,
            "See readme.txt for license");
-    textprint(30, 131, 32);
+    textprint(30, 151, 96);
 
     strcpy(textbuf,
            "Ken Silverman's official web site:");
-    textprint(30, 146, 48);
+    textprint(30, 166, 0);
 
     strcpy(textbuf,
            "http://www.advsys.net/ken");
-    textprint(30, 156, 48);
+    textprint(30, 176, 48);
 
     finalisemenu();
     pressakey();
