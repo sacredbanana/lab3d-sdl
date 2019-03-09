@@ -36,7 +36,7 @@ Data files:		Ken's Labyrinth v2.1 (Epic Megagames registered),
 			Ken's Labyrinth v1.1 (Advanced Systems registered) or
 			Ken's Labyrinth v1.0 (Advanced Systems shareware).
 
-	Compiling (Unix with OSS support)
+Compiling (Unix with OSS support)
 	---------------------------------
 
 Run "make" in the source directory.
@@ -53,14 +53,32 @@ recommended for Windows use.
 Run "make -f Makefile.NoMIDI" in the source directory. Note that General MIDI
 music is not available if you do this (not much of a loss).
 
+	Compiling (Nintendo Switch)
+	------------------------------------
+Install DevKitPro.
+Run "make -f Makefile.Switch" in the source directory.
+
 	Installation (not applicable to full download)
 	----------------------------------------------
 
-Place the executable file ("ken" in Unix, "ken.exe" in Windows), "ksmmidi.txt"
+Place the executable file ("ken" in Unix, "ken.exe" in Windows, "Kens-Labyrinth.nro" on Nintendo Switch), "ksmmidi.txt"
 (if you want to use General MIDI music) and "ken.bmp" in the same directory as
 your copy of Ken's Labyrinth. You may give the executable file a different
 name if you like. Windows users should not change the extension of the
 executable.
+
+	Installation (Nintendo Switch)
+	----------------------------------------------
+
+To play this on your Nintendo Switch you will need a Switch set up to run homebrew software, then do any
+of these three choices:
+- Download the latest release of the game from https://github.com/sacredbanana/lab3d-sdl/releases,
+- Download the game from the Homebrew Appstore. This is the easiest option and will also install the game for you automatically.
+Or
+- Compile the game yourself (see the Nintendo Switch compiling instructions above)
+
+Navigate to the Switch folder inside your Nintendo Switch SD card and create a new folder
+called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files.
 
 	Setup
 	-----
