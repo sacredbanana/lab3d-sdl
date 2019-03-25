@@ -2764,8 +2764,8 @@ void configureResolution()
     // remain unused when rendering at a smaller resolution than the framebuffer).
     // Note that glViewport expects the coordinates of the bottom-left corner of
     // the viewport, so we have to calculate that too.
-    nwindowSetCrop(win, 0, 0, screenwidth, screenheight);
-    glViewport(0, 1080-screenheight, screenwidth, screenheight);
+    // nwindowSetCrop(win, 0, 0, screenwidth, screenheight);
+    // glViewport(0, 1080-screenheight, screenwidth, screenheight);
 }
 #endif
 
@@ -6486,7 +6486,7 @@ void quit() {
         SDL_GameControllerClose(cur_controller);
 
     #ifdef __SWITCH__
-    deinitEgl();
+    // deinitEgl();
     romfsExit();
     #endif
     SDL_Quit();
@@ -6616,100 +6616,100 @@ void userAppInit()
 
 void userAppExit()
 {
-    deinitEgl();
+    // deinitEgl();
     deinitNxLink();
 }
 
-bool initEgl(NWindow* win)
-{
-    // Connect to the EGL default display
-    s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-    if (!s_display)
-    {
-        TRACE("Could not connect to display! error: %d", eglGetError());
-        goto _fail0;
-    }
-    // Initialize the EGL display connection
-    eglInitialize(s_display, NULL, NULL);
-    // Select OpenGL as the desired graphics API
-    if (eglBindAPI(EGL_OPENGL_API) == EGL_FALSE)
-    {
-        TRACE("Could not set API! error: %d", eglGetError());
-        goto _fail1;
-    }
-    // Get an appropriate EGL framebuffer configuration
-    EGLConfig config;
-    EGLint numConfigs;
-    static const EGLint framebufferAttributeList[] =
-    {
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        EGL_RED_SIZE,     8,
-        EGL_GREEN_SIZE,   8,
-        EGL_BLUE_SIZE,    8,
-        EGL_ALPHA_SIZE,   8,
-        EGL_DEPTH_SIZE,   24,
-        EGL_STENCIL_SIZE, 0,
-        EGL_NONE
-    };
-    eglChooseConfig(s_display, framebufferAttributeList, &config, 1, &numConfigs);
-    if (numConfigs == 0)
-    {
-        TRACE("No config found! error: %d", eglGetError());
-        goto _fail1;
-    }
-    // Create an EGL window surface
-    s_surface = eglCreateWindowSurface(s_display, config, win, NULL);
-    if (!s_surface)
-    {
-        TRACE("Surface creation failed! error: %d", eglGetError());
-        goto _fail1;
-    }
-    // Create an EGL rendering context
-    static const EGLint contextAttributeList[] =  {
-		EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT,
-        EGL_CONTEXT_MAJOR_VERSION, 4,
-        EGL_CONTEXT_MINOR_VERSION, 3,
-		EGL_NONE
-	};
-    s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, contextAttributeList);
-    if (!s_context)
-    {
-        TRACE("Context creation failed! error: %d", eglGetError());
-        goto _fail2;
-    }
-    // Connect the context to the surface
-    eglMakeCurrent(s_display, s_surface, s_surface, s_context);
-    return true;
+// bool initEgl(NWindow* win)
+// {
+//     // Connect to the EGL default display
+//     s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+//     if (!s_display)
+//     {
+//         TRACE("Could not connect to display! error: %d", eglGetError());
+//         goto _fail0;
+//     }
+//     // Initialize the EGL display connection
+//     eglInitialize(s_display, NULL, NULL);
+//     // Select OpenGL as the desired graphics API
+//     if (eglBindAPI(EGL_OPENGL_API) == EGL_FALSE)
+//     {
+//         TRACE("Could not set API! error: %d", eglGetError());
+//         goto _fail1;
+//     }
+//     // Get an appropriate EGL framebuffer configuration
+//     EGLConfig config;
+//     EGLint numConfigs;
+//     static const EGLint framebufferAttributeList[] =
+//     {
+//         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+//         EGL_RED_SIZE,     8,
+//         EGL_GREEN_SIZE,   8,
+//         EGL_BLUE_SIZE,    8,
+//         EGL_ALPHA_SIZE,   8,
+//         EGL_DEPTH_SIZE,   24,
+//         EGL_STENCIL_SIZE, 0,
+//         EGL_NONE
+//     };
+//     eglChooseConfig(s_display, framebufferAttributeList, &config, 1, &numConfigs);
+//     if (numConfigs == 0)
+//     {
+//         TRACE("No config found! error: %d", eglGetError());
+//         goto _fail1;
+//     }
+//     // Create an EGL window surface
+//     s_surface = eglCreateWindowSurface(s_display, config, win, NULL);
+//     if (!s_surface)
+//     {
+//         TRACE("Surface creation failed! error: %d", eglGetError());
+//         goto _fail1;
+//     }
+//     // Create an EGL rendering context
+//     static const EGLint contextAttributeList[] =  {
+// 		EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_COMPATIBILITY_PROFILE_BIT,
+//         EGL_CONTEXT_MAJOR_VERSION, 4,
+//         EGL_CONTEXT_MINOR_VERSION, 3,
+// 		EGL_NONE
+// 	};
+//     s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, contextAttributeList);
+//     if (!s_context)
+//     {
+//         TRACE("Context creation failed! error: %d", eglGetError());
+//         goto _fail2;
+//     }
+//     // Connect the context to the surface
+//     eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+//     return true;
 
-_fail2:
-    eglDestroySurface(s_display, s_surface);
-    s_surface = NULL;
-_fail1:
-    eglTerminate(s_display);
-    s_display = NULL;
-_fail0:
-    return false;
-}
+// _fail2:
+//     eglDestroySurface(s_display, s_surface);
+//     s_surface = NULL;
+// _fail1:
+//     eglTerminate(s_display);
+//     s_display = NULL;
+// _fail0:
+//     return false;
+// }
 
-void deinitEgl()
-{
-    if (s_display)
-    {
-        eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-        if (s_context)
-        {
-            eglDestroyContext(s_display, s_context);
-            s_context = NULL;
-        }
-        if (s_surface)
-        {
-            eglDestroySurface(s_display, s_surface);
-            s_surface = NULL;
-        }
-        eglTerminate(s_display);
-        s_display = NULL;
-    }
-}
+// void deinitEgl()
+// {
+//     if (s_display)
+//     {
+//         eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+//         if (s_context)
+//         {
+//             eglDestroyContext(s_display, s_context);
+//             s_context = NULL;
+//         }
+//         if (s_surface)
+//         {
+//             eglDestroySurface(s_display, s_surface);
+//             s_surface = NULL;
+//         }
+//         eglTerminate(s_display);
+//         s_display = NULL;
+//     }
+// }
 
 void getUsername()
 {
