@@ -405,6 +405,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
 int main(int argc,char **argv)
 {
     #ifdef __SWITCH__
+    SDL_InitSubSystem(SDL_INIT_VIDEO);
     Result rc = romfsInit();
     if (R_FAILED(rc))
         TRACE("romfsInit failed: %08X\n", rc);
@@ -472,24 +473,25 @@ int main(int argc,char **argv)
     SDL_Init(SDL_INIT_TIMER|SDL_INIT_AUDIO|
              SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
 
-    #ifdef __SWITCH__
-    win = nwindowGetDefault();
-    nwindowSetDimensions(win, 1920, 1080);
-     // Initialize EGL on the default window
-    if (!initEgl(win)) {
-        return EXIT_FAILURE;
-    }
+    // #ifdef __SWITCH__
+    // win = nwindowGetDefault();
+    // nwindowSetDimensions(win, 1920, 1080);
+    //  // Initialize EGL on the default window
+    // if (!initEgl(win)) {
+    //     return EXIT_FAILURE;
+    // }
 
-	gladLoadGL();
-    if (s_context == NULL)
-        TRACE("Could not create GL context.");
+	// gladLoadGL();
+    // if (s_context == NULL)
+    //     TRACE("Could not create GL context.");
     
-    eglSwapInterval(s_display, 1);
-    #else
-    SDL_InitSubSystem(SDL_INIT_VIDEO);
-    if (SDL_GL_LoadLibrary(NULL) != 0)
-        fatal_error("Could not dynamically open OpenGL library: %s", SDL_GetError());
-    #endif
+    // eglSwapInterval(s_display, 1);
+    // #else
+    // SDL_InitSubSystem(SDL_INIT_VIDEO);
+    if (SDL_GL_LoadLibrary(NULL) != 0) {
+        TRACE("Could not dynamically open OpenGL library: %s", SDL_GetError());
+        SDL_Quit();
+    }
 
     if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
         ((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
