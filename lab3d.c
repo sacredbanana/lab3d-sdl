@@ -404,17 +404,6 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
 
 int main(int argc,char **argv)
 {
-    #ifdef __SWITCH__
-    SDL_InitSubSystem(SDL_INIT_VIDEO);
-    Result rc = romfsInit();
-    if (R_FAILED(rc))
-        TRACE("romfsInit failed: %08X\n", rc);
-    #ifdef ENABLE_NXLINK
-    // Set mesa configuration (useful for debugging)
-    setMesaConfig();
-    #endif
-    #endif
-
     char ksmfile[15], hitnet, cheatkeysdown, won;
     K_INT16 i, j, jj, k, m=0, n=0, x, y, brd0, brd1, brd2, brd3, incenter=0;
     K_UINT16 l, newx, newy, oposx, oposy, plcx, plcy,inhibitrepeat=0;
@@ -429,6 +418,11 @@ int main(int argc,char **argv)
     int fil;
     int cmd_loadgame = 0;
     int stereo = 0;
+
+    #if defined(__SWITCH__) && defined(ENABLE_NXLINK)
+    // Set mesa configuration (useful for debugging)
+    setMesaConfig();
+    #endif
 
     for(i=1;i<argc;i++) {
         if ((strcmp(argv[i],"-V")==0)||(strcmp(argv[i],"-version")==0)) {
@@ -470,24 +464,15 @@ int main(int argc,char **argv)
 
     /* Initialise SDL; */
 
-    SDL_Init(SDL_INIT_TIMER|SDL_INIT_AUDIO|
-             SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO |
+             SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 
-    // #ifdef __SWITCH__
-    // win = nwindowGetDefault();
-    // nwindowSetDimensions(win, 1920, 1080);
-    //  // Initialize EGL on the default window
-    // if (!initEgl(win)) {
-    //     return EXIT_FAILURE;
-    // }
+    #ifdef __SWITCH__
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+    #endif
 
-	// gladLoadGL();
-    // if (s_context == NULL)
-    //     TRACE("Could not create GL context.");
-    
-    // eglSwapInterval(s_display, 1);
-    // #else
-    // SDL_InitSubSystem(SDL_INIT_VIDEO);
     if (SDL_GL_LoadLibrary(NULL) != 0) {
         TRACE("Could not dynamically open OpenGL library: %s", SDL_GetError());
         SDL_Quit();
