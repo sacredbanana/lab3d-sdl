@@ -41,7 +41,7 @@ ROMFS		:= 	romfs
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
-APP_VERSION	:= 3.2.1
+APP_VERSION	:= 3.2.2
 ICON		:= ken_icon_switch.jpg
 
 #---------------------------------------------------------------------------------
@@ -60,7 +60,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lSDL2_image -lEGL -ldrm_nouveau -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
+LIBS	:= -lSDL2_image -lglapi -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

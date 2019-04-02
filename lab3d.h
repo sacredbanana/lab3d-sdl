@@ -1,5 +1,3 @@
-// #undef _WIN32
-// #undef __WIN32__
 #ifndef WIN32
 #ifdef _WIN32
 #define WIN32
@@ -19,47 +17,10 @@
 #include "SDL.h"
 
 #ifdef __SWITCH__
-// #include "glad/glad.h"
-
-#include <EGL/egl.h>
-// #include <KHR/khrplatform.h>
-
-#undef __GNUC__
-#include <SDL_opengl.h>
-typedef void (APIENTRYP PFNGLDRAWBUFFERPROC)(GLenum mode);
-GLAPI PFNGLDRAWBUFFERPROC ptr_glDrawBuffer;
-// #define glDrawBuffer ptr_glDrawBuffer
-typedef void (APIENTRYP PFNGLFLUSHPROC)(void);
-typedef void (APIENTRYP PFNGLCLEARPROC)(GLbitfield mask);
-typedef void (APIENTRYP PFNGLCLEARCOLORPROC)(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
-typedef void (APIENTRYP PFNGLBINDTEXTUREPROC)(GLenum target, GLuint texture);
-// GLAPI PFNGLDRAWBUFFERPROC glad_glDrawBuffer = NULL;
-#define _DYNAMIC_OGL_FUNCS(mac)                                 \
-    mac(GLGENFRAMEBUFFERS, glGenFramebuffers)                   \
-    mac(GLGENRENDERBUFFERS, glGenRenderbuffers)                 \
-    mac(GLDRAWBUFFERS, glDrawBuffers)                           \
-    mac(GLBINDFRAMEBUFFER, glBindFramebuffer)                   \
-    mac(GLBINDRENDERBUFFER, glBindRenderbuffer)                 \
-    mac(GLRENDERBUFFERSTORAGE, glRenderbufferStorage)           \
-    mac(GLFRAMEBUFFERTEXTURE, glFramebufferTexture)             \
-    mac(GLFRAMEBUFFERRENDERBUFFER, glFramebufferRenderbuffer)
-    // mac(GLDRAWBUFFER, glDrawBuffer)                            \
-    // mac(GLFLUSH, glFlush)                                      \
-    // mac(GLCLEAR, glClear)                                      \
-    // mac(GLCLEARCOLOR, glClearColor)                            \
-    // mac(GLBINDTEXTURE, glBindTexture)
-
-#define _DECLARE_FUNC(type, name) static PFN ##type## PROC ext_##name = NULL;
-#define _LOAD_FUNC(type, name) ext_##name = SDL_GL_GetProcAddress(#name); if (!ext_##name) return #name;
-
-glDrawBuffer = (void GLAPIENTRY)SDL_GL_GetProcAddress("glDrawBuffer");
-
-_DYNAMIC_OGL_FUNCS(_DECLARE_FUNC)
-#define __GNUC__
-
+#include "glad/glad.h"
 #include <switch.h>
 #else
-// #include <SDL_opengl.h>
+#include <SDL_opengl.h>
 #include <GL/glu.h>
 #endif
 
@@ -269,7 +230,6 @@ typedef Sint16 K_INT16;
 #else
 #include <unistd.h>
 #define TRACE(fmt,...) printf("%s: " fmt "\n", __PRETTY_FUNCTION__, ## __VA_ARGS__)
-#define pretty_function(fmt,...) printf("%s: " fmt "\n", __PRETTY_FUNCTION__, ## __VA_ARGS__)
 #endif
 
 enum {
@@ -525,19 +485,12 @@ EXTERN int walltol,neardist;
 
 /* Nintendo Switch globals, defines and functions... */
 #ifdef __SWITCH__
-// EXTERN NWindow *win;
-// EXTERN EGLDisplay s_display;
-// EXTERN EGLContext s_context;
-// EXTERN EGLSurface s_surface;
-// #define SDL_GL_SwapWindow(mainwindow) eglSwapBuffers(s_display, s_surface)
 void configureResolution();
 void setMesaConfig();
 void initNxLink();
 void deinitNxLink();
 void userAppInit();
 void userAppExit();
-// bool initEgl(NWindow* win);
-// void deinitEgl();
 void getUsername();
 #endif
 
