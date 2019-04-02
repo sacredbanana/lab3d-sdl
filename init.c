@@ -30,9 +30,7 @@ void initialize()
     walltol=32;
     neardist=16;
 
-    // #ifndef __SWITCH__
-    int realr,realg,realb,realz,reald;
-    realz = 0;
+    int realr,realg,realb,realz,reald = 0;
     SDL_Surface *icon;
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
@@ -56,7 +54,7 @@ void initialize()
 
     if (mainwindow != NULL)
         fatal_error("window already created (init)");
-    TRACE("Making Window");
+
     if (fullscreen) {
         mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                       0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
@@ -64,7 +62,6 @@ void initialize()
         mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       screenwidth, screenheight, SDL_WINDOW_OPENGL);
     }
-    TRACE("Made Window");
 
     if (mainwindow == NULL) {
         fatal_error("Video mode set failed.");
@@ -74,46 +71,48 @@ void initialize()
     configure_screen_size();
     fprintf(stderr,"True size: %dx%d\n", screenwidth, screenheight);
 
-    TRACE("Creating icon");
     if (icon != NULL)
         SDL_SetWindowIcon(mainwindow, icon);
-    TRACE("Creating context");
 
+ gladLoadGL();
     maincontext = SDL_GL_CreateContext(mainwindow);
-    TRACE("Created context");
+ 
     if (maincontext == NULL) {
-        TRACE("nah");
         fatal_error("Could not create GL context.");
     }
 
-    TRACE("Looking at things");
+    #ifdef __SWITCH__
+    gladLoadGL();
+    #endif
+
     SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
-    TRACE("Looked at red");
     SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE,&realg);
     SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE,&realb);
-    // SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
+    SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
     SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER,&reald);
 
     fprintf(stderr,"GL Vendor: %s\n",glGetString(GL_VENDOR));
     fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
     fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
     //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
-    // fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
-    //fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
 
-    // if (reald==0) {
-    //     fatal_error("Double buffer not available.");
-    // }
+    #ifndef __SWITCH__
+    fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
+    fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
+
+    if (reald==0) {
+        fatal_error("Double buffer not available.");
+    }
+    #endif
 
     fprintf(stderr,
             "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
             realr,realg,realb,realz);
 
-    // if (realz<24) {
-    //     walltol=256;
-    //     neardist=128;
-    // }
-    // #endif
+    if (realz<24) {
+        walltol=256;
+        neardist=128;
+    }
 
     SDL_SetWindowBrightness(mainwindow, gammalevel);
 

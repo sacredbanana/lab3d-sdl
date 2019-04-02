@@ -22,6 +22,21 @@ static K_INT16 gameoverfound;
 
 #define EPSILON 0.0000001
 
+#define _DYNAMIC_OGL_FUNCS(mac)                                 \
+    mac(GLGENFRAMEBUFFERS, glGenFramebuffers)                   \
+    mac(GLGENRENDERBUFFERS, glGenRenderbuffers)                 \
+    mac(GLDRAWBUFFERS, glDrawBuffers)                           \
+    mac(GLBINDFRAMEBUFFER, glBindFramebuffer)                   \
+    mac(GLBINDRENDERBUFFER, glBindRenderbuffer)                 \
+    mac(GLRENDERBUFFERSTORAGE, glRenderbufferStorage)           \
+    mac(GLFRAMEBUFFERTEXTURE, glFramebufferTexture)             \
+    mac(GLFRAMEBUFFERRENDERBUFFER, glFramebufferRenderbuffer)
+
+#define _DECLARE_FUNC(type, name) static PFN ##type## PROC ext_##name;
+#define _LOAD_FUNC(type, name) ext_##name = SDL_GL_GetProcAddress(#name); if (!ext_##name) return #name;
+
+_DYNAMIC_OGL_FUNCS(_DECLARE_FUNC)
+
 static int stereo = 0;
 static GLuint stereo_fbufs[2];
 static GLuint stereo_tex[2];
