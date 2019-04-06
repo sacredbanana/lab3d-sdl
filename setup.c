@@ -657,13 +657,13 @@ void setupsetfiltering(void) {
 void setupsetmusic(void) {
     int oldmusic = music;
     selectionmenu(MUSIC_SOURCES,musicmenu,&music, "Music");
-    if (music != oldmusic || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) resetaudio();
+    if (setup_ingame && (music != oldmusic || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)) resetaudio();
 }
 
 void setupsetsound(void) {
     int oldsound = sound;
     selectionmenu(2,soundmenu,&sound, "Sound");
-    if (sound != oldsound) resetaudio();
+    if (setup_ingame && sound != oldsound) resetaudio();
 }
 
 void setupcheatmenu(void) {
@@ -673,19 +673,19 @@ void setupcheatmenu(void) {
 void setupsetsoundchannels(void) {
     int oldchannel = channel;
     selectionmenu(2,channelmenu,&channel, "Sound channels");
-    if (channel != oldchannel) resetaudio();
+    if (setup_ingame && channel != oldchannel) resetaudio();
 }
 
 void setupsetmusicchannels(void) {
     int oldmusicchannel = musicchannel;
     selectionmenu(2,channelmenu,&musicchannel, "Music channels");
-    if (musicchannel != oldmusicchannel) resetaudio();
+    if (setup_ingame && musicchannel != oldmusicchannel) resetaudio();
 }
 
 void setupsoundblockmenu(void) {
     int oldsoundblock = soundblock;
     selectionmenu(10,soundblockmenu,&soundblock, "Sound buffer");
-    if (soundblock != oldsoundblock) resetaudio();
+    if (setup_ingame && soundblock != oldsoundblock) resetaudio();
 }
 
 void setuptimingmenu(void) {
