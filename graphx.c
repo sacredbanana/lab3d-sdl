@@ -468,10 +468,12 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         checkobj(explox[i],exploy[i],posxs,posys,angs,explostat[i]);
     }
 
-    for(i=0;i<bulnum;i++)
+    if (lab3dversion == 0)
     {
-        switch(bulkind[i])
+        for(i=0;i<bulnum;i++)
         {
+            switch(bulkind[i])
+            {
             case 1: case 18:
                 checkobj(bulx[i],buly[i],posxs,posys,angs,
                          bul1fly+animate3);
@@ -523,6 +525,8 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                 break;
         }
     }
+    }
+    
 
     wallsfound=0;
     mapfound=0;
