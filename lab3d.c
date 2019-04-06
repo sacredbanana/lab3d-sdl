@@ -468,6 +468,7 @@ int main(int argc,char **argv)
              SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 
     #ifdef __SWITCH__
+    romfsInit();
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
