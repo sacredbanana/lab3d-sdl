@@ -74,7 +74,6 @@ void initialize()
     if (icon != NULL)
         SDL_SetWindowIcon(mainwindow, icon);
 
- //gladLoadGL();
     maincontext = SDL_GL_CreateContext(mainwindow);
  
     if (maincontext == NULL) {

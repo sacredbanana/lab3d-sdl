@@ -1549,7 +1549,7 @@ void loadsettings(void) {
             cursection = sections;
             while (1) {
                 if (!cursection->name) {
-                    fatal_error("%s:%d: Invalid config section: %s", filename, curline, key);
+                    TRACE("%s:%d: Invalid config section: %s", filename, curline, key);
                     return;
                 }
                 if (strcasecmp(key, cursection->name) == 0)
@@ -1558,17 +1558,17 @@ void loadsettings(void) {
             }
         } else {
             if (!cursection) {
-                fatal_error("%s:%d: Config value outside of section: %s", filename, curline, key);
+                TRACE("%s:%d: Config value outside of section: %s", filename, curline, key);
             }
             cursetting = cursection->settings;
             while (1) {
                 if (!cursetting->name) {
-                    fatal_error("%s:%d: Unknown config setting in section %s: %s", filename, curline, cursection->name, key);
+                    TRACE("%s:%d: Unknown config setting in section %s: %s", filename, curline, cursection->name, key);
                 }
                 if (strcasecmp(key, cursetting->name) == 0) {
                     int rv = cursetting->load(key, val, cursetting);
                     if (rv != 0) {
-                        fatal_error("%s:%d: Invalid value for %s: %s", filename, curline, cursetting->name, val);
+                        TRACE("%s:%d: Invalid value for %s: %s", filename, curline, cursetting->name, val);
                     }
                     break;
                 }
