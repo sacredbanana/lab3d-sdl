@@ -6401,18 +6401,19 @@ void ProcessEvent(SDL_Event* event) {
 }
 
 void PollInputs() {
-    // If Nintendo Switch, poll to see if user has changed mode from portable/docked
-    #ifdef __SWITCH__
-    configureResolution();
-    hidScanInput();
-    #endif
-
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
         ProcessEvent(&event);
     }
     if (quitgame) quit();
+
+    // If Nintendo Switch, poll to see if user has changed mode from portable/docked
+    #ifdef __SWITCH__
+    configureResolution();
+    hidReset();
+    hidScanInput();
+    #endif
 }
 
 /* Read mouse position (into x and y; NULL to ignore) and return buttons
@@ -6488,6 +6489,7 @@ void quit() {
     #ifdef __SWITCH__
     romfsExit();
     #endif
+    SDL_VideoQuit();
     SDL_Quit();
 
     exit(0);

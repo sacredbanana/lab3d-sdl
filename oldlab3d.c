@@ -1834,7 +1834,14 @@ void oldmain(void)
         }
         if (!cheatkeysdown)
         {
-            if ((getkeydefstat(ACTION_OLD_SAVE) > 0) && (death == 4095))
+            K_UINT32 switchKeyPressed = 0;
+
+            #ifdef __SWITCH__
+            hidScanInput();
+            switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
+            #endif
+
+            if ((switchKeyPressed == KEY_PLUS || getkeydefstat(ACTION_OLD_SAVE) > 0) && (death == 4095))
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1845,25 +1852,27 @@ void oldmain(void)
                 n = 0;
                 ototclock = totalclock;
                 while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
-                (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
-                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
-                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
+                (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
                 {
                     PollInputs();
+                    #ifdef __SWITCH__
+                    switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
+                    #endif
 
-                    if (newkeystatus(SDLK_1)) {
+                    if (newkeystatus(SDLK_1) || switchKeyPressed == KEY_L) {
                         i=0;
                         m = 1;
                         setnewkeystatus(SDLK_1, 0);
-                    } else if (newkeystatus(SDLK_2)) {
+                    } else if (newkeystatus(SDLK_2) || switchKeyPressed == KEY_ZL) {
                         i=1;
                         m = 1;
                         setnewkeystatus(SDLK_2, 0);
-                    } else if (newkeystatus(SDLK_3)) {
+                    } else if (newkeystatus(SDLK_3) || switchKeyPressed == KEY_R) {
                         i=2;
                         m = 1;
                         setnewkeystatus(SDLK_3, 0);
-                    } else if (newkeystatus(SDLK_4)) {
+                    } else if (newkeystatus(SDLK_4) || switchKeyPressed == KEY_ZR) {
                         i=3;
                         m = 1;
                         setnewkeystatus(SDLK_4, 0);
@@ -1905,7 +1914,7 @@ void oldmain(void)
                 lastbarchange = 1;
                 picrot(posx,posy,posz,ang);
             }
-            if (getkeydefstat(ACTION_OLD_LOAD) > 0)
+            if (switchKeyPressed == KEY_MINUS || getkeydefstat(ACTION_MUTE) > 0)
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1917,25 +1926,27 @@ void oldmain(void)
                 ototclock = totalclock;
 
                 while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
-                (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
-                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
-                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
+                (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
                 {
                     PollInputs();
+                    #ifdef __SWITCH__
+                    switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
+                    #endif
 
-                    if (newkeystatus(SDLK_1)) {
+                    if (newkeystatus(SDLK_1) || switchKeyPressed == KEY_L) {
                         oldloadgame(0);
                         m = 1;
                         setnewkeystatus(SDLK_1, 0);
-                    } else if (newkeystatus(SDLK_2)) {
+                    } else if (newkeystatus(SDLK_2) || switchKeyPressed == KEY_ZL) {
                         oldloadgame(1);
                         m = 1;
                         setnewkeystatus(SDLK_2, 0);
-                    } else if (newkeystatus(SDLK_3)) {
+                    } else if (newkeystatus(SDLK_3) || switchKeyPressed == KEY_R) {
                         oldloadgame(2);
                         m = 1;
                         setnewkeystatus(SDLK_3, 0);
-                    } else if (newkeystatus(SDLK_4)) {
+                    } else if (newkeystatus(SDLK_4) || switchKeyPressed == KEY_ZR) {
                         oldloadgame(3);
                         m = 1;
                         setnewkeystatus(SDLK_4, 0);
@@ -2118,6 +2129,9 @@ void oldmain(void)
             ototclock = 1;
             picrot(posx,posy,posz,ang);
         }
+        #ifdef __SWITCH__ // No real need to waste a button just for quitting on Switch since the home button does that already
+        clearkeydefstat(ACTION_MENU);
+        #endif
         if (getkeydefstat(ACTION_MENU) == 1)
         {
             if (ototclock > 1)
