@@ -238,7 +238,7 @@ void initialize()
                 spritepalette[k++] = (opaldef[i][2]*j)/17;
             }
         fprintf(stderr,"Loading old graphics...\n");
-        loadwalls(1);
+        loadwalls(0);
     } else {
         /* The ingame palette is stored in this GIF! */
         kgif(1);
