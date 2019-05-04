@@ -523,6 +523,8 @@ void oldmain(void);
 void UploadOverlay(void);
 void UploadPartialOverlay(int x,int y,int w,int h);
 void initialize();
+void initvideo();
+void gamelaunchermenu();
 K_INT16 vline(K_INT16,K_INT16,K_INT16,K_INT16,K_INT16);
 void update_bulrot(K_UINT16, K_UINT16);
 void picrot(K_UINT16, K_UINT16, K_INT16, K_INT16);
