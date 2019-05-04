@@ -27,117 +27,6 @@ void initialize()
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
 
-    walltol=32;
-    neardist=16;
-
-    int realr,realg,realb,realz,reald = 0;
-    SDL_Surface *icon;
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
-
-    SDL_ShowCursor(0);
-
-    icon = SDL_LoadBMP("ken.bmp");
-    if (icon == NULL) {
-        fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
-    }
-
-    fprintf(stderr,"Activating video...\n");
-
-    if (mainwindow != NULL)
-        fatal_error("window already created (init)");
-
-    if (fullscreen) {
-        mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                      0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
-    } else {
-        mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                      screenwidth, screenheight, SDL_WINDOW_OPENGL);
-    }
-
-    if (mainwindow == NULL) {
-        fatal_error("Video mode set failed.");
-    }
-
-    SDL_GetWindowSize(mainwindow, &screenwidth, &screenheight);
-    configure_screen_size();
-    fprintf(stderr,"True size: %dx%d\n", screenwidth, screenheight);
-
-    if (icon != NULL)
-        SDL_SetWindowIcon(mainwindow, icon);
-
-    maincontext = SDL_GL_CreateContext(mainwindow);
- 
-    if (maincontext == NULL) {
-        fatal_error("Could not create GL context.");
-    }
-
-    #ifdef __SWITCH__
-    gladLoadGL();
-    #endif
-
-    SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
-    SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE,&realg);
-    SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE,&realb);
-    SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
-    SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER,&reald);
-
-    fprintf(stderr,"GL Vendor: %s\n",glGetString(GL_VENDOR));
-    fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
-    fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
-    //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
-
-    #ifndef __SWITCH__
-    fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
-    fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
-
-    if (reald==0) {
-        fatal_error("Double buffer not available.");
-    }
-    #endif
-
-    fprintf(stderr,
-            "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
-            realr,realg,realb,realz);
-
-    if (realz<24) {
-        walltol=256;
-        neardist=128;
-    }
-
-    SDL_SetWindowBrightness(mainwindow, gammalevel);
-
-    largescreentexture = 1;
-
-    if (largescreentexture) {
-        /* One large 512x512 texture. */
-
-        screenbufferwidth=screenbufferheight=512;
-    } else {
-        /* 6*11 matrix of 64x64 tiles with 1 pixel wide borders on shared
-           edges. */
-
-        screenbufferwidth=374;
-        screenbufferheight=746;
-    }
-
-    screenbuffer=malloc(screenbufferwidth*screenbufferheight);
-    screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
-
-    linecompare(479);
-
-    if (screenbuffer==NULL) {
-        fatal_error("Could not create screen buffer");
-    }
-
     fprintf(stderr,"Loading tables/settings...\n");
 
     loadtables();
@@ -201,13 +90,6 @@ void initialize()
         keystatus[i] = 0;
 
     numkeyspressed=0;
-
-    fprintf(stderr,"Allocating screen buffer texture...\n");
-    if (largescreentexture) {
-        glGenTextures(1,&screenbuffertexture);
-    } else {
-        glGenTextures(72,screenbuffertextures);
-    }
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
@@ -422,6 +304,127 @@ void initialize()
     }
     if (!introskip)
         musicoff();
+}
+
+void initvideo()
+{
+    walltol=32;
+    neardist=16;
+
+    int realr,realg,realb,realz,reald = 0;
+    SDL_Surface *icon;
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE,0);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
+
+    SDL_ShowCursor(0);
+
+    icon = SDL_LoadBMP("ken.bmp");
+    if (icon == NULL) {
+        fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
+    }
+
+    fprintf(stderr,"Activating video...\n");
+
+    if (mainwindow != NULL)
+        fatal_error("window already created (init)");
+
+    if (fullscreen) {
+        mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                      0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
+    } else {
+        mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                      screenwidth, screenheight, SDL_WINDOW_OPENGL);
+    }
+
+    if (mainwindow == NULL) {
+        fatal_error("Video mode set failed.");
+    }
+
+    SDL_GetWindowSize(mainwindow, &screenwidth, &screenheight);
+    configure_screen_size();
+    fprintf(stderr,"True size: %dx%d\n", screenwidth, screenheight);
+
+    if (icon != NULL)
+        SDL_SetWindowIcon(mainwindow, icon);
+
+    maincontext = SDL_GL_CreateContext(mainwindow);
+ 
+    if (maincontext == NULL) {
+        fatal_error("Could not create GL context.");
+    }
+
+    #ifdef __SWITCH__
+    gladLoadGL();
+    #endif
+
+    SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
+    SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE,&realg);
+    SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE,&realb);
+    SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
+    SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER,&reald);
+
+    fprintf(stderr,"GL Vendor: %s\n",glGetString(GL_VENDOR));
+    fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
+    fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
+    //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
+
+    #ifndef __SWITCH__
+    fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
+    fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
+
+    if (reald==0) {
+        fatal_error("Double buffer not available.");
+    }
+    #endif
+
+    fprintf(stderr,
+            "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
+            realr,realg,realb,realz);
+
+    if (realz<24) {
+        walltol=256;
+        neardist=128;
+    }
+
+    SDL_SetWindowBrightness(mainwindow, gammalevel);
+
+    largescreentexture = 1;
+
+    if (largescreentexture) {
+        /* One large 512x512 texture. */
+
+        screenbufferwidth=screenbufferheight=512;
+    } else {
+        /* 6*11 matrix of 64x64 tiles with 1 pixel wide borders on shared
+           edges. */
+
+        screenbufferwidth=374;
+        screenbufferheight=746;
+    }
+
+    screenbuffer=malloc(screenbufferwidth*screenbufferheight);
+    screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
+
+    linecompare(479);
+
+    if (screenbuffer==NULL) {
+        fatal_error("Could not create screen buffer");
+    }
+
+    fprintf(stderr,"Allocating screen buffer texture...\n");
+    if (largescreentexture) {
+        glGenTextures(1,&screenbuffertexture);
+    } else {
+        glGenTextures(72,screenbuffertextures);
+    }
 }
 
 void initaudio()
