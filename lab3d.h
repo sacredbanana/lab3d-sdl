@@ -224,6 +224,14 @@ typedef Sint16 K_INT16;
 #define episodesign3on 447
 #define endtext 448
 //SORTWALLEND
+#ifndef __SWITCH__
+#define KEY_PLUS 0
+#define KEY_MINUS 0
+#define KEY_L 0
+#define KEY_ZL 0
+#define KEY_R 0
+#define KEY_ZR 0
+#endif
 
 #ifndef ENABLE_NXLINK
 #define TRACE(fmt,...) ((void)0)
@@ -492,10 +500,8 @@ void deinitNxLink();
 void userAppInit();
 void userAppExit();
 void getUsername();
-#endif
 
 /* libGLU reimplementation functions */
-#ifdef __SWITCH__
 void normalize(float v[3]);
 void cross(float v1[3], float v2[3], float result[3]);
 void __gluMakeIdentityf(GLfloat m[16]);
@@ -523,6 +529,7 @@ void oldmain(void);
 void UploadOverlay(void);
 void UploadPartialOverlay(int x,int y,int w,int h);
 void initialize();
+void initmemory();
 void initvideo();
 void gamelaunchermenu();
 K_INT16 vline(K_INT16,K_INT16,K_INT16,K_INT16,K_INT16);

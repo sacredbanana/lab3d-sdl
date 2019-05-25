@@ -1,10 +1,8 @@
 #include "lab3d.h"
 
 static void draw_gamelaunchermenu(void) {
-    TRACE("Draw");
     int n = 18;
     drawmenu(360,240,menu);
-    TRACE("drawmenu called");
 
     n = 18;
     strcpy(textbuf,"LAB3D/SDL game launcher menu");
@@ -43,11 +41,13 @@ static void draw_gamelaunchermenu(void) {
     textprint(31,n,lab3dversion?32:34);
 
     finalisemenu();
-    TRACE("Drawn");
 }
 
-void gamelauchermenu() {
+void gamelaunchermenu() {
     int done=0,sel=0;
+
+    statusbaryoffset=250;
+
 
     while(!done) {
         draw_gamelaunchermenu();
