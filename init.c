@@ -8,9 +8,8 @@
 
 void initialize()
 {
-    K_INT16 i, j, k, walcounter, oclockspeed;
+    K_INT16 i, j, k, oclockspeed;
     K_UINT16 l;
-    unsigned char *v;
     time_t tnow;
     struct stat fstats;
 
@@ -26,11 +25,7 @@ void initialize()
 
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
-
-    fprintf(stderr,"Loading tables/settings...\n");
-
-    loadtables();
-    vidmode = 1; /* Force fake 360x240 mode. */
+    
     mute = 0;
 
     cur_joystick_index = -1;
@@ -47,49 +42,6 @@ void initialize()
     {
         fatal_error("Could not allocate memory for music");
     }
-
-    initaudio();
-        
-    fprintf(stderr,"Allocating memory...\n");
-    if (((lzwbuf = malloc(12304-8200)) == NULL)||
-        ((lzwbuf2=malloc(8200))==NULL))
-    {
-        fatal_error("Error #3: Memory allocation failed.\n");
-    }
-
-    convwalls = numwalls;
-
-    if ((pic = malloc((numwalls-initialwalls)<<12)) == NULL)
-    {
-        fprintf(stderr,
-                "Error #4: This computer does not have enough memory.\n");
-        SDL_Quit();
-        exit(-1);
-    }
-    walcounter = initialwalls;
-    if (convwalls > initialwalls)
-    {
-        v = pic;
-        for(i=0;i<convwalls-initialwalls;i++)
-        {
-            walseg[walcounter] = v;
-            walcounter++;
-            v += 4096;
-        }
-    }
-    l = 0;
-    for(i=0;i<240;i++)
-    {
-        times90[i] = l;
-        l += 90;
-    }
-    less64inc[0] = 16384;
-    for(i=1;i<64;i++)
-        less64inc[i] = 16384 / i;
-    for(i=0;i<256;i++)
-        keystatus[i] = 0;
-
-    numkeyspressed=0;
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
@@ -259,14 +211,7 @@ void initialize()
         }
         SDL_UnlockMutex(timermutex);
     }
-    k = 0;
-    for(i=0;i<16;i++)
-        for(j=1;j<17;j++)
-        {
-            palette[k++] = (paldef[i][0]*j)/17;
-            palette[k++] = (paldef[i][1]*j)/17;
-            palette[k++] = (paldef[i][2]*j)/17;
-        }
+    
     lastunlock = 1;
     lastshoot = 1;
     lastbarchange = 1;
@@ -308,8 +253,10 @@ void initialize()
 
 void initvideo()
 {
+    K_INT16 i, j, k;
     walltol=32;
     neardist=16;
+    vidmode = 1; /* Force fake 360x240 mode. */
 
     int realr,realg,realb,realz,reald = 0;
     SDL_Surface *icon;
@@ -425,6 +372,63 @@ void initvideo()
     } else {
         glGenTextures(72,screenbuffertextures);
     }
+
+    k = 0;
+    for(i=0;i<16;i++)
+        for(j=1;j<17;j++)
+        {
+            palette[k++] = (paldef[i][0]*j)/17;
+            palette[k++] = (paldef[i][1]*j)/17;
+            palette[k++] = (paldef[i][2]*j)/17;
+        }
+}
+
+void initmemory()
+{
+    K_INT16 i, walcounter;
+    K_UINT16 l;
+    unsigned char *v;
+
+    printf(stderr,"Allocating memory...\n");
+    if (((lzwbuf = malloc(12304-8200)) == NULL)||
+        ((lzwbuf2=malloc(8200))==NULL))
+    {
+        fatal_error("Error #3: Memory allocation failed.\n");
+    }
+
+    convwalls = numwalls;
+
+    if ((pic = malloc((numwalls-initialwalls)<<12)) == NULL)
+    {
+        fprintf(stderr,
+                "Error #4: This computer does not have enough memory.\n");
+        SDL_Quit();
+        exit(-1);
+    }
+    walcounter = initialwalls;
+    if (convwalls > initialwalls)
+    {
+        v = pic;
+        for(i=0;i<convwalls-initialwalls;i++)
+        {
+            walseg[walcounter] = v;
+            walcounter++;
+            v += 4096;
+        }
+    }
+    l = 0;
+    for(i=0;i<240;i++)
+    {
+        times90[i] = l;
+        l += 90;
+    }
+    less64inc[0] = 16384;
+    for(i=1;i<64;i++)
+        less64inc[i] = 16384 / i;
+    for(i=0;i<256;i++)
+        keystatus[i] = 0;
+
+    numkeyspressed=0;
 }
 
 void initaudio()

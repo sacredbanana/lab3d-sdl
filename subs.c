@@ -4449,7 +4449,7 @@ void textprint(K_INT16 x, K_INT16 y, char coloffs)
             walnume = (character>>6)+125;
         else
             walnume = (character>>6)+textwall;
-
+            
         drawtooverlay((character&7)<<3, ((character&63)>>3)<<3,
                       8, 8, x, y, walnume-1, coloffs);
         x+=8;

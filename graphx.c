@@ -1716,7 +1716,6 @@ void drawtooverlay(K_UINT16 picx, K_UINT16 picy, int w,
                    unsigned char coloff) {
     int a,b;
     unsigned char *pic,*buf;
-
     y+=spriteyoffset;
     y+=visiblescreenyoffset;
 
@@ -1740,8 +1739,9 @@ void drawtooverlay(K_UINT16 picx, K_UINT16 picy, int w,
 void wipeoverlay(K_UINT16 x,K_UINT16 y,K_UINT16 w, K_UINT16 h) {
     int a;
 
-    for(a=y;a<y+h;a++)
+    for(a=y;a<y+h;a++) {
         memset(screenbuffer+((screenbufferwidth*a)+x),ingame?255:0x50,w);
+    }
 
     UploadPartialOverlay(x,y,w,h);
 }
