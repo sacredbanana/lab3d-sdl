@@ -499,6 +499,9 @@ int main(int argc,char **argv)
         fprintf(stderr, "Ken's Labyrinth version 2.x detected.\n");
     }
 
+    fprintf(stderr,"Loading tables/settings...\n");
+
+    loadtables();
     loadsettings();
     configure();
     configure_screen_size();
@@ -596,15 +599,77 @@ int main(int argc,char **argv)
             debugmode=1;
     }
 
-
+    lab3dversion = 0;
     initvideo();
+    initaudio();
+    initmemory();
+
+    //huuhh
+    FindJoysticks();
+
+    SDL_JoystickEventState(1);
+    FindJoysticks();
+    time_t tnow;
+    time(&tnow);
+    srand((unsigned int)tnow);
+    if ((note = malloc(16384)) == NULL)
+    {
+        fatal_error("Could not allocate memory for music");
+    }
+
+    fprintf(stderr,"Loading intro music...\n");
+    saidwelcome = 0;
+    if (!introskip)
+        // loadmusic("BEGIN");
+    clockspeed = 0;
+    slottime = 0;
+    owecoins = 0;
+    owecoinwait = 0;
+    slotpos[0] = 0;
+    slotpos[1] = 0;
+    slotpos[2] = 0;
+    clockspeed = 0;
+    skilevel = 0;
+    if (!introskip)
+        // musicon();
+    fprintf(stderr,"Loading intro pictures...\n");
+
+    if (lab3dversion) {
+        kgif(-1);
+        k=0;
+        for(i=0;i<16;i++)
+            for(j=1;j<17;j++)
+            {
+                spritepalette[k++] = (opaldef[i][0]*j)/17;
+                spritepalette[k++] = (opaldef[i][1]*j)/17;
+                spritepalette[k++] = (opaldef[i][2]*j)/17;
+            }
+        fprintf(stderr,"Loading old graphics...\n");
+        loadwalls(0);
+    } else {
+        /* The ingame palette is stored in this GIF! */
+        kgif(1);
+        memcpy(spritepalette,palette,768);
+
+        /* Show the Epic Megagames logo while loading... */
+
+        kgif(0);
+        fprintf(stderr,"Loading graphics...\n");
+        loadwalls(1);
+
+        /* Ken's Labyrinth logo. */
+        if (!kgif(2))
+            kgif(1);
+
+        fade(63);
+    }
 
     // Check if the gamedata directory exists
     const char* directory = "gamedata";
     struct stat sb;
 
-    // if (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode))
-    //     gamelauchermenu();
+    if (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode))
+        gamelaunchermenu();
 
     initialize();
     
