@@ -539,6 +539,7 @@ void initgraphics();
 void inittablesandsettings();
 void initgameversion();
 void freememory();
+void clearimgcache();
 void resetaudio();
 void gamelaunchermenu();
 K_INT16 vline(K_INT16,K_INT16,K_INT16,K_INT16,K_INT16);

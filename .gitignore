@@ -40,6 +40,9 @@ nosetests.xml
 
 # Ken files
 ken.bin
+hiscore.dat
+HISCORE.DAT
+SAVGAME*
 
 # MacOS files
 .DS_Store

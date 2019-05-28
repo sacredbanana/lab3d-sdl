@@ -63,6 +63,7 @@ void gamelaunchermenu() {
                         break;
                     case 4:
                         setupmenu(0);
+                        savesettings();
                         break;
                     case 5:
                         quit();
