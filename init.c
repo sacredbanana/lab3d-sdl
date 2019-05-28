@@ -23,11 +23,6 @@ void initialize()
 
     visiblescreenyoffset=0;
 
-    soundmutex = SDL_CreateMutex();
-    timermutex = SDL_CreateMutex();
-    
-    mute = 0;
-
     cur_joystick_index = -1;
     cur_controller_index = -1;
 
@@ -38,10 +33,6 @@ void initialize()
 
     time(&tnow);
     srand((unsigned int)tnow);
-    if ((note = malloc(16384)) == NULL)
-    {
-        fatal_error("Could not allocate memory for music");
-    }
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
@@ -58,40 +49,6 @@ void initialize()
     skilevel = 0;
     if (!introskip)
         musicon();
-    fprintf(stderr,"Loading intro pictures...\n");
-
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
-        kgif(-1);
-        k=0;
-        for(i=0;i<16;i++)
-            for(j=1;j<17;j++)
-            {
-                spritepalette[k++] = (opaldef[i][0]*j)/17;
-                spritepalette[k++] = (opaldef[i][1]*j)/17;
-                spritepalette[k++] = (opaldef[i][2]*j)/17;
-            }
-        fprintf(stderr,"Loading old graphics...\n");
-        loadwalls(0);
-    } else {
-        /* The ingame palette is stored in this GIF! */
-        kgif(1);
-        memcpy(spritepalette,palette,768);
-
-        /* Show the Epic Megagames logo while loading... */
-
-        kgif(0);
-        fprintf(stderr,"Loading graphics...\n");
-        loadwalls(1);
-
-        /* Ken's Labyrinth logo. */
-        if (!kgif(2))
-            kgif(1);
-
-        fade(63);
-    }
-
-    SetVisibleScreenOffset(0);
-    SDL_GL_SwapWindow(mainwindow);
 
     if (moustat == 0)
         moustat = setupmouse();
@@ -120,6 +77,8 @@ void initialize()
         SDL_UnlockMutex(timermutex);
 
         /* Big scrolly picture... */
+
+        initgraphics();
 
         j=0;
 
@@ -443,6 +402,16 @@ void initaudio()
     long sndsize;
     int i;
 
+    if ((note = malloc(16384)) == NULL)
+    {
+        fatal_error("Could not allocate memory for music");
+    }
+
+    soundmutex = SDL_CreateMutex();
+    timermutex = SDL_CreateMutex();
+    
+    mute = 0;
+
     firstime = 1;
 
     if (musicsource == MUSIC_SOURCE_MIDI) {
@@ -538,6 +507,45 @@ void initaudio()
             fprintf(stderr,"Warning: no sound, using system timer.\n");
         soundtimer=0;
     }
+}
+
+void initgraphics()
+{
+    K_INT16 i, j, k;
+
+    fprintf(stderr,"Loading intro pictures...\n");
+
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+        kgif(-1);
+        k=0;
+        for(i=0;i<16;i++)
+            for(j=1;j<17;j++)
+            {
+                spritepalette[k++] = (opaldef[i][0]*j)/17;
+                spritepalette[k++] = (opaldef[i][1]*j)/17;
+                spritepalette[k++] = (opaldef[i][2]*j)/17;
+            }
+        fprintf(stderr,"Loading old graphics...\n");
+        loadwalls(0);
+    } else {
+        /* The ingame palette is stored in this GIF! */
+        kgif(1);
+        memcpy(spritepalette,palette,768);
+
+        /* Show the Epic Megagames logo while loading... */
+
+        kgif(0);
+        fprintf(stderr,"Loading graphics...\n");
+        loadwalls(1);
+
+        /* Ken's Labyrinth logo. */
+        if (!kgif(2))
+            kgif(1);
+
+        fade(63);
+    }
+
+    SetVisibleScreenOffset(0);
 }
 
 void resetaudio()

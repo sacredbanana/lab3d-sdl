@@ -1,7 +1,7 @@
 
 
 
-typedef struct demofile_t demofile_t;
+typedef struct demofile demofile_t;
 
 /* Static set of variables which define game state. */
 typedef struct {
