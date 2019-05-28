@@ -533,6 +533,9 @@ void UploadPartialOverlay(int x,int y,int w,int h);
 void initialize();
 void initmemory();
 void initvideo();
+void initaudio();
+void initgraphics();
+void resetaudio();
 void gamelaunchermenu();
 K_INT16 vline(K_INT16,K_INT16,K_INT16,K_INT16,K_INT16);
 void update_bulrot(K_UINT16, K_UINT16);
@@ -611,8 +614,6 @@ void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
                 K_INT16 walnume);
-void initaudio();
-void resetaudio();
 
 typedef struct {
     SDL_Keycode key;

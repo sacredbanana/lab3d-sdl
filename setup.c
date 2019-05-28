@@ -1523,7 +1523,7 @@ void loadsettings(void) {
         #ifdef __SWITCH__
         input = fopen("romfs:/settings_switch.ini", "r");
         #else
-        setup();
+        if (!legacyload) setup();
         #endif
     }
 
