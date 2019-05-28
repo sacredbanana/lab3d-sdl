@@ -322,10 +322,12 @@ void loadboard()
 #endif
 
     unsigned char *RGBATexture=malloc(64*64*4);
-
-    if (lab3dversion) {
-        if (((fil = open("boards.dat", O_RDONLY|O_BINARY, 0)) != -1)||
-            ((fil = open("BOARDS.DAT", O_RDONLY|O_BINARY, 0)) != -1)) {
+    
+    sprintf(filepath, "%sboards.dat", gameroot);
+    sprintf(filepathUpper, "%sBOARDS.DAT", gameroot);
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+        if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||
+            ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) != -1)) {
             lseek(fil, ((long)boardnum)<<13, SEEK_SET);
             read(fil, &board[0], 8192);
             close(fil);
@@ -337,8 +339,10 @@ void loadboard()
             exit(1);
         }
     } else {
-        if (((fil = open("boards.kzp", O_RDONLY|O_BINARY, 0)) != -1)||
-            ((fil = open("BOARDS.KZP", O_RDONLY|O_BINARY, 0)) != -1))
+        sprintf(filepath, "%sboards.kzp", gameroot);
+        sprintf(filepathUpper, "%sBOARDS.KZP", gameroot);
+        if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||
+            ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) != -1))
         {
             prepdie = 0;
             numwarps = 0;
@@ -444,7 +448,7 @@ void loadboard()
     for(i=0;i<4096;i++)
         walseg[map-1][i]=*(((K_INT16 *)board)+i)&255;
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         spritepalette[0]=63;
         spritepalette[1]=63;
         spritepalette[2]=63;
@@ -471,7 +475,7 @@ void loadboard()
 
     mnum = 0;
     bossmonster = 0;
-    if (lab3dversion)
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
         for(i=0;i<63;i++)
             for(j=0;j<63;j++)
             {
@@ -629,8 +633,10 @@ void loadtables()
 {
     K_INT16 fil;
 
-    if (((fil = open("tables.dat", O_RDONLY|O_BINARY, 0)) != -1)||
-        ((fil = open("TABLES.DAT", O_RDONLY|O_BINARY, 0)) != -1))
+    sprintf(filepath, "%stables.dat", gameroot);
+    sprintf(filepathUpper, "%sTABLES.DAT", gameroot);
+    if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||
+        ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) != -1))
     {
         readLE32(fil, &sintable[0], 8192);
         readLE32(fil, &tantable[0], 4096);
@@ -1445,7 +1451,8 @@ void loadwalls(int replace)
     wallparam* cwparam=NULL;
     memset(shadow, 0, sizeof(shadow));
 
-    if (replace && (params = fopen("wallparams.ini", "rt")) != NULL) {
+    sprintf(filepath, "%swallparams.ini", gameroot);
+    if (replace && (params = fopen(filepath, "rt")) != NULL) {
         dotransition = 0;
         int curwall = 0;
         char buf[256];
@@ -1504,14 +1511,15 @@ void loadwalls(int replace)
         fclose(params);
 
     }
-
-    if (((fil = open("walls.kzp", O_RDONLY|O_BINARY, 0)) != -1)||
-        ((fil = open("WALLS.KZP", O_RDONLY|O_BINARY, 0)) != -1))
+    sprintf(filepath, "%swalls.kzp", gameroot);
+    sprintf(filepathUpper, "%sWALLS.KZP", gameroot);
+    if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||
+        ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) != -1))
     {
         bmpkind[0] = 0;
         wallheader[0] = 8;
         read(fil, &wallheader[1], rnumwalls);
-        if (lab3dversion==0)
+        if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)
             readLE16(fil, &tileng[0], numwalls*2);
         tioffs[0] = (long)(numwalls+numwalls+numwalls);
         for(i=1;i<=rnumwalls;i++)
@@ -1534,7 +1542,7 @@ void loadwalls(int replace)
         for(i=0;i<rnumwalls;i++)
         {
             readLE16(fil, &strtot, 2);
-            if (lab3dversion)
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                 readLE16(fil, &compleng, 2);
             else
                 compleng = tileng[i];
@@ -1638,7 +1646,7 @@ void loadwalls(int replace)
 
             j=(160-(rnumwalls>>2)+i);
 
-            if (lab3dversion) {
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
                 if (i < (rnumwalls>>1)) {
                     screenbuffer[screenbufferwidth*219+j]=255;
                 }
@@ -1798,7 +1806,7 @@ pressakey();
 }
 */
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         visiblescreenyoffset=0;
         strcpy(textbuf,
                "\"LAB3D/SDL\" conversion");
@@ -1813,7 +1821,7 @@ pressakey();
         textprint(30, 232, 0);
     }
 
-    if (dotransition && lab3dversion==0) {
+    if (dotransition && (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)) {
         /* Set up transition textures between walls properly. */
 
         TransitionTexture(0, 1, 2);
@@ -1981,14 +1989,16 @@ K_INT16 loadgame(K_INT16 gamenum)
     filename[6] = 'E', filename[7] = gamenum+48;
     filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
     filename[11] = 'T', filename[12] = 0;
-    if((fil=open(filename, O_RDONLY|O_BINARY, 0))==-1) {
+    sprintf(filepathUpper, "%s%s", gameroot, filename);
+    if((fil=open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1) {
         filename[0] = 's', filename[1] = 'a', filename[2] = 'v';
         filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
         filename[6] = 'e', filename[7] = gamenum+48;
         filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
         filename[11] = 't', filename[12] = 0;
+        sprintf(filepath, "%s%s", gameroot, filename);
 
-        if((fil=open(filename, O_RDONLY|O_BINARY, 0))==-1)
+        if((fil=open(filepath, O_RDONLY|O_BINARY, 0))==-1)
             return -1;
     }
     musicoff();
@@ -2158,11 +2168,13 @@ K_INT16 savegame(K_INT16 gamenum)
     /* If we have an upper case copy of this save game, destroy it. */
 
     sprintf(filename, "SAVGAME%d.DAT", gamenum);
+    sprintf(filepathUpper, "%s%s", gameroot, filename);
 
-    unlink(filename);
+    unlink(filepathUpper);
 
     sprintf(filename, "savgame%d.dat", gamenum);
-    if((fil=open(filename, O_CREAT|O_WRONLY|O_BINARY,
+    sprintf(filepath, "%s%s", gameroot, filename);
+    if((fil=open(filepath, O_CREAT|O_WRONLY|O_BINARY,
                  S_IWRITE|S_IREAD|S_IRGRP|S_IROTH))==-1) {
         return(-1);
     }
@@ -2789,8 +2801,8 @@ K_INT16 loadmusic(char *filename)
         if (musicsource == MUSIC_SOURCE_MIDI)
         {
             /* Open KSM->MIDI instrument translation table... */
-
-            file=fopen("ksmmidi.txt", "rt");
+            sprintf(filepath, "%sksmmidi.txt", gameroot);
+            file=fopen(filepath, "rt");
             if (file==NULL) {
                 fprintf(stderr, "ksmmidi.txt not found; music disabled.\n");
                 musicsource = MUSIC_SOURCE_NONE;
@@ -2802,8 +2814,10 @@ K_INT16 loadmusic(char *filename)
         }
         if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
         {
-            if(((infile=open("insts.dat", O_RDONLY|O_BINARY, 0))==-1)&&
-               ((infile=open("INSTS.DAT", O_RDONLY|O_BINARY, 0))==-1))
+            sprintf(filepath, "%sinsts.dat", gameroot);
+            sprintf(filepathUpper, "%sINSTS.DAT", gameroot);
+            if(((infile=open(filepath, O_RDONLY|O_BINARY, 0))==-1)&&
+               ((infile=open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1))
                 return(-1);
             for(i=0;i<256;i++)
             {
@@ -2821,8 +2835,10 @@ K_INT16 loadmusic(char *filename)
             firstime = 0;
         }
     }
-    if (((infile = open("songs.kzp", O_RDONLY|O_BINARY, 0))==-1)&&
-        ((infile = open("SONGS.KZP", O_RDONLY|O_BINARY, 0))==-1))
+    sprintf(filepath, "%ssongs.kzp", gameroot);
+    sprintf(filepathUpper, "%sSONGS.KZPT", gameroot);
+    if (((infile = open(filepath, O_RDONLY|O_BINARY, 0))==-1)&&
+        ((infile = open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1))
         return(-1);
     readLE16(infile, &numfiles, 2);
     i = 0;
@@ -3853,31 +3869,41 @@ K_INT16 kgif(K_INT16 filenum)
     if (filenum<0) {
         switch(filenum) {
             case -1:
-                if (((fil = open("lab3d.gif", O_RDONLY|O_BINARY, 0)) == -1)&&
-                    ((fil = open("LAB3D.GIF", O_RDONLY|O_BINARY, 0)) == -1))
+                sprintf(filepath, "%slab3d.gif", gameroot);
+                sprintf(filepathUpper, "%sLAB3D.GIF", gameroot);
+                if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
+                    ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
                     return(-1);
                 break;
             case -2:
-                if (((fil = open("end1.gif", O_RDONLY|O_BINARY, 0)) == -1)&&
-                    ((fil = open("END1.GIF", O_RDONLY|O_BINARY, 0)) == -1))
+                sprintf(filepath, "%send1.gif", gameroot);
+                sprintf(filepathUpper, "%sEND1.GIF", gameroot);
+                if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
+                    ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
                     return(-1);
                 break;
             case -3:
-                if (((fil = open("end2.gif", O_RDONLY|O_BINARY, 0)) == -1)&&
-                    ((fil = open("END2.GIF", O_RDONLY|O_BINARY, 0)) == -1))
+                sprintf(filepath, "%send2.gif", gameroot);
+                sprintf(filepathUpper, "%sEND2.GIF", gameroot);
+                if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
+                    ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
                     return(-1);
                 break;
             case -4:
-                if (((fil = open("end3.gif", O_RDONLY|O_BINARY, 0)) == -1)&&
-                    ((fil = open("END3.GIF", O_RDONLY|O_BINARY, 0)) == -1))
+                sprintf(filepath, "%send3.gif", gameroot);
+                sprintf(filepathUpper, "%sEND3.GIF", gameroot);
+                if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
+                    ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
                     return(-1);
                 break;
             default:
                 return(-1);
         }
     } else {
-        if (((fil = open("lab3d.kzp", O_RDONLY|O_BINARY, 0)) == -1)&&
-            ((fil = open("LAB3D.KZP", O_RDONLY|O_BINARY, 0)) == -1))
+        sprintf(filepath, "%slab3d.kzp", gameroot);
+        sprintf(filepathUpper, "%sLAB3D.KZP", gameroot);
+        if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
+            ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
                 return(-1);
     }
 
@@ -4445,7 +4471,7 @@ void textprint(K_INT16 x, K_INT16 y, char coloffs)
     while ((textbuf[charcnt] != 0) && (charcnt < 40))
     {
         character = (textbuf[charcnt])&127;
-        if (lab3dversion)
+        if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
             walnume = (character>>6)+125;
         else
             walnume = (character>>6)+textwall;
@@ -4466,8 +4492,10 @@ K_INT16 loadstory(K_INT16 boardnume)
     K_INT16 fil, i, textbufcnt, textypos;
 
     ototclock = totalclock;
-    if (((fil = open("story.kzp", O_RDONLY|O_BINARY, 0)) == -1)&&
-        ((fil = open("STORY.KZP", O_RDONLY|O_BINARY, 0)) == -1))
+    sprintf(filepath, "%sstory.kzp", gameroot);
+    sprintf(filepathUpper, "%sSTORY.KZP", gameroot);
+    if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
+        ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
         return(-1);
     readLE16(fil, &storyoffs[0], 256);
     lseek(fil, (long)(storyoffs[boardnume+34]), SEEK_SET);
@@ -4706,7 +4734,7 @@ void drawscorebox() {
 
     ox=0.0;
     for(x=0;(x<320)&&(ox<64.0);x++) {
-        if (lab3dversion)
+        if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
             orgl=walseg[75]+(((int)ox)<<6);
         else
             orgl=walseg[scorebox-1]+(((int)ox)<<6);
@@ -4735,7 +4763,8 @@ static int default_hiscores() {
 
     FILE* f;
     memset(buf, 0, 16);
-    f = fopen("hiscore.dat", "wb");
+    sprintf(filepath, "%shiscore.dat", gameroot);
+    f = fopen(filepath, "wb");
     if (!f) return 0;
     for (level = 0; level < 30; level++) {
         for (pos = 0; pos < 8; pos++) {
@@ -4764,12 +4793,14 @@ void hiscorecheck()
     K_INT16 i, j, k, m, inse, namexist, fil;
     K_INT32 hiscore[8], scorexist, templong;
 
-    fil = open("hiscore.dat", O_RDWR|O_BINARY, 0);
+    sprintf(filepath, "%shiscore.dat", gameroot);
+    sprintf(filepathUpper, "%sHISCORE.DAT", gameroot);
+    fil = open(filepath, O_RDWR|O_BINARY, 0);
     if (fil == -1)
-        fil = open("HISCORE.DAT", O_RDWR|O_BINARY, 0);
+        fil = open(filepathUpper, O_RDWR|O_BINARY, 0);
     if (fil == -1) {
         if (default_hiscores())
-            fil = open("hiscore.dat", O_RDWR|O_BINARY, 0);
+            fil = open(filepath, O_RDWR|O_BINARY, 0);
         if (fil == -1)
             return;
     }
@@ -4800,14 +4831,14 @@ void hiscorecheck()
             for(j=0;j<12;j++)
                 textbuf[j+4] = tempbuf[(i<<4)+j];
             textbuf[16] = 0;
-            if (lab3dversion) {
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
                 if (strcmp(textbuf+4, BADNAME)==0)
                     continue;
                 textprint(55, 60+(i<<3)+i+1, (char)128);
             } else
                 textprint(55, 60+(i<<3)+i+1, (char)130);
             setuptextbuf(hiscore[i]);
-            if (lab3dversion)
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                 textprint(215, 60+(i<<3)+i+1, (char)0);
             else
                 textprint(215, 60+(i<<3)+i+1, (char)96);
@@ -4829,7 +4860,7 @@ void hiscorecheck()
         j++;
     for(i=19;i<28;i++)
         textbuf[i] = textbuf[i+j-19];
-    if (lab3dversion)
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
         textprint(180-(strlen(textbuf)<<2), 155+1, (char)106);
     else
         textprint(180-(strlen(textbuf)<<2), 155+1, (char)114);
@@ -4837,7 +4868,7 @@ void hiscorecheck()
     if (scorecount < 0)
         scorecount = 0;
     setuptextbuf(scorecount);
-    if (lab3dversion)
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
         textprint(215, 145+1, (char)33);
     else
         textprint(215, 145+1, (char)35);
@@ -4917,7 +4948,7 @@ void hiscorecheck()
             }
             else
                 strcpy(&textbuf[0], "Are those reflexes dying?");
-            textprint(180-(strlen(textbuf)<<2), 45+1, lab3dversion?64:(char)65);
+            textprint(180-(strlen(textbuf)<<2), 45+1, lab3dversion == KENS_LABYRINTH_1_0  || lab3dversion == KENS_LABYRINTH_1_1 ? 64 : (char)65);
             for(i=0;i<8;i++)
                 if (tempbuf[i<<4] != 0)
                 {
@@ -4925,20 +4956,20 @@ void hiscorecheck()
                     for(j=0;j<12;j++)
                         textbuf[j+4] = tempbuf[(i<<4)+j];
                     textbuf[16] = 0;
-                    if (lab3dversion)
+                    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                         if (strcmp(textbuf+4, BADNAME)==0)
                             continue;
                     if (i == inse)
                     {
-                        textprint(55, 60+(i<<3)+i+1, lab3dversion?0:(char)98);
+                        textprint(55, 60+(i<<3)+i+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 0 : (char)98);
                         for(j=0;j<12;j++)
                             textbuf[j] = textbuf[j+4];
-                        textprint(87, 145+1, lab3dversion?96:(char)98);
+                        textprint(87, 145+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 96 : (char)98);
                     }
                     else
-                        textprint(55, 60+(i<<3)+i+1, lab3dversion?128:(char)130);
+                        textprint(55, 60+(i<<3)+i+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 128 : (char)130);
                     setuptextbuf(hiscore[i]);
-                    textprint(215, 60+(i<<3)+i+1, lab3dversion?0:(char)96);
+                    textprint(215, 60+(i<<3)+i+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 0 : (char)96);
                 }
             sprintf(&textbuf[0], "Time penalty: 10 * ");
             textbuf[19] = (char)((templong/10000000L)%10L)+48;
@@ -4956,9 +4987,9 @@ void hiscorecheck()
                 j++;
             for(i=19;i<28;i++)
                 textbuf[i] = textbuf[i+j-19];
-            textprint(180-(strlen(textbuf)<<2), 155+1, lab3dversion?106:114);
+            textprint(180-(strlen(textbuf)<<2), 155+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 106 :114);
             setuptextbuf(scorecount);
-            textprint(215, 145+1, lab3dversion?33:(char)35);
+            textprint(215, 145+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 33 : (char)35);
             lseek(fil, (long)(boardnum<<7), SEEK_SET);
             write(fil, &tempbuf[0], 128);
         }
@@ -5162,7 +5193,7 @@ void getname()
             for(i=0;i<9;i++)
                 textbuf[i] = hiscorenam[i];
             textbuf[9] = 0;
-            if (lab3dversion==0)
+            if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)
                 textprint(70, 20+statusbaryoffset, (char)177);
         }
     }
@@ -5263,8 +5294,10 @@ void screencapture()
     if (screen!=NULL) {
         glReadPixels(0, 0, screenwidth, screenheight, GL_BGR, GL_UNSIGNED_BYTE,
                      screen);
-        unlink(filename);
-        file=open(filename, O_CREAT|O_WRONLY|O_BINARY,
+        strcpy(filepath, gameroot);
+        strcat(filepath, filename);
+        unlink(filepath);
+        file=open(filepath, O_CREAT|O_WRONLY|O_BINARY,
                   S_IREAD|S_IWRITE|S_IRGRP|S_IROTH);
         if (file!=-1) {
             if (write(file, BMPHeader, 54)==54) {
@@ -5484,7 +5517,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
 
         SDL_Delay(10); /* Let's not soak up all CPU... */
 
-        if (lab3dversion) {
+        if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
             statusbardraw(16+(animater6/2)*16, 0, 15, 15, xoffs+20-n, nowselector*12+yoffs+n-1, 85);
         } else {
             if (animater6 < 3)
@@ -5501,7 +5534,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         {
             if (mousy < -128)
                 mousy += 128;
-            if (lab3dversion)
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                 wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
             else
                 statusbardraw(16, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
@@ -5515,7 +5548,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         {
             if (mousy > 128)
                 mousy -= 128;
-            if (lab3dversion)
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                 wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
             else
                 statusbardraw(16, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
@@ -5535,7 +5568,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         /*SDL_GL_SwapWindow(mainwindow);*/
     }
     ksayui(27);
-    if (lab3dversion)
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
         wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
     else
         statusbardraw(36-n, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
@@ -5578,7 +5611,7 @@ void drawmenu(K_INT16 xsiz, K_INT16 ysiz, K_INT16 walnume)
 
     if (ysiz>240) {menutop=0; menuheight=240;}
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         wipeoverlay(menuleft, menutop, menuwidth, menuheight);
         buf=screenbuffer+(screenbufferwidth*menutop+(menuleft));
         for(i=0;i<menuwidth;i++)
@@ -6005,7 +6038,8 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
         for(j=0;j<8;j++)
         {
             sprintf(filename, "SAVGAME%d.DAT", j);
-            if((fil=open(filename, O_RDONLY|O_BINARY, 0))!=-1)
+            sprintf(filepathUpper, "%s%s", gameroot, filename);
+            if((fil=open(filepathUpper, O_RDONLY|O_BINARY, 0))!=-1)
             {
                 gamexist[j] = 1;
                 read(fil, &gamehead[j][0], 27);
@@ -6013,7 +6047,8 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
             }
             else {
                 sprintf(filename, "savgame%d.dat", j);
-                if((fil=open(filename, O_RDONLY|O_BINARY, 0))!=-1)
+                sprintf(filepath, "%s%s", gameroot, filename);
+                if((fil=open(filepath, O_RDONLY|O_BINARY, 0))!=-1)
                 {
                     gamexist[j] = 1;
                     read(fil, &gamehead[j][0], 27);
@@ -6554,10 +6589,10 @@ void drawinputbox() {
 
     menuing=1; menuleft=84; menutop=127;
     menuwidth=192; menuheight=64;
-    statusbardraw(0, 0, 57, 64, 84-20, 127, lab3dversion?76:scorebox);
-    statusbardraw(7, 0, 39, 64, 141-20, 127, lab3dversion?76:scorebox);
-    statusbardraw(7, 0, 39, 64, 180-20, 127, lab3dversion?76:scorebox);
-    statusbardraw(7, 0, 57, 64, 219-20, 127, lab3dversion?76:scorebox);
+    statusbardraw(0, 0, 57, 64, 84-20, 127, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 76 : scorebox);
+    statusbardraw(7, 0, 39, 64, 141-20, 127, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 76 : scorebox);
+    statusbardraw(7, 0, 39, 64, 180-20, 127, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 76 : scorebox);
+    statusbardraw(7, 0, 57, 64, 219-20, 127, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 76 : scorebox);
     for(k=0;k<22;k++)
         textbuf[k] = 8;
     textbuf[22] = 0;

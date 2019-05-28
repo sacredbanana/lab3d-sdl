@@ -60,7 +60,7 @@ void initialize()
         musicon();
     fprintf(stderr,"Loading intro pictures...\n");
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         kgif(-1);
         k=0;
         for(i=0;i<16;i++)
@@ -123,7 +123,7 @@ void initialize()
 
         j=0;
 
-        if (lab3dversion==0) {
+        if (lab3dversion==KENS_LABYRINTH_2_0 || lab3dversion==KENS_LABYRINTH_2_1) {
             fade(0);
             j = kgif(2);
             if (j)
@@ -143,10 +143,10 @@ void initialize()
                (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
                (bstatus == 0) &&
-               (clockspeed < ((lab3dversion|j)?3840:7680)))
+               (clockspeed < (((lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)|j)?3840:7680)))
         {
             if (i == 0)
-            {
+            { 
                 l += 90;
                 if (l >= 25200)
                 {
@@ -171,7 +171,8 @@ void initialize()
             }
             oclockspeed+=12;
 
-            if (!(lab3dversion|j)) {
+            if (!((lab3dversion==KENS_LABYRINTH_1_0 
+            || lab3dversion==KENS_LABYRINTH_1_1)|j)) {
                 SDL_UnlockMutex(timermutex);
                 glClearColor(0,0,0,0);
                 glClear( GL_COLOR_BUFFER_BIT);
@@ -194,7 +195,8 @@ void initialize()
             fade(64+i);
             glClearColor(0,0,0,0);
             glClear( GL_COLOR_BUFFER_BIT);
-            if (lab3dversion|j)
+            if ((lab3dversion==KENS_LABYRINTH_1_0 
+            || lab3dversion==KENS_LABYRINTH_1_1)|j)
                 visiblescreenyoffset=0;
             else
                 visiblescreenyoffset=(l/90)-20;
@@ -218,10 +220,11 @@ void initialize()
     hiscorenamstat = 0;
 
     /* Shareware/registered check... */
-
-    if (lab3dversion) {
-        if (((i = open("boards.dat",O_BINARY|O_RDONLY,0)) != -1)||
-            ((i = open("BOARDS.DAT",O_BINARY|O_RDONLY,0)) != -1)) {
+    sprintf(filepath, "%sboards.dat", gameroot);
+    sprintf(filepathUpper, "%sBOARDS.DAT", gameroot);
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+        if (((i = open(filepath,O_BINARY|O_RDONLY,0)) != -1)||
+            ((i = open(filepathUpper,O_BINARY|O_RDONLY,0)) != -1)) {
             fstat(i, &fstats);
             numboards = (int)(fstats.st_size>>13);
             fprintf(stderr, "Detected %d boards.\n", numboards);
@@ -232,8 +235,10 @@ void initialize()
             exit(1);
         }
     } else {
-        if (((i = open("boards.kzp",O_RDONLY|O_BINARY,0)) != -1)||
-            ((i = open("BOARDS.KZP",O_RDONLY|O_BINARY,0)) != -1)) {
+        sprintf(filepath, "%sboards.kzp", gameroot);
+        sprintf(filepathUpper, "%sBOARDS.KZP", gameroot);
+        if (((i = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||
+            ((i = open(filepathUpper,O_RDONLY|O_BINARY,0)) != -1)) {
             readLE16(i,&boleng[0],30*4);
             numboards = 30;
             if ((boleng[40]|boleng[41]) == 0)
@@ -473,8 +478,10 @@ void initaudio()
 
     if (speechstatus >= 2)
     {
-        if (((i = open("sounds.kzp",O_BINARY|O_RDONLY,0)) != -1)||
-            ((i = open("SOUNDS.KZP",O_BINARY|O_RDONLY,0)) != -1)) {
+        sprintf(filepath, "%ssounds.kzp", gameroot);
+        sprintf(filepathUpper, "%sSOUNDS.KZP", gameroot);
+        if (((i = open(filepath,O_BINARY|O_RDONLY,0)) != -1)||
+            ((i = open(filepathUpper,O_BINARY|O_RDONLY,0)) != -1)) {
             fstat(i, &fstats);
             sndsize = (int)(fstats.st_size);
             fprintf(stderr, "Detected %ld byte sounds.\n", sndsize);
@@ -489,9 +496,9 @@ void initaudio()
             fatal_error("Insufficient memory for sound.");
         }
 
-        file=fopen("sounds.kzp","rb");
+        file=fopen(filepath,"rb");
         if (file==NULL) {
-            file=fopen("SOUNDS.KZP","rb");
+            file=fopen(filepathUpper,"rb");
         }
         if (file==NULL) {
             fatal_error("Can not find sounds.kzp.");

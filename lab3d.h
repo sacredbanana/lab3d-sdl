@@ -99,8 +99,8 @@ typedef Sint16 K_INT16;
 #define kenfaceouch 75
 #define andy 76
 #define andygone 77
-#define map (lab3dversion?80:78)
-#define invisible (lab3dversion?18:79)
+#define map (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 80 : 78)
+#define invisible (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 18 : 79)
 #define goldlock 80
 #define silverlock 81
 #define doorside1 84
@@ -475,6 +475,8 @@ EXTERN K_INT16 vel, mxvel, myvel, svel, maxvel;
 EXTERN K_INT16 posz, hvel, lastunlock, lastshoot, saidwelcome;
 EXTERN K_UINT16 convavailpages, convwalls;
 EXTERN unsigned char gamehead[8][27], gamexist[8];
+EXTERN K_INT16 legacyload;
+EXTERN char gameroot[32], filepath[32], filepathUpper[32];
 
 /* SDL timer... */
 
@@ -923,7 +925,12 @@ EXTERN GLint colourformat;
 EXTERN int debugmode;
 
 /* LAB3D version to emulate (0 = v2.1 (Epic reg.), 1 = v1.1 (AdvSys reg.)). */
-EXTERN int lab3dversion;
+EXTERN enum {
+    KENS_LABYRINTH_1_0,
+    KENS_LABYRINTH_1_1,
+    KENS_LABYRINTH_2_0,
+    KENS_LABYRINTH_2_1
+} lab3dversion;
 
 /* Things that aren't constants anymore really... */
 EXTERN int rnumwalls;
