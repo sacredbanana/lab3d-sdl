@@ -36,8 +36,10 @@ void initialize()
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
-    if (!introskip)
+    if (!introskip) {
         loadmusic("BEGIN");
+        musicon();
+    }
     clockspeed = 0;
     slottime = 0;
     owecoins = 0;
@@ -47,38 +49,11 @@ void initialize()
     slotpos[2] = 0;
     clockspeed = 0;
     skilevel = 0;
+
+    initgraphics();
     if (!introskip)
-        musicon();
-
-    if (moustat == 0)
-        moustat = setupmouse();
-    if (!introskip) {
-        SDL_LockMutex(timermutex);
-        oclockspeed = clockspeed;
-        while ((getkeydefstatlock(ACTION_MENU) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
-               (bstatus == 0) &&
-               (clockspeed < oclockspeed+960))
-        {
-            PollInputs();
-
-            bstatus = 0;
-            if (moustat == 0)
-            {
-                bstatus=readmouse(NULL, NULL);
-            }
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10);
-            SDL_LockMutex(timermutex);
-        }
-        SDL_UnlockMutex(timermutex);
-
+    {
         /* Big scrolly picture... */
-
-        initgraphics();
 
         j=0;
 
@@ -97,12 +72,12 @@ void initialize()
         oclockspeed=clockspeed;
 
         while ((getkeydefstatlock(ACTION_MENU) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
-               (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
-               (bstatus == 0) &&
-               (clockspeed < (((lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)|j)?3840:7680)))
+                (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+                (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
+                (bstatus == 0) &&
+                (clockspeed < (((lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)|j)?3840:7680)))
         {
             if (i == 0)
             { 
@@ -347,13 +322,37 @@ void initvideo()
         }
 }
 
+void freememory()
+{
+    SDL_CloseAudio();
+    free(lzwbuf);
+    free(lzwbuf2);
+    free(pic);
+    free(note);
+    free(SoundFile);
+    free(SoundBuffer);
+    free(screenbuffer);
+    free(screenbuffer32);
+
+    lzwbuf = NULL;
+    lzwbuf2 = NULL;
+    pic = NULL;
+    note = NULL;
+    SoundFile = NULL;
+    SoundBuffer = NULL;
+    screenbuffer = NULL;
+    screenbuffer32 = NULL;
+    mainwindow = NULL;
+    maincontext = NULL;
+}
+
 void initmemory()
 {
     K_INT16 i, walcounter;
     K_UINT16 l;
     unsigned char *v;
 
-    printf(stderr,"Allocating memory...\n");
+    fprintf(stderr,"Allocating memory...\n");
     if (((lzwbuf = malloc(12304-8200)) == NULL)||
         ((lzwbuf2=malloc(8200))==NULL))
     {
@@ -369,6 +368,12 @@ void initmemory()
         SDL_Quit();
         exit(-1);
     }
+
+    if ((note = malloc(16384)) == NULL)
+    {
+        fatal_error("Could not allocate memory for music");
+    }
+
     walcounter = initialwalls;
     if (convwalls > initialwalls)
     {
@@ -401,11 +406,6 @@ void initaudio()
     struct stat fstats;
     long sndsize;
     int i;
-
-    if ((note = malloc(16384)) == NULL)
-    {
-        fatal_error("Could not allocate memory for music");
-    }
 
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
@@ -492,8 +492,8 @@ void initaudio()
         soundbytespertick = channels * want.freq * 2 / 240;
         soundtimerbytes = 0;
 
-        audioDevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_CHANNELS_CHANGE | SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
-        if (audioDevice == 0) {
+        audiodevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_CHANNELS_CHANGE | SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+        if (audiodevice == 0) {
             TRACE("Failed to open audio: %s", SDL_GetError());
         }
 
@@ -501,7 +501,7 @@ void initaudio()
 
         SDL_UnlockMutex(soundmutex);
 
-        SDL_PauseAudioDevice(audioDevice, 0);
+        SDL_PauseAudioDevice(audiodevice, 0);
     } else {
         if (soundtimer)
             fprintf(stderr,"Warning: no sound, using system timer.\n");
@@ -511,7 +511,9 @@ void initaudio()
 
 void initgraphics()
 {
-    K_INT16 i, j, k;
+    K_INT16 i, j, k, oclockspeed;
+
+    texturecreationneeded = 1;
 
     fprintf(stderr,"Loading intro pictures...\n");
 
@@ -546,11 +548,111 @@ void initgraphics()
     }
 
     SetVisibleScreenOffset(0);
+    glDrawBuffer(GL_FRONT);
+    SDL_GL_SwapWindow(mainwindow);
+
+    if (moustat == 0)
+            moustat = setupmouse();
+    if (!introskip)
+    {
+        SDL_LockMutex(timermutex);
+        oclockspeed = clockspeed;
+        while ((getkeydefstatlock(ACTION_MENU) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
+            (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
+            (bstatus == 0) &&
+            (clockspeed < oclockspeed+960))
+        {
+            PollInputs();
+
+            bstatus = 0;
+            if (moustat == 0)
+            {
+                bstatus=readmouse(NULL, NULL);
+            }
+            SDL_UnlockMutex(timermutex);
+            SDL_Delay(10);
+            SDL_LockMutex(timermutex);
+        }
+        SDL_UnlockMutex(timermutex);
+    }
+}
+
+void inittablesandsettings()
+{
+    fprintf(stderr,"Loading tables/settings...\n");
+
+    loadtables();
+    loadsettings();
+    configure();
+    configure_screen_size();
+}
+
+void initgameversion()
+{
+    int fil;
+
+    // Check if the gamedata directory exists
+    const char* directory = "gamedata";
+    struct stat sb;
+
+    if (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+        legacyload = 0;
+        switch (lab3dversion) {
+            case KENS_LABYRINTH_1_0:
+            sprintf(gameroot, "%s", "gamedata/Ken1.0/");
+            rnumwalls=192;
+            fprintf(stderr, "Ken's Labyrinth version 1.0 selected.\n");
+            break;
+            case KENS_LABYRINTH_1_1:
+            sprintf(gameroot, "%s", "gamedata/Ken1.1/");
+            rnumwalls=0xe0;
+            fprintf(stderr, "Ken's Labyrinth version 1.1 selected.\n");
+            break;
+            case KENS_LABYRINTH_2_0:
+            sprintf(gameroot, "%s", "gamedata/Ken2.0/");
+            rnumwalls=448;
+            fprintf(stderr, "Ken's Labyrinth version 2.0 selected.\n");
+            break;
+            case KENS_LABYRINTH_2_1:
+            sprintf(gameroot, "%s", "gamedata/Ken2.1/");
+            rnumwalls=448;
+            fprintf(stderr, "Ken's Labyrinth version 2.1 selected.\n");
+            break;
+        }
+    } else {
+        legacyload = 1;
+        sprintf(filepath, "%send.txt", gameroot);
+        sprintf(filepathUpper, "%sEND.TXT", gameroot);
+        if (((fil = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||
+            ((fil = open(filepathUpper,O_RDONLY|O_BINARY,0)) != -1)) {
+            close(fil);
+            lab3dversion=KENS_LABYRINTH_1_0; /* Version 1.0 detected. */
+            rnumwalls=192;
+            fprintf(stderr, "Ken's Labyrinth version 1.0 detected.\n");
+        } else {
+            sprintf(filepath, "%sboards.dat", gameroot);
+            sprintf(filepathUpper, "%sBOARDS.DAT", gameroot);
+            if (((fil = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||
+                ((fil = open(filepathUpper,O_RDONLY|O_BINARY,0)) != -1)) {
+                close(fil);
+                lab3dversion=KENS_LABYRINTH_1_1; /* Version 1.1 detected. */
+                rnumwalls=0xe0;
+                fprintf(stderr, "Ken's Labyrinth version 1.1 detected.\n");
+            } else {
+                lab3dversion=KENS_LABYRINTH_2_1; /* Assuming version 2.x. */
+                rnumwalls=448;
+                fprintf(stderr, "Ken's Labyrinth version 2.x detected.\n");
+            }
+        }
+    }
 }
 
 void resetaudio()
 {
-    SDL_CloseAudioDevice(audioDevice);
+    SDL_CloseAudioDevice(audiodevice);
     musicoff();
     configure();
     initaudio();
