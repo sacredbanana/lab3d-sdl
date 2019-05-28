@@ -1300,7 +1300,8 @@ imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfil
         }
         cur = cur->next;
     }
-    SDL_Surface* base_image = IMG_Load(fname);
+    sprintf(filepath, "%s%s", gameroot, fname);
+    SDL_Surface* base_image = IMG_Load(filepath);
 
     if (!base_image) {
         fatal_error( "Could not load image %s: %s", fname, SDL_GetError());
