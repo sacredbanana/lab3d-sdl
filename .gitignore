@@ -39,8 +39,13 @@ nosetests.xml
 .vscode
 
 # Ken files
-*.dat
-*.kzp
+ken.bin
 
 # MacOS files
 .DS_Store
+
+# Settings file
+settings.ini
+
+# Core dump
+core

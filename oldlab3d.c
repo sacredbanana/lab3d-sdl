@@ -991,7 +991,7 @@ void oldmain(void)
             x = (posx>>10);
             y = (posy>>10);
             if (!inhibitrepeat) {
-                if ((lab3dversion==1)&&((board[x][y]&1023) == 56)) {
+                if ((lab3dversion==KENS_LABYRINTH_1_1)&&((board[x][y]&1023) == 56)) {
                     board[x][y] = 1024;
                     coins++;
                     oldstatusbardraw(16,62,6,3,16,10,84);
@@ -2255,14 +2255,16 @@ K_INT16 oldloadgame(K_INT16 gamenum)
     filename[6] = 'E', filename[7] = gamenum+48;
     filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
     filename[11] = 'T', filename[12] = 0;
-    if((fil=open(filename,O_BINARY|O_RDONLY,
+    sprintf(filepathUpper, "%s%s", gameroot, filename);
+    if((fil=open(filepathUpper,O_BINARY|O_RDONLY,
                  S_IWRITE|S_IREAD|S_IRGRP|S_IROTH))==-1) {
         filename[0] = 's', filename[1] = 'a', filename[2] = 'v';
         filename[3] = 'g', filename[4] = 'a', filename[5] = 'm';
         filename[6] = 'e', filename[7] = gamenum+48;
         filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
         filename[11] = 't', filename[12] = 0;
-        if((fil=open(filename,O_BINARY|O_RDONLY,
+        sprintf(filepath, "%s%s", gameroot, filename);
+        if((fil=open(filepath,O_BINARY|O_RDONLY,
                      S_IWRITE|S_IREAD|S_IRGRP|S_IROTH))==-1)
             return(-1);
     }
@@ -2276,14 +2278,14 @@ K_INT16 oldloadgame(K_INT16 gamenum)
     readLE16(fil,&firepowers[0],6);
     readLE16(fil,&bulchoose,2);
     readLE16(fil,&keys[0],4);
-    if (lab3dversion==1)
+    if (lab3dversion==KENS_LABYRINTH_1_1)
         readLE16(fil,&coins,2);
     readLE16(fil,&compass,2);
     readLE16(fil,&cheated,2);
     readLE16(fil,&heatpos,2);
     readLE16(fil,&fanpos,2);
     readLE16(fil,&warpos,2);
-    if (lab3dversion==1)
+    if (lab3dversion==KENS_LABYRINTH_1_1)
         readLE16(fil,&kenpos2,2);
     readLE16(fil,&kenpos,2);
     readLE16(fil,&ballpos,2);
@@ -2401,15 +2403,17 @@ K_INT16 oldsavegame(K_INT16 gamenum)
     filename[6] = 'e', filename[7] = gamenum+48;
     filename[8] = '.', filename[9] = 'd', filename[10] = 'a';
     filename[11] = 't', filename[12] = 0;
-
-    unlink(filename);
+    sprintf(filepath, "%s%s", gameroot, filename);
+    unlink(filepath);
 
     filename[0] = 'S', filename[1] = 'A', filename[2] = 'V';
     filename[3] = 'G', filename[4] = 'A', filename[5] = 'M';
     filename[6] = 'E', filename[7] = gamenum+48;
     filename[8] = '.', filename[9] = 'D', filename[10] = 'A';
     filename[11] = 'T', filename[12] = 0;
-    if((fil=open(filename,O_BINARY|O_CREAT|O_WRONLY,
+    sprintf(filepathUpper, "%s%s", gameroot, filename);
+
+    if((fil=open(filepathUpper,O_BINARY|O_CREAT|O_WRONLY,
                  S_IWRITE|S_IREAD|S_IRGRP|S_IROTH))==-1)
         return(-1);
     writeLE16(fil,&board[0][0],8192);
@@ -2422,14 +2426,14 @@ K_INT16 oldsavegame(K_INT16 gamenum)
     writeLE16(fil,&firepowers[0],6);
     writeLE16(fil,&bulchoose,2);
     writeLE16(fil,&keys[0],4);
-    if (lab3dversion==1)
+    if (lab3dversion==KENS_LABYRINTH_1_1)
         writeLE16(fil,&coins,2);
     writeLE16(fil,&compass,2);
     writeLE16(fil,&cheated,2);
     writeLE16(fil,&heatpos,2);
     writeLE16(fil,&fanpos,2);
     writeLE16(fil,&warpos,2);
-    if (lab3dversion==1)
+    if (lab3dversion==KENS_LABYRINTH_1_1)
         writeLE16(fil,&kenpos2,2);
     writeLE16(fil,&kenpos,2);
     writeLE16(fil,&ballpos,2);
@@ -2659,19 +2663,26 @@ K_INT16 oldintroduction(void)
                     if (oldloadgame(i) != -1)
                     {
                         if (numboards == 0)
-                            if ((fil = open("boards.dat",O_BINARY|O_RDONLY,
+                        {
+                            sprintf(filepath, "%sboards.dat", gameroot);
+                            if ((fil = open(filepath,O_BINARY|O_RDONLY,
                                             S_IREAD)) != -1)
                             {
                                 numboards = 27;
                                 close(fil);
                             }
-                        if (numboards == 0)
-                            if ((fil = open("BOARDS.DAT",O_BINARY|O_RDONLY,
-                                            S_IREAD)) != -1)
+                            else
                             {
-                                numboards = 27;
-                                close(fil);
+                                sprintf(filepathUpper, "%sBOARDS.DAT", gameroot);
+                                if ((fil = open(filepathUpper,O_BINARY|O_RDONLY,
+                                            S_IREAD)) != -1)
+                                {
+                                    numboards = 27;
+                                    close(fil);
+                                }
                             }
+                        }
+                                      
                         setnewkeystatus(SDLK_SPACE, 0);
                         setnewkeystatus(SDLK_RETURN, 0);
                         setnewkeystatus(SDLK_ESCAPE, 0);
@@ -2971,8 +2982,11 @@ K_INT16 oldloadstory()
     int fil, i, k, textbufcnt, textypos;
 
     ototclock = totalclock;
-    if ((fil = open("story.kzp",O_BINARY|O_RDONLY,S_IREAD)) == -1)
-        if ((fil = open("STORY.KZP",O_BINARY|O_RDONLY,S_IREAD)) == -1)
+
+    sprintf(filepath, "%sstory.kzp", gameroot);
+    sprintf(filepathUpper, "%sSTORY.KZP", gameroot);
+    if ((fil = open(filepath,O_BINARY|O_RDONLY,S_IREAD)) == -1)
+        if ((fil = open(filepathUpper,O_BINARY|O_RDONLY,S_IREAD)) == -1)
             return(-1);
     read(fil,&storyoffs[0],256);
     lseek(fil,(long)(storyoffs[boardnum+1]),SEEK_SET);
