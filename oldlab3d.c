@@ -1834,14 +1834,14 @@ void oldmain(void)
         }
         if (!cheatkeysdown)
         {
-            K_UINT32 switchKeyPressed = 0;
+            K_UINT32 switchKeyPressed = -1;
 
             #ifdef __SWITCH__
             hidScanInput();
             switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
             #endif
 
-            if ((switchKeyPressed == KEY_PLUS || getkeydefstat(ACTION_OLD_SAVE) > 0) && (death == 4095))
+            if (((switchKeyPressed == KEY_PLUS || (getkeydefstat(ACTION_OLD_SAVE) > 0))) && (death == 4095))
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1914,7 +1914,7 @@ void oldmain(void)
                 lastbarchange = 1;
                 picrot(posx,posy,posz,ang);
             }
-            if (switchKeyPressed == KEY_MINUS || getkeydefstat(ACTION_MUTE) > 0)
+            if (switchKeyPressed == KEY_MINUS || getkeydefstat(ACTION_OLD_LOAD) > 0)
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;

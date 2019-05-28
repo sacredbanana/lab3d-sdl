@@ -589,6 +589,7 @@ int main(int argc,char **argv)
         SDL_DestroyWindow(mainwindow);
         SDL_GL_DeleteContext(maincontext);
         freememory();
+        clearimgcache();
         initgameversion();
         inittablesandsettings();
         initvideo();

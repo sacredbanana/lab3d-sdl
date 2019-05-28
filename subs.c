@@ -1019,7 +1019,6 @@ int powerof2 (int in)
     return 1 << i;
 }
 
-
 typedef struct imgcache {
     char* name;
     int w, h;
@@ -1031,6 +1030,10 @@ typedef struct imgcache {
 
 static imgcache* img_cache=NULL;
 
+void clearimgcache()
+{
+    img_cache = NULL;
+}
 
 static inline int AverageColour32 (Uint32 * p, int x, int y, int w, int h)
 {
