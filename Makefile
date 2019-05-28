@@ -5,7 +5,7 @@ SRCS = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c setup.c subs.c launc
 OBJS = $(SRCS:%.c=%.o)
 
 WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
-OPTFLAGS  = -O2 -fno-aggressive-loop-optimizations -fno-strict-aliasing
+OPTFLAGS  = -O0 -fno-aggressive-loop-optimizations -fno-strict-aliasing
 
 
 all: $(BIN)

@@ -481,22 +481,45 @@ int main(int argc,char **argv)
         SDL_Quit();
     }
 
-    if (((fil = open("end.txt",O_RDONLY|O_BINARY,0)) != -1)||
-        ((fil = open("END.TXT",O_RDONLY|O_BINARY,0)) != -1)) {
-        close(fil);
-        lab3dversion=2; /* Version 1.0 detected. */
-        rnumwalls=192;
-        fprintf(stderr, "Ken's Labyrinth version 1.0 detected.\n");
-    } else if (((fil = open("boards.dat",O_RDONLY|O_BINARY,0)) != -1)||
-               ((fil = open("BOARDS.DAT",O_RDONLY|O_BINARY,0)) != -1)) {
-        close(fil);
-        lab3dversion=1; /* Version 1.1 detected. */
-        rnumwalls=0xe0;
-        fprintf(stderr, "Ken's Labyrinth version 1.1 detected.\n");
-    } else {
-        lab3dversion=0; /* Assuming version 2.x. */
+    // Check if the gamedata directory exists
+    const char* directory = "gamedata";
+    struct stat sb;
+
+    if (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+        legacyload = 0;
+        lab3dversion = KENS_LABYRINTH_2_1;
         rnumwalls=448;
-        fprintf(stderr, "Ken's Labyrinth version 2.x detected.\n");
+        switch (lab3dversion) {
+            case KENS_LABYRINTH_1_0: strcpy(gameroot, "gamedata/Ken1.0/\0"); break;
+            case KENS_LABYRINTH_1_1: strcpy(gameroot, "gamedata/Ken1.1/\0"); break;
+            case KENS_LABYRINTH_2_0: strcpy(gameroot, "gamedata/Ken2.0/\0"); break;
+            case KENS_LABYRINTH_2_1: strcpy(gameroot, "gamedata/Ken2.1/\0"); break;
+        }
+    } else {
+        legacyload = 1;
+        sprintf(filepath, "%send.txt", gameroot);
+        sprintf(filepathUpper, "%sEND.TXT", gameroot);
+        if (((fil = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||
+            ((fil = open(filepathUpper,O_RDONLY|O_BINARY,0)) != -1)) {
+            close(fil);
+            lab3dversion=KENS_LABYRINTH_1_0; /* Version 1.0 detected. */
+            rnumwalls=192;
+            fprintf(stderr, "Ken's Labyrinth version 1.0 detected.\n");
+        } else {
+            sprintf(filepath, "%sboards.dat", gameroot);
+            sprintf(filepathUpper, "%sBOARDS.DAT", gameroot);
+            if (((fil = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||
+                ((fil = open(filepathUpper,O_RDONLY|O_BINARY,0)) != -1)) {
+                close(fil);
+                lab3dversion=KENS_LABYRINTH_1_1; /* Version 1.1 detected. */
+                rnumwalls=0xe0;
+                fprintf(stderr, "Ken's Labyrinth version 1.1 detected.\n");
+            } else {
+                lab3dversion=KENS_LABYRINTH_2_1; /* Assuming version 2.x. */
+                rnumwalls=448;
+                fprintf(stderr, "Ken's Labyrinth version 2.x detected.\n");
+            }
+        }
     }
 
     fprintf(stderr,"Loading tables/settings...\n");
@@ -599,7 +622,6 @@ int main(int argc,char **argv)
             debugmode=1;
     }
 
-    lab3dversion = 0;
     initvideo();
     initaudio();
     initmemory();
@@ -634,7 +656,7 @@ int main(int argc,char **argv)
         // musicon();
     fprintf(stderr,"Loading intro pictures...\n");
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         kgif(-1);
         k=0;
         for(i=0;i<16;i++)
@@ -664,12 +686,9 @@ int main(int argc,char **argv)
         fade(63);
     }
 
-    // Check if the gamedata directory exists
-    const char* directory = "gamedata";
-    struct stat sb;
-
-    if (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode))
+    if (!legacyload) {
         gamelaunchermenu();
+    }
 
     initialize();
     
@@ -702,7 +721,7 @@ int main(int argc,char **argv)
 
     /* Fork v1.1 off to its own main function here. */
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         oldmain();
         quit();
         return 0;

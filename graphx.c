@@ -221,7 +221,7 @@ K_INT16 castray(K_UINT16 posxs,K_UINT16 posys, double angle) {
                 k=board[x1i-1][y1i];
             if ((k&8192)==0) {
                 k &= 1023;
-                if (lab3dversion) {
+                if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
                     if (((k >= 152) && (k <= 157)) || ((k >= 168) && (k <= 173)))
                         j = 188;
                 } else {
@@ -249,7 +249,7 @@ K_INT16 castray(K_UINT16 posxs,K_UINT16 posys, double angle) {
             if ((k&8192) > 0)
             {
                 k &= 1023;
-                if (lab3dversion) {
+                if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
                     if (((k >= 152) && (k <= 157)) || ((k >= 168) && (k <= 173)))
                         j = 188;
                 } else {
@@ -270,7 +270,7 @@ K_INT16 castray(K_UINT16 posxs,K_UINT16 posys, double angle) {
             y2+=ydir;
         } else return -1;
 
-        if (lab3dversion==0)
+        if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)
             if (waterstat>0)
                 if ((waln&1023)==fountain-1)
                     waln+=(animate2+1);
@@ -363,7 +363,7 @@ void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
 
     static int spareframes=0;
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         spareframes+=clockspd;
         i=(spareframes/TICKS_PER_SPRITE_FRAME)%12;
         spareframes%=TICKS_PER_SPRITE_FRAME;
@@ -468,7 +468,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         checkobj(explox[i],exploy[i],posxs,posys,angs,explostat[i]);
     }
 
-    if (lab3dversion == 0)
+    if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)
     {
         for(i=0;i<bulnum;i++)
         {
@@ -576,7 +576,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     /* These two textures change all the time, but we don't want to waste time
        uploading invisible changes... */
 
-    if (lab3dversion==0) {
+    if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1) {
         if (mapfound)
             updatemap();
         if (gameoverfound)
@@ -591,7 +591,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     /* Draw floor and roof (save time by clearing to one of them, and drawing
        only one rectangle)... */
 
-    if (lab3dversion)
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
         glClearColor( palette[0x85*3]/64.0*redfactor,
                       palette[0x85*3+1]/64.0*greenfactor,
                       palette[0x85*3+2]/64.0*bluefactor, 0 );
@@ -702,7 +702,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
         glEnable(GL_TEXTURE_2D);
         glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-        if (lab3dversion)
+        if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
             k=numsplits;
         else
             for(k=0;k<numsplits;k++)
@@ -777,7 +777,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     /* Check for visible monsters... */
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         for(i=0;i<mnum;i++)
         {
             xc = (mposx[i]>>10);
@@ -810,7 +810,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                         }
                 if (temp == 66)
                     checkobj(mposx[i],mposy[i],posx,posy,ang,
-                             (lab3dversion==2)?kenpos:kenpos2);
+                             (lab3dversion == KENS_LABYRINTH_1_0)?kenpos:kenpos2);
                 if (temp == 68)
                     checkobj(mposx[i],mposy[i],posx,posy,ang,ballpos);
                 if (temp == 38)
@@ -831,7 +831,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                 {
                     if (mshock[i] > 0)
                         checkobj(mposx[i],mposy[i],posx,posy,ang,
-                                 (lab3dversion==1)?195+((kenpos&1023)==66):56);
+                                 (lab3dversion==KENS_LABYRINTH_1_1)?195+((kenpos&1023)==66):56);
                     else
                     {
                         j = 54;
@@ -1215,7 +1215,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         }
     }
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         for(xc=0;xc<64;xc++)
             for(yc=0;yc<64;yc++)
                 if (tempbuf[(xc<<6)+yc] != 0)
@@ -1302,7 +1302,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         k = sortbnum[temp];
         if (bmpkind[k] == 2)
         {
-            if (lab3dversion)
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                 flatsprite(sortx[temp],sorty[temp],0,angs,k);
             else {
                 if (k == warp)
@@ -1326,7 +1326,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         }
         if (bmpkind[k] == 4)
         {
-            if (!lab3dversion && (k == slotto))
+            if ((lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1) && (k == slotto))
                 if (slottime > 0)
                     k++;
             doordraw(sortx[temp],sorty[temp],k,posxs,posys);
@@ -1656,10 +1656,10 @@ void doordraw(K_UINT16 x,K_UINT16 y,K_INT16 walnume,K_UINT16 posxs,
     }
 
     if (
-        (lab3dversion&&(!(((walnume >= 152) && (walnume <= 157)) ||
+        ((lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)&&(!(((walnume >= 152) && (walnume <= 157)) ||
                           ((walnume >= 168) && (walnume <= 173)) ||
                           (walnume == 180)))) ||
-        ((!lab3dversion)&&((!(((walnume >= door1) && (walnume <= door1+5)) ||
+        ((lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)&&((!(((walnume >= door1) && (walnume <= door1+5)) ||
                               ((walnume >= door2) && (walnume <= door2+5)) ||
                               ((walnume >= door5) && (walnume <= door5+7)) ||
                               (walnume == 180)))))) {

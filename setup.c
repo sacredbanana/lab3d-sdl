@@ -511,7 +511,7 @@ int selectionmenu(int alts,char *titles[], int *value, const char* menutitle) {
     }
     for(i=0;i<alts;i++) {
         strcpy(textbuf,titles[i]);
-        textprint(71,120 - 6 * alts + 12 * i + ofs, lab3dversion?32:34);
+        textprint(71,120 - 6 * alts + 12 * i + ofs, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32  : 34);
     }
 
     finalisemenu();
@@ -832,7 +832,7 @@ static int ctrl_select(SDL_Event* event, int action) {
 static void key_instruction(const char* inst) {
     drawmenu(304,48,menu);
     strcpy(textbuf,"Press key for action:");
-    textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+0*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+0*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,inst);
     textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+1*12,0);
     finalisemenu();
@@ -842,14 +842,14 @@ static void key_instruction(const char* inst) {
 static void joy_instruction(const char* inst) {
     drawmenu(304,72,menu);
     strcpy(textbuf,"Select button or axis for");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,inst);
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
     strcpy(textbuf,"or press any key to cancel;");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
 
     strcpy(textbuf,"press BACKSPACE to delete");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     finalisemenu();
     glFlush();
 }
@@ -857,14 +857,14 @@ static void joy_instruction(const char* inst) {
 static void ctrl_instruction(const char* inst) {
     drawmenu(304,72,menu);
     strcpy(textbuf,"Select button or stick for");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,inst);
     textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
     strcpy(textbuf,"or press any key to cancel;");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
 
     strcpy(textbuf,"press BACKSPACE to delete");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion?32:34);
+    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     finalisemenu();
     glFlush();
 }
@@ -883,20 +883,20 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
         cnt = 0;
         for(j = 0; group[j] != -1; j++) {
             strcpy(textbuf, keynames[group[j]]);
-            textprint(31, 13 + 12 * j, lab3dversion ? 32 : 34);
+            textprint(31, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
             meth->get_action_name(textbuf, 11, group[j]);
             textbuf[11] = 0;
-            textprint(261, 13 + 12 * j, lab3dversion ? 32 : 34);
+            textprint(261, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1  ? 32 : 34);
             cnt++;
         }
         strcpy(textbuf, "Return");
-        textprint(31, 13 + 12 * j, lab3dversion ? 32 : 34);
+        textprint(31, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1  ? 32 : 34);
 
         strcpy(textbuf,"Use cursor keys / left stick to select.");
-        textprint(23,208,lab3dversion?32:34);
+        textprint(23,208,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
 
         strcpy(textbuf,"Enter/A btn to change, ESC/B to return.");
-        textprint(23,220,lab3dversion?32:34);
+        textprint(23,220,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
         finalisemenu();
         i = getselection(-12, -9, i, cnt + 1);
         if (i<0) quitf=1;
@@ -978,9 +978,9 @@ static void draw_mainmenu(void) {
 
     strcpy(textbuf,"Input: ");
     strcat(textbuf,inputdevicemenu[inputdevice]);
-    n += 12; textprint(51,n,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,"Configure Input");
-    n += 12; textprint(51,n,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     #ifdef __SWITCH__
     sprintf(textbuf,"Window size: %dx%d %s", screenwidth,
             screenheight, appletGetOperationMode() == AppletOperationMode_Handheld ? "Handheld" : "Dock");
@@ -1012,13 +1012,13 @@ static void draw_mainmenu(void) {
     n += 12; textprint(51,n,96);
     strcpy(textbuf,"Sound block size: ");
     strcat(textbuf,soundblockmenu[soundblock]);
-    n += 12; textprint(51,n,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,"Texture colour depth: ");
     strcat(textbuf,texturedepthmenu[texturedepth]);
-    n += 12; textprint(51,n,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,"View: ");
     strcat(textbuf,scalingtypemenu[scaling]);
-    n += 12; textprint(51,n,lab3dversion?32:34);
+    n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
 #ifdef HAVE_DESKTOP
     n += 12; strcpy(textbuf,"Create desktop shortcuts");
     textprint(51,n,96);
@@ -1028,15 +1028,15 @@ static void draw_mainmenu(void) {
     else
         strcpy(textbuf,"Exit setup");
 
-    n += 12; textprint(51,n,lab3dversion?128:130);
+    n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 128 : 130);
 
     n = 220;
     if (setup_ingame) {
         strcpy(textbuf,"Some settings may require restart.");
-        textprint(31,n,lab3dversion?32:34);
+        textprint(31,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     } else {
         strcpy(textbuf,"Use cursor keys / left stick to select.");
-        textprint(31,n,lab3dversion?32:34);
+        textprint(31,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     }
 
     finalisemenu();
@@ -1227,7 +1227,7 @@ void load_default_settings(void) {
         action_controller[i] = action_controller_default[i];
     }
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ) {
         action_key[ACTION_OLD_LOAD]=SDLK_l;
         action_key[ACTION_OLD_SAVE]=SDLK_s;
     }
@@ -1763,7 +1763,7 @@ void setup(void) {
     saidwelcome = 0;
     fprintf(stderr,"Loading intro pictures...\n");
 
-    if (lab3dversion) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         kgif(-1);
         k=0;
         for(i=0;i<16;i++)
