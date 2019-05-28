@@ -44,29 +44,21 @@ void gamelaunchermenu() {
                     case 0:
                      /* Version 2.1 */
                         lab3dversion = KENS_LABYRINTH_2_1;
-                        rnumwalls = 448;
-                        fprintf(stderr, "Ken's Labyrinth version 2.1 selected.\n");
                         done = 1;
                         break;
                     case 1:
                      /* Version 2.0 */
                         lab3dversion = KENS_LABYRINTH_2_0;
-                        rnumwalls = 448;
-                        fprintf(stderr, "Ken's Labyrinth version 2.0 selected.\n");
                         done = 1;
                         break;
                     case 2:
                      /* Version 1.1 */
                         lab3dversion = KENS_LABYRINTH_1_1;
-                        rnumwalls=0xe0;
-                        fprintf(stderr, "Ken's Labyrinth version 1.1 selected.\n");
                         done=1;
                         break;
                     case 3:
                         /* Version 1.0 */
                         lab3dversion = KENS_LABYRINTH_1_0; 
-                        rnumwalls = 192;
-                        fprintf(stderr, "Ken's Labyrinth version 1.0 selected.\n");
                         done = 1;
                         break;
                     case 4:

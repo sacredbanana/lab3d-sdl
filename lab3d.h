@@ -477,6 +477,7 @@ EXTERN K_UINT16 convavailpages, convwalls;
 EXTERN unsigned char gamehead[8][27], gamexist[8];
 EXTERN K_INT16 legacyload;
 EXTERN char gameroot[32], filepath[32], filepathUpper[32];
+EXTERN K_INT16 texturecreationneeded;
 
 /* SDL timer... */
 
@@ -535,6 +536,9 @@ void initmemory();
 void initvideo();
 void initaudio();
 void initgraphics();
+void inittablesandsettings();
+void initgameversion();
+void freememory();
 void resetaudio();
 void gamelaunchermenu();
 K_INT16 vline(K_INT16,K_INT16,K_INT16,K_INT16,K_INT16);
@@ -768,7 +772,7 @@ EXTERN K_INT16 *SoundBuffer;
 EXTERN int FeedPoint;
 
 /* SDL Audio Device ID */
-SDL_AudioDeviceID audioDevice;
+SDL_AudioDeviceID audiodevice;
 
 /* Last played Music file */
 EXTERN char lastPlayedMusicFile[12];
