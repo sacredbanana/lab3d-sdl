@@ -435,7 +435,6 @@ void loadboard()
             close(fil);
         } else {
             fatal_error("Can't find boards.kzp.");
-
         }
     }
 #if SDL_BYTEORDER != SDL_LIL_ENDIAN
@@ -4102,7 +4101,7 @@ K_INT16 kgif(K_INT16 filenum)
 /* Upload rectangular part of overlay from memory to specified texture. */
 
 void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
-                                   GLuint tex, int create) {
+                                   GLuint tex) {
     glBindTexture(GL_TEXTURE_2D, tex);
     checkGLStatus();
 
@@ -4112,7 +4111,7 @@ void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     checkGLStatus();
 
-    if (create) {
+    if (texturecreationneeded) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
@@ -4125,10 +4124,9 @@ void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
         fprintf(stderr, "Partial overlay upload (%d %d %d %d)... ",
                 w, h, dx, dy);
 
-
-    if (create) {
+    if (texturecreationneeded) {
         if (debugmode)
-            fprintf(stderr, "(create) ");
+            fprintf(stderr, "(texturecreationneeded) ");
         glTexImage2D(GL_TEXTURE_2D, 0, colourformat, w,
                      h, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE,
@@ -4212,7 +4210,7 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
            This only seems to affect the large textures. Very odd. */
 
         UploadPartialOverlayToTexture(x, y, x, y, w, (h>1)?h:2,
-                                      screenbuffertexture, 0);
+                                      screenbuffertexture);
     } else {
         left=(x-2)/62;
         if (left<0) left=0;
@@ -4242,7 +4240,7 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
 
                 UploadPartialOverlayToTexture(lr+62*j, tr+62*i, lr, tr, rr-lr+1,
                                               br-tr+1,
-                                              screenbuffertextures[i*6+j], 0);
+                                              screenbuffertextures[i*6+j]);
             }
     }
     ShowPartialOverlay(x-1,y-1,w+2,h+2,0);
@@ -4253,7 +4251,6 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
 
 void UploadOverlay(void) {
     int i, j;
-    static int c=1;
 
     settransferpalette();
     ConvertPartialOverlay(0, 0, screenbufferwidth, screenbufferheight);
@@ -4261,14 +4258,14 @@ void UploadOverlay(void) {
     if (largescreentexture)
         UploadPartialOverlayToTexture(0, 0, 0, 0, screenbufferwidth,
                                       screenbufferheight,
-                                      screenbuffertexture, c);
+                                      screenbuffertexture);
     else {
         for(i=0;i<12;i++)
             for(j=0;j<6;j++)
                 UploadPartialOverlayToTexture(62*j, 62*i, 0, 0, 64, 64,
-                                              screenbuffertextures[i*6+j], c);
+                                              screenbuffertextures[i*6+j]);
     }
-    c=0;
+    texturecreationneeded=0;
 }
 
 /* Display rectangular part of overlay... */
