@@ -217,15 +217,18 @@ void initvideo()
 
     fprintf(stderr,"Activating video...\n");
 
-    if (mainwindow != NULL)
+    if (mainwindow != NULL) {
+        #ifndef __SWITCH__
         fatal_error("window already created (init)");
-
-    if (fullscreen) {
-        mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                      0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
+        #endif
     } else {
-        mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        if (fullscreen) {
+            mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                      0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
+        } else {
+            mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       screenwidth, screenheight, SDL_WINDOW_OPENGL);
+        }
     }
 
     if (mainwindow == NULL) {
@@ -331,8 +334,11 @@ void freememory()
     SoundBuffer = NULL;
     screenbuffer = NULL;
     screenbuffer32 = NULL;
+
+    #ifndef __SWITCH__
     mainwindow = NULL;
     maincontext = NULL;
+    #endif
 }
 
 void initmemory()

@@ -591,8 +591,10 @@ int main(int argc,char **argv)
         gamelaunchermenu();
         initgameversion();
         SDL_CloseAudioDevice(audiodevice);
+        #ifndef __SWITCH__
         SDL_DestroyWindow(mainwindow);
         SDL_GL_DeleteContext(maincontext);
+        #endif
         freememory();
         clearimgcache();
         initgameversion();
