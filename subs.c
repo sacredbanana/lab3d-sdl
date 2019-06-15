@@ -1032,6 +1032,7 @@ static imgcache* img_cache=NULL;
 
 void clearimgcache()
 {
+    free(img_cache);
     img_cache = NULL;
 }
 

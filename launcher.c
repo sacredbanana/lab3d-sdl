@@ -1,6 +1,7 @@
 #include "lab3d.h"
 
 static void draw_gamelaunchermenu(void) {
+    glDrawBuffer(GL_FRONT);
     int n = 18;
     drawmenu(360,240,menu);
 
