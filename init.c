@@ -311,15 +311,6 @@ void initvideo()
     } else {
         glGenTextures(72,screenbuffertextures);
     }
-
-    k = 0;
-    for(i=0;i<16;i++)
-        for(j=1;j<17;j++)
-        {
-            palette[k++] = (paldef[i][0]*j)/17;
-            palette[k++] = (paldef[i][1]*j)/17;
-            palette[k++] = (paldef[i][2]*j)/17;
-        }
 }
 
 void freememory()
@@ -547,8 +538,16 @@ void initgraphics()
         fade(63);
     }
 
+    k = 0;
+    for(i=0;i<16;i++)
+        for(j=1;j<17;j++)
+        {
+            palette[k++] = (paldef[i][0]*j)/17;
+            palette[k++] = (paldef[i][1]*j)/17;
+            palette[k++] = (paldef[i][2]*j)/17;
+        }
+
     SetVisibleScreenOffset(0);
-    glDrawBuffer(GL_FRONT);
     SDL_GL_SwapWindow(mainwindow);
 
     if (moustat == 0)
