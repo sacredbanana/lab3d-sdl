@@ -491,6 +491,11 @@ static char *scalingtypemenu[4] = {
     "Integer scale (square pixels)"
 };
 
+static char *stereoscopicmenu[2] = {
+    "Off",
+    "On"
+};
+
 static void makeupper(char* txt) {
     while (*txt) { *txt = toupper(*txt); txt++; }
 }
@@ -652,6 +657,11 @@ void setupsetfullscreen(void) {
 
 void setupsetfiltering(void) {
     selectionmenu(3,filtermenu,&nearest, "Filtering");
+}
+
+void setupsetstereo(void) {
+    selectionmenu(2,stereoscopicmenu,&stereo, "Stereoscopic 3D");
+    setup_stereo(stereo);
 }
 
 void setupsetmusic(void) {
@@ -995,6 +1005,9 @@ static void draw_mainmenu(void) {
     strcpy(textbuf,"Filtering: ");
     strcat(textbuf,filtermenu[nearest]);
     n += 12; textprint(51,n,64);
+    strcpy(textbuf,"Stereoscopic 3D: ");
+    strcat(textbuf,stereoscopicmenu[stereo]);
+    n += 12; textprint(51,n,64);
     strcpy(textbuf,"Music: ");
     strcat(textbuf,musicmenu[music]);
     n += 12; textprint(51,n,96);
@@ -1050,9 +1063,9 @@ void setupmenu(int ingame) {
         draw_mainmenu();
 #ifdef HAVE_DESKTOP
         char errbuf[64] = {0};
-        if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,15)) < 0)
+        if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,16)) < 0)
 #else
-        if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,14)) < 0)
+        if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,15)) < 0)
 #endif
                 quit=1;
             else {
@@ -1073,30 +1086,33 @@ void setupmenu(int ingame) {
                         setupsetfiltering();
                         break;
                     case 5:
-                        setupsetmusic();
+                        setupsetstereo();
                         break;
                     case 6:
-                        setupsetsound();
+                        setupsetmusic();
                         break;
                     case 7:
-                        setupsetsoundchannels();
+                        setupsetsound();
                         break;
                     case 8:
-                        setupsetmusicchannels();
+                        setupsetsoundchannels();
                         break;
                     case 9:
-                        setupcheatmenu();
+                        setupsetmusicchannels();
                         break;
                     case 10:
-                        setupsoundblockmenu();
+                        setupcheatmenu();
                         break;
                     case 11:
-                        setuptexturedepthmenu();
+                        setupsoundblockmenu();
                         break;
                     case 12:
+                        setuptexturedepthmenu();
+                        break;
+                    case 13:
                         setupscalingmodemenu();
                         break;
-                    case 13: ;
+                    case 14: ;
 #ifdef HAVE_DESKTOP
                         createshortcut(errbuf, sizeof(errbuf) - 1);
                         if (!errbuf[0]) {
@@ -1105,7 +1121,7 @@ void setupmenu(int ingame) {
                         int j = 0;
                         selectionmenu(1, okmenu, &j, errbuf);
                         break;
-                    case 14:
+                    case 15:
 #endif
                         quit=1;
                         break;
@@ -1218,7 +1234,7 @@ void configure_screen_size(void) {
 
 void load_default_settings(void) {
     int i;
-    channels=2; musicvolume=64; soundvolume=64; gammalevel=1.0;
+    channels=2; musicvolume=64; soundvolume=64; gammalevel=1.0; stereo=0;
     i=0;
 
     for(i=0;i<ACTION_LAST;i++) {
@@ -1465,6 +1481,7 @@ static setting_t video_settings[] = {
     INTSETTING(scaling, scaling),
     FLOATSETTING(brightness, gammalevel),
     INTSETTING(texturedepth, texturedepth),
+    INTSETTING(stereo, stereo),
     { NULL }
 };
 

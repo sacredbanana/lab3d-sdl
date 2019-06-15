@@ -419,7 +419,6 @@ int main(int argc,char **argv)
     K_INT16 soundvolumevisible=0,musicvolumevisible=0;
     int fil;
     int cmd_loadgame = 0;
-    int stereo = 0;
 
     #if defined(__SWITCH__) && defined(ENABLE_NXLINK)
     // Set mesa configuration (useful for debugging)
@@ -634,6 +633,9 @@ int main(int argc,char **argv)
         }
     }
 
+    if (stereo)
+        setup_stereo(stereo);
+        
     /* Fork v1.1 off to its own main function here. */
 
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
@@ -642,8 +644,7 @@ int main(int argc,char **argv)
         return 0;
     }
 
-    if (stereo)
-        setup_stereo(stereo);
+    
 
     /* Introduction... */
     kgif(1);
