@@ -478,6 +478,7 @@ EXTERN unsigned char gamehead[8][27], gamexist[8];
 EXTERN K_INT16 legacyload;
 EXTERN char gameroot[32], filepath[32], filepathUpper[32];
 EXTERN K_INT16 texturecreationneeded;
+EXTERN K_INT16 stereo;
 
 /* SDL timer... */
 
