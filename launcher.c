@@ -34,6 +34,9 @@ void gamelaunchermenu() {
     int done=0,sel=0;
 
     statusbaryoffset=250;
+    musicoff();
+    loadmusic("LABSNG22");
+    musicon();
 
     while(!done) {
         draw_gamelaunchermenu();
