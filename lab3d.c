@@ -595,6 +595,7 @@ int main(int argc,char **argv)
         initvideo();
         initaudio();
         initmemory();
+        resetaudio();
     }
 
     initialize();
