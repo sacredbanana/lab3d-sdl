@@ -37,7 +37,6 @@ static K_INT16 gameoverfound;
 
 _DYNAMIC_OGL_FUNCS(_DECLARE_FUNC)
 
-static int stereo = 0;
 static GLuint stereo_fbufs[2];
 static GLuint stereo_tex[2];
 static GLuint stereo_depth[2];
