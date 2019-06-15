@@ -18,8 +18,6 @@ void initialize()
     ingame=0;
     mixing=0;
     menuing=0;
-    speed = 240;
-    musicstatus=0;
 
     visiblescreenyoffset=0;
 
@@ -398,6 +396,9 @@ void initaudio()
     long sndsize;
     int i;
 
+    speed = 240;
+    musicstatus=0;
+
     soundmutex = SDL_CreateMutex();
     timermutex = SDL_CreateMutex();
     
@@ -657,5 +658,4 @@ void resetaudio()
     initaudio();
     loadmusic(lastPlayedMusicFile);
     musicon();
-    TRACE("Reset with %d channels", channels);
 }

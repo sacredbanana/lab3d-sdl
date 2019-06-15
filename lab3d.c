@@ -580,6 +580,11 @@ int main(int argc,char **argv)
     initvideo();
     initaudio();
     initmemory();
+
+    if (!legacyload) {
+        loadmusic("BEGIN");
+        musicon();
+    }
     initgraphics();
 
     if (!legacyload) {
