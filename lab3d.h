@@ -1,3 +1,5 @@
+#define LAB3DSDL_VERSION "4.0.0"
+
 #ifndef WIN32
 #ifdef _WIN32
 #define WIN32
@@ -527,7 +529,7 @@ EXTERN int nrmidis;
 /* Palette for graphics uploads... */
 EXTERN unsigned char spritepalette[768];
 
-EXTERN K_INT16 fadelevel,ingame;
+EXTERN K_INT16 fadelevel,ingame,inlauncher;
 
 void oldmain(void);
 void UploadOverlay(void);
