@@ -667,13 +667,13 @@ void setupsetstereo(void) {
 void setupsetmusic(void) {
     int oldmusic = music;
     selectionmenu(MUSIC_SOURCES,musicmenu,&music, "Music");
-    if (setup_ingame && (music != oldmusic || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)) resetaudio();
+    if ((inlauncher || setup_ingame) && (music != oldmusic || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)) resetaudio();
 }
 
 void setupsetsound(void) {
     int oldsound = sound;
     selectionmenu(2,soundmenu,&sound, "Sound");
-    if (setup_ingame && sound != oldsound) resetaudio();
+    if ((inlauncher || setup_ingame) && sound != oldsound) resetaudio();
 }
 
 void setupcheatmenu(void) {
@@ -683,19 +683,19 @@ void setupcheatmenu(void) {
 void setupsetsoundchannels(void) {
     int oldchannel = channel;
     selectionmenu(2,channelmenu,&channel, "Sound channels");
-    if (setup_ingame && channel != oldchannel) resetaudio();
+    if ((inlauncher || setup_ingame) && channel != oldchannel) resetaudio();
 }
 
 void setupsetmusicchannels(void) {
     int oldmusicchannel = musicchannel;
     selectionmenu(2,channelmenu,&musicchannel, "Music channels");
-    if (setup_ingame && musicchannel != oldmusicchannel) resetaudio();
+    if ((inlauncher || setup_ingame) && musicchannel != oldmusicchannel) resetaudio();
 }
 
 void setupsoundblockmenu(void) {
     int oldsoundblock = soundblock;
     selectionmenu(10,soundblockmenu,&soundblock, "Sound buffer");
-    if (setup_ingame && soundblock != oldsoundblock) resetaudio();
+    if ((inlauncher || setup_ingame) && soundblock != oldsoundblock) resetaudio();
 }
 
 void setuptimingmenu(void) {

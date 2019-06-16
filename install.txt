@@ -31,7 +31,9 @@ Compiler:		GCC 2.95.2 or later recommended. Other compilers will
 			require Makefile changes, but should work.
 Other utilities:	Makefiles require GNU Make (or compatible) and sh
 			(or compatible, e.g. bash).
-Data files:		Ken's Labyrinth v2.1 (Epic Megagames registered),
+Data files:		
+			(No longer needed as a separate download as all files are now included.)
+			Ken's Labyrinth v2.1 (Epic Megagames registered),
 			Ken's Labyrinth v2.0 (Epic Megagames shareware),
 			Ken's Labyrinth v1.1 (Advanced Systems registered) or
 			Ken's Labyrinth v1.0 (Advanced Systems shareware).
@@ -60,6 +62,14 @@ Run "make -f Makefile.Switch" in the source directory.
 
 	Installation (not applicable to full download)
 	----------------------------------------------
+To have game WITH game launcher:
+Place the executable file ("ken" in Unix, "ken.exe" in Windows, "Kens-Labyrinth.nro" on Nintendo Switch), "ksmmidi.txt"
+(if you want to use General MIDI music) and "ken.bmp" in the directory which contains
+the "gamedata" directory. You may give the executable file a different
+name if you like. Windows users should not change the extension of the
+executable.
+
+To have game WITHOUT game launcher:
 
 Place the executable file ("ken" in Unix, "ken.exe" in Windows, "Kens-Labyrinth.nro" on Nintendo Switch), "ksmmidi.txt"
 (if you want to use General MIDI music) and "ken.bmp" in the same directory as
@@ -78,7 +88,9 @@ Or
 - Compile the game yourself (see the Nintendo Switch compiling instructions above)
 
 Navigate to the Switch folder inside your Nintendo Switch SD card and create a new folder
-called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files.
+called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files. (This is the "gamedata" directory
+if you wish to have the game launcher. Otherwise just copy a single version of Ken's labyrinth to the directory containing the executable
+WITHOUT including the gamedata directory.)
 
 	Setup
 	-----
