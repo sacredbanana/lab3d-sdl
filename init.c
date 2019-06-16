@@ -10,14 +10,15 @@ void initialize()
 {
     K_INT16 i, j, k, oclockspeed;
     K_UINT16 l;
-    time_t tnow;
     struct stat fstats;
 
     statusbaryoffset=250;
     spriteyoffset=0;
     ingame=0;
+    inlauncher =0;
     mixing=0;
     menuing=0;
+    g_stereo_sep = 768;
 
     visiblescreenyoffset=0;
 
@@ -28,9 +29,6 @@ void initialize()
 
     SDL_JoystickEventState(1);
     FindJoysticks();
-
-    time(&tnow);
-    srand((unsigned int)tnow);
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
@@ -194,6 +192,10 @@ void initvideo()
     walltol=32;
     neardist=16;
     vidmode = 1; /* Force fake 360x240 mode. */
+    time_t tnow;
+
+    time(&tnow);
+    srand((unsigned int)tnow);
 
     int realr,realg,realb,realz,reald = 0;
     SDL_Surface *icon;

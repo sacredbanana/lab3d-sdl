@@ -1812,8 +1812,8 @@ pressakey();
 
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         visiblescreenyoffset=0;
-        strcpy(textbuf,
-               "\"LAB3D/SDL\" conversion");
+        sprintf(textbuf,
+               "\"LAB3D/SDL\" conversion v%s", LAB3DSDL_VERSION);
         textprint(30, 222, 0);
 
         strcpy(textbuf,
