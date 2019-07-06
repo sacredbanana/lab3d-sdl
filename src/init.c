@@ -47,11 +47,13 @@ void initialize()
     skilevel = 0;
 
     initgraphics();
+
     if (!introskip)
     {
         /* Big scrolly picture... */
-
+        i=0;
         j=0;
+        l=0;
 
         if (lab3dversion==KENS_LABYRINTH_2_0 || lab3dversion==KENS_LABYRINTH_2_1) {
             fade(0);
@@ -66,6 +68,10 @@ void initialize()
 
         SDL_LockMutex(timermutex);
         oclockspeed=clockspeed;
+
+        clearkeydefstat(ACTION_MENU);
+
+        SDL_GL_SwapWindow(mainwindow);
 
         while ((getkeydefstatlock(ACTION_MENU) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
@@ -105,7 +111,7 @@ void initialize()
             || lab3dversion==KENS_LABYRINTH_1_1)|j)) {
                 SDL_UnlockMutex(timermutex);
                 glClearColor(0,0,0,0);
-                glClear( GL_COLOR_BUFFER_BIT);
+                glClear(GL_COLOR_BUFFER_BIT);
                 visiblescreenyoffset=(l/90)-20;
                 ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
                 SDL_GL_SwapWindow(mainwindow);
@@ -124,7 +130,7 @@ void initialize()
             SDL_UnlockMutex(timermutex);
             fade(64+i);
             glClearColor(0,0,0,0);
-            glClear( GL_COLOR_BUFFER_BIT);
+            glClear(GL_COLOR_BUFFER_BIT);
             if ((lab3dversion==KENS_LABYRINTH_1_0 
             || lab3dversion==KENS_LABYRINTH_1_1)|j)
                 visiblescreenyoffset=0;
@@ -535,9 +541,9 @@ void initgraphics()
         memcpy(spritepalette,palette,768);
 
         /* Show the Epic Megagames logo while loading... */
-
         kgif(0);
         fprintf(stderr,"Loading graphics...\n");
+
         loadwalls(1);
 
         /* Ken's Labyrinth logo. */
@@ -631,6 +637,7 @@ void initgameversion()
             break;
         }
     } else {
+        gameroot[0] = '\0';
         legacyload = 1;
         sprintf(filepath, "%send.txt", gameroot);
         sprintf(filepathUpper, "%sEND.TXT", gameroot);

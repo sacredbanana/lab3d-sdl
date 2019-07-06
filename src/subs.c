@@ -772,7 +772,7 @@ void preparesound(void *dasnd, long numbytestoprocess)
     {
         i = min(prepcnt, (minicnt/speed+4)&~3);
         adlibgetsample(dasnd, i);
-        dasnd = (void *)(((long)dasnd)+i);
+        dasnd = (void *)(((INT_TYPE)dasnd)+i);
         prepcnt -= i;
 
         minicnt -= speed*i;
@@ -791,6 +791,8 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
     int i;
     int t=0;
     int j1, j2;
+
+    if (quitgame) return;
 
     if (soundtimer) {
         soundtimerbytes+=len;
@@ -1305,7 +1307,6 @@ imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfil
     }
     sprintf(filepath, "%s%s", gameroot, fname);
     SDL_Surface* base_image = IMG_Load(filepath);
-
     if (!base_image) {
         fatal_error( "Could not load image %s: %s", fname, SDL_GetError());
     }
@@ -1356,7 +1357,8 @@ int read_ini(FILE* input, char* buf, int buflen, char **keyp, char **valp, int *
         if (*line == '#') continue;
 
         end = line + strlen(line) - 1;
-        while (isspace(*end)) *end-- = 0;
+        while (strlen(line) > 0 && isspace(*end)) 
+            *end-- = 0;
 
         if (*line =='[' && *end == ']') {
             *end-- = 0;
@@ -1513,7 +1515,6 @@ void loadwalls(int replace)
             }
         }
         fclose(params);
-
     }
     sprintf(filepath, "%swalls.kzp", gameroot);
     sprintf(filepathUpper, "%sWALLS.KZP", gameroot);
@@ -1593,7 +1594,6 @@ void loadwalls(int replace)
 
                     lzwbuf[currstr-1]=dat;
                     lzwbuf[currstr]=dat;
-
                     dat=lzwbuf2[dat];
                     stack[stackp++]=dat;
 
@@ -1613,6 +1613,7 @@ void loadwalls(int replace)
             }
             else
                 memcpy(walsegg, tempbuf, 4096);
+
             if (bmpkind[i+1] >= 2)
             {
                 j=0;
@@ -1713,7 +1714,7 @@ void loadwalls(int replace)
                 texName[i]=cache->texnum;
                 if (cwparam->tch==-1) cwparam->tch=cache->w;
                 walltexcoord[i][0]= ((double)cwparam->tcl/(double)cache->w);
-                walltexcoord[i][1]= ((double)cwparam->tch/(double)cache->w);
+                walltexcoord[i][1] = ((double)cwparam->tch / (double)cache->w);
                 //printf("TexCoords for %d: %d %d /%d %.6f %.6f\n", i, cwparam->tcl, cwparam->tch, cache->w, walltexcoord[i][0], walltexcoord[i][1]);
             } else {
                 walltexcoord[i][0]=0.0;
@@ -1760,7 +1761,6 @@ void loadwalls(int replace)
 
                 if (debugmode)
                     fprintf(stderr, "Upload texture complete.\n");
-
                 if (i==gameover-1) {
                     /* Keep two copies of this; one for walls, the other for spinning
                        overlay text. */
@@ -1798,22 +1798,21 @@ void loadwalls(int replace)
     }
     free(RGBATexture);
 
-
 //      Examine textures...
-/*
-  for(i=0;i<rnumwalls;i++) {
+
+/*  for(i=0;i<rnumwalls;i++) {
   glClear(GL_COLOR_BUFFER_BIT);
   printf("Texture number %d.\n", i);
   spridraw(180, 50, 512, i+1);
-//	SDL_GL_SwapWindow(mainwindow);
+SDL_GL_SwapWindow(mainwindow);
 pressakey();
 }
-*/
+/**/
 
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         visiblescreenyoffset=0;
         sprintf(textbuf,
-               "\"LAB3D/SDL\" conversion v%s", LAB3DSDL_VERSION);
+               "\"LAB3D/SDL\" conversion v%d.%d.%d", LAB3D_VERSION_MAJOR, LAB3D_VERSION_MINOR, LAB3D_VERSION_PATCH);
         textprint(30, 222, 0);
 
         strcpy(textbuf,
@@ -2976,7 +2975,7 @@ void musicon()
     SDL_LockMutex(soundmutex);
     musicstatus = 1;
     ksaystat = 0;
-    if (musicpan) randoinsts();
+    if (musicpan) randominsts();
 
     if (ksaystat == 0)
     {
@@ -6536,7 +6535,7 @@ void quit() {
 #define log2(a) (log(a)/log(2))
 #endif
 
-void randoinsts()
+void randominsts()
 {
     long i, j, k;
     float f;
