@@ -1237,6 +1237,10 @@ void load_default_settings(void) {
     channels=2; musicvolume=64; soundvolume=64; gammalevel=1.0; stereo=0;
     i=0;
 
+#ifdef WIN32
+    fullscr = 0;
+#endif
+
     for(i=0;i<ACTION_LAST;i++) {
         action_key[i] = action_key_default[i];
         action_joystick[i] = action_joystick_default[i];
@@ -1540,7 +1544,10 @@ void loadsettings(void) {
         #ifdef __SWITCH__
         input = fopen("romfs:/settings_switch.ini", "r");
         #else
-        if (!legacyload) setup();
+        if (legacyload)
+            setup();
+        else
+            return;
         #endif
     }
 
