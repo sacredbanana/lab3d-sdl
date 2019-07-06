@@ -38,7 +38,7 @@ I'm not sure about a few things in my code:
 #if !defined(IS64BIT)
 #define INT_PTR int
 #else
-#define INT_PTR __int64_t
+#define INT_PTR int64_t
 #endif
 
 #include <memory.h>
@@ -161,6 +161,8 @@ static _inline void ftol (float f, int *a)
 		fistp dword ptr [eax]
 	}
 }
+
+#else
 
 static _inline void ftol (float f, int *a) { (*a) = (int)f; }
 
@@ -534,7 +536,9 @@ static _inline void clipit8 (float f, INT_PTR a)
 
 static _inline void clipit16 (float f, INT_PTR a)
 {
-	*(signed short *)a = min(max((int)f,-32768),32767);
+    signed short v = *(signed short*)a;
+
+    *(signed short*)a = min(max((int)f, -32768), 32767);
 }
 
 #endif
@@ -555,7 +559,7 @@ static inline void clipit16 (float f, INT_PTR a)
 
 void adlibgetsample (void *sndptr, int numbytes)
 {
-	int i, j, k, ns, endsamples, rptrs, numsamples;
+	int i, j, k = 0, ns, endsamples, rptrs, numsamples;
 	celltype *cptr;
 	float f;
 
@@ -710,8 +714,9 @@ void adlibgetsample (void *sndptr, int numbytes)
 			}
 			else
 			{
-				for(i=(endsamples<<1)-1;i>=0;i--)
-					clipit16(snd[i],i+i+((INT_PTR)sndptr));
+                for (i = (endsamples << 1) - 1; i >= 0; i--) {
+                    clipit16(snd[i], i + i + ((INT_PTR)sndptr));
+                }
 			}
 		}
 

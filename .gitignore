@@ -18,6 +18,7 @@ develop-eggs
 .installed.cfg
 lib
 lib64
+out
 
 # Installer logs
 pip-log.txt
@@ -37,6 +38,9 @@ nosetests.xml
 
 # Visual Studio Code
 .vscode
+
+# Visual Studio
+.vs
 
 # Ken files
 ken.bin
