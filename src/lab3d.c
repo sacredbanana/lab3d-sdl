@@ -427,7 +427,7 @@ int main(int argc,char **argv)
 
     for(i=1;i<argc;i++) {
         if ((strcmp(argv[i],"-V")==0)||(strcmp(argv[i],"-version")==0)) {
-            printf("LAB3D/SDL version 3.3\n");
+            printf("LAB3D/SDL version %d.%d.%f\n", LAB3D_VERSION_MAJOR, LAB3D_VERSION_MINOR, LAB3D_VERSION_PATCH);
             return 0;
         }
         else if ((strcmp(argv[i],"-h")==0)||(strcmp(argv[i],"-help")==0)) {
