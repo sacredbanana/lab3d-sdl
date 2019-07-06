@@ -2134,6 +2134,7 @@ void oldmain(void)
         #endif
         if (getkeydefstat(ACTION_MENU) == 1)
         {
+            clearkeydefstat(ACTION_MENU_CANCEL);
             if (ototclock > 1)
             {
                 j = pageoffset;
@@ -2160,6 +2161,7 @@ void oldmain(void)
                 while (j == 0)
                 {
                     PollInputs();
+
                     if (newkeystatus(SDLK_n) != 0)  j |= 1;
                     if (newkeystatus(SDLK_SPACE) != 0)  j |= 1;
                     if (newkeystatus(SDLK_RETURN) != 0)  j |= 1;

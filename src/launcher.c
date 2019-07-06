@@ -8,7 +8,7 @@ static void draw_gamelaunchermenu(void) {
     drawmenu(360,240,menu);
 
     n = 18;
-    sprintf(textbuf,"LAB3D/SDL v%s game launcher menu", LAB3DSDL_VERSION);
+    sprintf(textbuf,"LAB3D/SDL v%d.%d.%d game launcher menu", LAB3D_VERSION_MAJOR, LAB3D_VERSION_MINOR, LAB3D_VERSION_PATCH);
     textprint(40,16,126);
 
     strcpy(textbuf,"Ken's Labyrinth 2.1 (Full)");
@@ -167,6 +167,7 @@ void gamelaunchermenu() {
                         orderinfomenu();
                         break;
                     case 7:
+                        quitgame = 1;
                         quit();
                         break;
                 }
