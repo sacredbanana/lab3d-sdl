@@ -498,7 +498,7 @@ void initaudio()
         soundbytespertick = channels * want.freq * 2 / 240;
         soundtimerbytes = 0;
 
-        audiodevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_CHANNELS_CHANGE | SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+        audiodevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
         if (audiodevice == 0) {
             TRACE("Failed to open audio: %s", SDL_GetError());
         }
