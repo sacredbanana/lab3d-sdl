@@ -40,6 +40,50 @@ void whatsnew1() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
+           "Version 4.0.1 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "New enhanced multiplatform building!");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "This new version has incorporated");
+    textprint(30, 76, 96);
+
+    strcpy(textbuf, "a modern build system generator called");
+    textprint(30, 86, 96);
+
+    strcpy(textbuf, "CMake. This makes it easy to compile");
+    textprint(30, 96, 96);
+
+    strcpy(textbuf, "for both Windows using Visual Studio");
+    textprint(30, 106, 96);
+
+    strcpy(textbuf, "& Linux. For the first time LAB3D/SDL");
+    textprint(30, 116, 96);
+
+    strcpy(textbuf, "is available to 64-bit Windows and");
+    textprint(30, 126, 96);
+
+    strcpy(textbuf, "includes the latest version of SDL");
+    textprint(30, 136, 96);
+
+    strcpy(textbuf, "which includes a bugfix for multi");
+    textprint(30, 146, 96);
+
+    strcpy(textbuf, "monitor setups. This paves the way for");
+    textprint(30, 156, 96);
+
+    strcpy(textbuf, "a macOS version in the future...");
+    textprint(30, 166, 96);
+
+    finalisemenu();
+    pressakey();
+}
+
+void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
            "Version 4.0.0 Release");
     textprint(30, 48, 80);
 
@@ -75,10 +119,9 @@ void whatsnew1() {
 
     finalisemenu();
     pressakey();
-
 }
 
-void whatsnew2() {
+void whatsnew3() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -117,7 +160,6 @@ void whatsnew2() {
 
     finalisemenu();
     pressakey();
-
 }
 
 void gamelaunchermenu() {
@@ -136,17 +178,17 @@ void gamelaunchermenu() {
         else {
                 switch(sel) {
                     case 0:
-                     /* Version 2.1 */
+                        /* Version 2.1 */
                         lab3dversion = KENS_LABYRINTH_2_1;
                         done = 1;
                         break;
                     case 1:
-                     /* Version 2.0 */
+                        /* Version 2.0 */
                         lab3dversion = KENS_LABYRINTH_2_0;
                         done = 1;
                         break;
                     case 2:
-                     /* Version 1.1 */
+                        /* Version 1.1 */
                         lab3dversion = KENS_LABYRINTH_1_1;
                         done=1;
                         break;
@@ -158,6 +200,7 @@ void gamelaunchermenu() {
                     case 4:
                         whatsnew1();
                         whatsnew2();
+                        whatsnew3();
                         break;
                     case 5:
                         setupmenu(0);
