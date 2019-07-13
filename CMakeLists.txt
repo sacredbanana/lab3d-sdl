@@ -57,13 +57,12 @@ endif ()
 
 if (UNIX AND (NOT APPLE))
   set(CMAKE_INSTALL_RPATH ${CMAKE_SOURCE_DIR})
+  set(KEN_USE_OSS ON CACHE BOOL "Use OSS for General MIDI?")
 endif ()
 
 add_executable (${KEN_EXE_NAME} ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ken.rc)
 set_target_properties(${KEN_EXE_NAME} PROPERTIES LINKER_LANGUAGE C)
-target_compile_definitions(${KEN_EXE_NAME} 
-  PUBLIC KEN_64BIT
-)
+target_compile_definitions(${KEN_EXE_NAME} PUBLIC KEN_64BIT)
 
 if (WIN32)
   if (KEN_64BIT)
@@ -93,6 +92,10 @@ elseif (UNIX)
   target_link_libraries(${KEN_EXE_NAME} z)
   target_link_libraries(${KEN_EXE_NAME} SDL2)
   target_link_libraries(${KEN_EXE_NAME} SDL2_image)
+  target_compile_options(${KEN_EXE_NAME} PUBLIC -O3 -Wall)
+  if (KEN_USE_OSS)
+    target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
+  endif ()
 endif ()
 
 if (MSVC OR UNIX)
