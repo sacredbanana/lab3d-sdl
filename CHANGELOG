@@ -1,3 +1,7 @@
+4.0.1: 2019-07-13
+* Add CMake build system
+* Limit sound channels to 2 to avoid super fast sound and music
+
 4.0.0: 2019-06-16
 * Brand new game launcher menu allowing you to launch any version of the game
 * Ken's Labyrinth 1.0/1.1 graphical bug fixes
