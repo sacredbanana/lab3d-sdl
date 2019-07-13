@@ -2839,7 +2839,7 @@ K_INT16 loadmusic(char *filename)
         }
     }
     sprintf(filepath, "%ssongs.kzp", gameroot);
-    sprintf(filepathUpper, "%sSONGS.KZPT", gameroot);
+    sprintf(filepathUpper, "%sSONGS.KZP", gameroot);
     if (((infile = open(filepath, O_RDONLY|O_BINARY, 0))==-1)&&
         ((infile = open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1))
         return(-1);
