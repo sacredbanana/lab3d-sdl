@@ -33,15 +33,15 @@ include $(DEVKITPRO)/libnx/switch_rules
 TARGET		:=	Kens-Labyrinth
 BUILD		:=	build
 DIST		:=	dist
-SOURCES		:=	.
+SOURCES		:=	src
 DATA		:=	data
-INCLUDES	:=	.
+INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 ROMFS		:= 	romfs
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
-APP_VERSION	:= 4.0.0
+APP_VERSION	:= 4.0.1
 ICON		:= ken_icon_switch.jpg
 
 #---------------------------------------------------------------------------------
@@ -68,10 +68,13 @@ LIBS	:= -lSDL2_image -lglapi -ljpeg `sdl2-config --libs` `freetype-config --libs
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(PORTLIBS) $(LIBNX)
 
-SRC_GLAD	:= glad/glad.c
+INC_GLAD	:= external/glad
+SRC_GLAD	:= external/glad/glad.c
 
 SOURCEFILES_C	:= \
 	$(SRC_GLAD)
+
+INCLUDES	:= $(INCLUDES) $(INC_GLAD)
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional

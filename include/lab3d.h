@@ -32,7 +32,7 @@
 #include "SDL.h"
 
 #ifdef __SWITCH__
-#include "glad/glad.h"
+#include "glad.h"
 #include <switch.h>
 #else
 #include <SDL_opengl.h>
