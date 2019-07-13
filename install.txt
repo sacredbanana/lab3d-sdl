@@ -38,18 +38,33 @@ Data files:
 			Ken's Labyrinth v1.1 (Advanced Systems registered) or
 			Ken's Labyrinth v1.0 (Advanced Systems shareware).
 
-Compiling (Unix with OSS support)
-	---------------------------------
-
-Run "make" in the source directory.
-
 	Compiling (Windows)
 	-------------------
+
+Install Visual Studio 2017 or 2019 with Visual-C++ and CMake support.
+Close the initial splash screen by clicking the "Continue without code" option.
+Click File -> Open -> CMake. Choose the CMakeLists.txt file. The project will then
+open and you'll be able to select from the top menu the flavour of build. From there
+you can build and or/debug.
+
+	Compiling (Windows) (Legacy)
+	----------------------------
 
 Run "make -f Makefile.Win32" in the source directory. MinGW 3.1.0 is
 recommended for Windows use.
 
-	Compiling (Unix without OSS support)
+	Compiling (Linux/UNIX)
+	----------------------
+Install cmake, build-essential, SDL2 & SDL2_image. Navigate to the build directory and type `cmake ..`. The
+executable `ken` and its dependencies will be copied to the build folder.
+
+
+Compiling (Unix with OSS support) (Legacy)
+	---------------------------------
+
+Run "make" in the source directory.
+
+	Compiling (Unix without OSS support) (Legacy)
 	------------------------------------
 
 Run "make -f Makefile.NoMIDI" in the source directory. Note that General MIDI
