@@ -40,6 +40,44 @@ void whatsnew1() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
+           "Version 4.1.0 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "New port for macOS!");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "For the first time LAB3D/SDL");
+    textprint(30, 76, 96);
+
+    strcpy(textbuf, "has been ported to macOS.");
+    textprint(30, 86, 96);
+
+    strcpy(textbuf, "It is currently only available");
+    textprint(30, 96, 96);
+
+    strcpy(textbuf, "as an external download. Perhaps");
+    textprint(30, 106, 96);
+
+    strcpy(textbuf, "it will appear in the App Store");
+    textprint(30, 116, 96);
+
+    strcpy(textbuf, "later on if certain hurdles can be");
+    textprint(30, 126, 96);
+
+    strcpy(textbuf, "overcome including Xcode distribution");
+    textprint(30, 136, 96);
+
+    strcpy(textbuf, "issues and Apple reviewers.");
+    textprint(30, 146, 96);
+
+    finalisemenu();
+    pressakey();
+}
+
+void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
            "Version 4.0.1 Release");
     textprint(30, 48, 80);
 
@@ -80,7 +118,7 @@ void whatsnew1() {
     pressakey();
 }
 
-void whatsnew2() {
+void whatsnew3() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -121,7 +159,7 @@ void whatsnew2() {
     pressakey();
 }
 
-void whatsnew3() {
+void whatsnew4() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -201,6 +239,7 @@ void gamelaunchermenu() {
                         whatsnew1();
                         whatsnew2();
                         whatsnew3();
+                        whatsnew4();
                         break;
                     case 5:
                         setupmenu(0);

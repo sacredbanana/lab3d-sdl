@@ -1,3 +1,6 @@
+4.1.0: 2019-07-14
+* Port for macOS created
+
 4.0.1: 2019-07-13
 * Add CMake build system
 * Limit sound channels to 2 to avoid super fast sound and music
