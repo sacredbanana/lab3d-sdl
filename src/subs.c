@@ -944,8 +944,8 @@ void checkobj(K_UINT16 x, K_UINT16 y, K_UINT16 posxs, K_UINT16 posys,
     if (sortcnt >= (sizeof(sortx)/sizeof(sortx[0])))
         return;
 
-    if (shadow[num&1023]) {
-        checkobj(x, y, posxs, posys, angs, shadow[num&1023]);
+    if (shadow2[num&1023]) {
+        checkobj(x, y, posxs, posys, angs, shadow2[num&1023]);
     }
     siz = (int)(((((long)x-(long)posxs)>>2)*sintable[(angs+512)&2047]+(((long)y-(long)posys)>>2)*sintable[angs])>>16);
     if (siz != 0)
@@ -1455,7 +1455,7 @@ void loadwalls(int replace)
     }
     int dotransition=1;
     wallparam* cwparam=NULL;
-    memset(shadow, 0, sizeof(shadow));
+    memset(shadow2, 0, sizeof(shadow2));
 
     sprintf(filepath, "%swallparams.ini", gameroot);
     if (replace && (params = fopen(filepath, "rt")) != NULL) {
@@ -1483,7 +1483,7 @@ void loadwalls(int replace)
                     if (i != 2)
                         fatal_error("wallparams.ini:%d: Expected 2 values for range", curline);
                 } else if (!strcmp(key, "shadow")) {
-                    shadow[curwall+1] = ival;
+                    shadow2[curwall+1] = ival;
                     if (ival < 0 || ival > numwalls)
                         fatal_error("wallparams.ini:%d: Invalid value for shadow: %d", curline, ival);
                     //printf("Set shadow for %d to %d (%s)\n", curwall, ival, val);
@@ -2793,7 +2793,7 @@ K_INT16 loadmusic(char *filename)
     K_INT16 i, j, k, numfiles;
     K_INT32 filoffs;
 
-    strcpy(lastPlayedMusicFile, filename);
+    sprintf(lastPlayedMusicFile, "%s", filename);
 
     FILE *file;
 
@@ -2958,7 +2958,7 @@ void musicon()
             setmidiinsts();
         for(i=0;i<numchans;i++)
         {
-            if (musicsource == MUSIC_SOURCE_ADLIB || MUSIC_SOURCE_ADLIB_RANDOM)
+            if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
             {   
                 for(j=0;j<11;j++)
                     instbuf[j] = inst[trinst[chantrack[i]]][j];

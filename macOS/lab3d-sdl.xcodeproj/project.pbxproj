@@ -1,0 +1,847 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		8C5D86D6BB0A467FBEC3EB14 /* ZERO_CHECK */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 90E97F3D68324568B2E9264E /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
+			buildPhases = (
+				C4AC103210114D85A11FFACA /* CMake Rules */,
+			);
+			dependencies = (
+			);
+			name = ZERO_CHECK;
+			productName = ZERO_CHECK;
+		};
+		90B61ABA1D57424D807BD367 /* ALL_BUILD */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 92CEDF4B9FC64169AFEA2D60 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+			buildPhases = (
+				F82B59BC52974FDDA89F7638 /* CMake Rules */,
+			);
+			dependencies = (
+				CD15C4556E804CA088F9C6FF /* PBXTargetDependency */,
+				9DD57F1E227048B4BD02AB5E /* PBXTargetDependency */,
+			);
+			name = ALL_BUILD;
+			productName = ALL_BUILD;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		0413A6005282425084F779A2 /* demo.c in Sources */ = {isa = PBXBuildFile; fileRef = B00D1355346A4F34B89C403F /* demo.c */; };
+		0AABC2A234FF4421804B7264 /* setup.c in Sources */ = {isa = PBXBuildFile; fileRef = B194AA22AB4244E69912D297 /* setup.c */; };
+		0EBAADD3865A439CA0901C8E /* lab3d.c in Sources */ = {isa = PBXBuildFile; fileRef = 3580FD3D4E494C23B75709F2 /* lab3d.c */; };
+		27EA77300B0E4EBB8ED78262 /* oldlab3d.c in Sources */ = {isa = PBXBuildFile; fileRef = 61C67DAA89854647B9A023DB /* oldlab3d.c */; };
+		5A7605943FE44AF48EB0F2F5 /* init.c in Sources */ = {isa = PBXBuildFile; fileRef = 9FEE222017A448FD867E8664 /* init.c */; };
+		6B24960E597A48C780A2A1B9 /* graphx.c in Sources */ = {isa = PBXBuildFile; fileRef = 1013F266610A4CBBBCCC454F /* graphx.c */; };
+		7ED4457422DB32CB003BDDEE /* gamedata in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7ED4456D22DB319D003BDDEE /* gamedata */; };
+		7ED4457522DB32CE003BDDEE /* ken.bmp in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7ED4456E22DB31BE003BDDEE /* ken.bmp */; };
+		9C0525790CB24D3490D17DBE /* launcher.c in Sources */ = {isa = PBXBuildFile; fileRef = 86F8CF866BF5474FA763467F /* launcher.c */; };
+		B4271E56A1C34EDF8BB85472 /* subs.c in Sources */ = {isa = PBXBuildFile; fileRef = CE57D10B82944B27B6B14D95 /* subs.c */; };
+		E6619790D78E47CA93BE1E61 /* adlibemu.c in Sources */ = {isa = PBXBuildFile; fileRef = 8252DA3A102145138FB2A570 /* adlibemu.c */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		023FA6F3EE894E068103DFC2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BBB199639BCE4CA78FBFDB2D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8C5D86D6BB0A467FBEC3EB14;
+			remoteInfo = ZERO_CHECK;
+		};
+		52384C116F0B45E783CEA53A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BBB199639BCE4CA78FBFDB2D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 770FD5F260BD44C782732AF8;
+			remoteInfo = "Kens-Labyrinth";
+		};
+		8ABAF6B3A3424A219F06D816 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BBB199639BCE4CA78FBFDB2D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8C5D86D6BB0A467FBEC3EB14;
+			remoteInfo = ZERO_CHECK;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7ED4456F22DB31D7003BDDEE /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 12;
+			dstPath = kenfiles;
+			dstSubfolderSpec = 7;
+			files = (
+				7ED4457422DB32CB003BDDEE /* gamedata in CopyFiles */,
+				7ED4457522DB32CE003BDDEE /* ken.bmp in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		007406F1FC384AD38880F1BB /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		0818A646BC874154B8625944 /* Kens-Labyrinth.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = "Kens-Labyrinth.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1013F266610A4CBBBCCC454F /* graphx.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = graphx.c; path = src/graphx.c; sourceTree = SOURCE_ROOT; };
+		3580FD3D4E494C23B75709F2 /* lab3d.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = lab3d.c; path = src/lab3d.c; sourceTree = SOURCE_ROOT; };
+		36787686490F4BBF97BE4508 /* buildconfig.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = buildconfig.h; path = include/buildconfig.h; sourceTree = SOURCE_ROOT; };
+		36D094B4625F480B92B380AC /* Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = "macOS/CMakeFiles/Kens-Labyrinth.dir/Info.plist"; sourceTree = SOURCE_ROOT; };
+		376FC2A750A34733897C7CBB /* CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		422C05FAB98C40F087B310D9 /* lab3d.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = lab3d.h; path = include/lab3d.h; sourceTree = SOURCE_ROOT; };
+		61C67DAA89854647B9A023DB /* oldlab3d.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = oldlab3d.c; path = src/oldlab3d.c; sourceTree = SOURCE_ROOT; };
+		6D03E458F87D431FA7C6C6D6 /* adlibemu.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = adlibemu.h; path = include/adlibemu.h; sourceTree = SOURCE_ROOT; };
+		7ED4456D22DB319D003BDDEE /* gamedata */ = {isa = PBXFileReference; lastKnownFileType = folder; path = gamedata; sourceTree = "<group>"; };
+		7ED4456E22DB31BE003BDDEE /* ken.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = ken.bmp; sourceTree = "<group>"; };
+		8252DA3A102145138FB2A570 /* adlibemu.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = adlibemu.c; path = src/adlibemu.c; sourceTree = SOURCE_ROOT; };
+		86F8CF866BF5474FA763467F /* launcher.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = launcher.c; path = src/launcher.c; sourceTree = SOURCE_ROOT; };
+		9FEE222017A448FD867E8664 /* init.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = init.c; path = src/init.c; sourceTree = SOURCE_ROOT; };
+		B00D1355346A4F34B89C403F /* demo.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = demo.c; path = src/demo.c; sourceTree = SOURCE_ROOT; };
+		B194AA22AB4244E69912D297 /* setup.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = setup.c; path = src/setup.c; sourceTree = SOURCE_ROOT; };
+		C8F1F484B4F74B63BCEF51F2 /* demo.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = demo.h; path = include/demo.h; sourceTree = SOURCE_ROOT; };
+		CB084AC3E4C4479C84B2F271 /* ken.rc */ = {isa = PBXFileReference; explicitFileType = sourcecode; fileEncoding = 4; path = ken.rc; sourceTree = SOURCE_ROOT; };
+		CE57D10B82944B27B6B14D95 /* subs.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = subs.c; path = src/subs.c; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		04F065A50FBC4FCA8A574DCB /* Kens-Labyrinth */ = {
+			isa = PBXGroup;
+			children = (
+				1FD371CD6BAD4F4AA10DFE0F /* Header Files */,
+				28962416A37A4D21B7A74222 /* Source Files */,
+				ECDD12165AF647AD871C3DFD /* Resources */,
+				007406F1FC384AD38880F1BB /* CMakeLists.txt */,
+			);
+			name = "Kens-Labyrinth";
+			sourceTree = "<group>";
+		};
+		1FD371CD6BAD4F4AA10DFE0F /* Header Files */ = {
+			isa = PBXGroup;
+			children = (
+				6D03E458F87D431FA7C6C6D6 /* adlibemu.h */,
+				36787686490F4BBF97BE4508 /* buildconfig.h */,
+				C8F1F484B4F74B63BCEF51F2 /* demo.h */,
+				422C05FAB98C40F087B310D9 /* lab3d.h */,
+			);
+			name = "Header Files";
+			sourceTree = "<group>";
+		};
+		28962416A37A4D21B7A74222 /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				CB084AC3E4C4479C84B2F271 /* ken.rc */,
+				8252DA3A102145138FB2A570 /* adlibemu.c */,
+				B00D1355346A4F34B89C403F /* demo.c */,
+				1013F266610A4CBBBCCC454F /* graphx.c */,
+				9FEE222017A448FD867E8664 /* init.c */,
+				3580FD3D4E494C23B75709F2 /* lab3d.c */,
+				86F8CF866BF5474FA763467F /* launcher.c */,
+				61C67DAA89854647B9A023DB /* oldlab3d.c */,
+				B194AA22AB4244E69912D297 /* setup.c */,
+				CE57D10B82944B27B6B14D95 /* subs.c */,
+			);
+			name = "Source Files";
+			sourceTree = "<group>";
+		};
+		4687B680C2BF462C84860BE6 = {
+			isa = PBXGroup;
+			children = (
+				04F065A50FBC4FCA8A574DCB /* Kens-Labyrinth */,
+				D7471617AF834801964E201E /* ALL_BUILD */,
+				B5369195FE9743338248CA45 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B33C5E1BB4F7411A92ABB80B /* CMake Rules */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = "CMake Rules";
+			sourceTree = "<group>";
+		};
+		B5369195FE9743338248CA45 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0818A646BC874154B8625944 /* Kens-Labyrinth.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D7471617AF834801964E201E /* ALL_BUILD */ = {
+			isa = PBXGroup;
+			children = (
+				B33C5E1BB4F7411A92ABB80B /* CMake Rules */,
+				376FC2A750A34733897C7CBB /* CMakeLists.txt */,
+			);
+			name = ALL_BUILD;
+			sourceTree = "<group>";
+		};
+		ECDD12165AF647AD871C3DFD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				7ED4456E22DB31BE003BDDEE /* ken.bmp */,
+				7ED4456D22DB319D003BDDEE /* gamedata */,
+				36D094B4625F480B92B380AC /* Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		770FD5F260BD44C782732AF8 /* Kens-Labyrinth */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D19EA6663D6849A5822BD348 /* Build configuration list for PBXNativeTarget "Kens-Labyrinth" */;
+			buildPhases = (
+				DB2AB68078AD46519B56135F /* Sources */,
+				7ED4456F22DB31D7003BDDEE /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7A81DE595DDC4BA4A5E68733 /* PBXTargetDependency */,
+			);
+			name = "Kens-Labyrinth";
+			productName = "Kens-Labyrinth";
+			productReference = 0818A646BC874154B8625944 /* Kens-Labyrinth.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BBB199639BCE4CA78FBFDB2D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1020;
+				TargetAttributes = {
+					770FD5F260BD44C782732AF8 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = D6B03AECD64D405BB3B759FD /* Build configuration list for PBXProject "lab3d-sdl" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 4687B680C2BF462C84860BE6;
+			projectDirPath = ../;
+			projectRoot = "";
+			targets = (
+				90B61ABA1D57424D807BD367 /* ALL_BUILD */,
+				770FD5F260BD44C782732AF8 /* Kens-Labyrinth */,
+				8C5D86D6BB0A467FBEC3EB14 /* ZERO_CHECK */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		C4AC103210114D85A11FFACA /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/cameron/Downloads/lab3d-sdl/macOS -f /Users/cameron/Downloads/lab3d-sdl/macOS/CMakeScripts/ZERO_CHECK_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
+			showEnvVarsInLog = 0;
+		};
+		F82B59BC52974FDDA89F7638 /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/cameron/Downloads/lab3d-sdl/macOS -f /Users/cameron/Downloads/lab3d-sdl/macOS/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DB2AB68078AD46519B56135F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E6619790D78E47CA93BE1E61 /* adlibemu.c in Sources */,
+				0413A6005282425084F779A2 /* demo.c in Sources */,
+				6B24960E597A48C780A2A1B9 /* graphx.c in Sources */,
+				5A7605943FE44AF48EB0F2F5 /* init.c in Sources */,
+				0EBAADD3865A439CA0901C8E /* lab3d.c in Sources */,
+				9C0525790CB24D3490D17DBE /* launcher.c in Sources */,
+				27EA77300B0E4EBB8ED78262 /* oldlab3d.c in Sources */,
+				0AABC2A234FF4421804B7264 /* setup.c in Sources */,
+				B4271E56A1C34EDF8BB85472 /* subs.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7A81DE595DDC4BA4A5E68733 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8C5D86D6BB0A467FBEC3EB14 /* ZERO_CHECK */;
+			targetProxy = 8ABAF6B3A3424A219F06D816 /* PBXContainerItemProxy */;
+		};
+		9DD57F1E227048B4BD02AB5E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 770FD5F260BD44C782732AF8 /* Kens-Labyrinth */;
+			targetProxy = 52384C116F0B45E783CEA53A /* PBXContainerItemProxy */;
+		};
+		CD15C4556E804CA088F9C6FF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8C5D86D6BB0A467FBEC3EB14 /* ZERO_CHECK */;
+			targetProxy = 023FA6F3EE894E068103DFC2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		07F09A10F77E481594F9B193 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = RelWithDebInfo;
+		};
+		19EDF7B1FD71443085E5A909 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk;
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS/build";
+			};
+			name = Debug;
+		};
+		1A62E669732440468337DC69 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = Debug;
+		};
+		3BE1A8E0938D454AB5343D20 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				FRAMEWORK_SEARCH_PATHS = /Library/Frameworks;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
+					KEN_64BIT,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (
+					"/Users/cameron/Downloads/lab3d-sdl/include",
+					"/Users/cameron/Downloads/lab3d-sdl/src",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2_image/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/zlib/include",
+					/opt/X11/include,
+				);
+				INFOPLIST_FILE = "/Users/cameron/Downloads/lab3d-sdl/macOS/CMakeFiles/Kens-Labyrinth.dir/Info.plist";
+				INSTALL_PATH = "";
+				LD_RUNPATH_SEARCH_PATHS = /Library/Frameworks;
+				LIBRARY_SEARCH_PATHS = "";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = "    -DNDEBUG  ";
+				OTHER_LDFLAGS = (
+					"-Wl,-search_paths_first",
+					"-Wl,-headerpad_max_install_names",
+					"-framework",
+					OpenGL,
+					"-framework",
+					OpenGL,
+					"-framework",
+					SDL2,
+					"-framework",
+					SDL2_image,
+					/usr/lib/libz.dylib,
+					"-framework",
+					CoreFoundation,
+				);
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = "Kens-Labyrinth";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = Release;
+		};
+		4DB932C6979A4E578811307E /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk;
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS/build";
+			};
+			name = RelWithDebInfo;
+		};
+		53F6039A944C4E71A22BF1B7 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				FRAMEWORK_SEARCH_PATHS = /Library/Frameworks;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
+					KEN_64BIT,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (
+					"/Users/cameron/Downloads/lab3d-sdl/include",
+					"/Users/cameron/Downloads/lab3d-sdl/src",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2_image/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/zlib/include",
+					/opt/X11/include,
+				);
+				INFOPLIST_FILE = "/Users/cameron/Downloads/lab3d-sdl/macOS/CMakeFiles/Kens-Labyrinth.dir/Info.plist";
+				INSTALL_PATH = "";
+				LD_RUNPATH_SEARCH_PATHS = /Library/Frameworks;
+				LIBRARY_SEARCH_PATHS = "";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = "    -DNDEBUG  ";
+				OTHER_LDFLAGS = (
+					"-Wl,-search_paths_first",
+					"-Wl,-headerpad_max_install_names",
+					"-framework",
+					OpenGL,
+					"-framework",
+					OpenGL,
+					"-framework",
+					SDL2,
+					"-framework",
+					SDL2_image,
+					/usr/lib/libz.dylib,
+					"-framework",
+					CoreFoundation,
+				);
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = "Kens-Labyrinth";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = MinSizeRel;
+		};
+		81DA4A342C504B42A711CB65 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = MinSizeRel;
+		};
+		8E8F94FEE981412CACF7BD9B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				FRAMEWORK_SEARCH_PATHS = /Library/Frameworks;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
+					KEN_64BIT,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (
+					"/Users/cameron/Downloads/lab3d-sdl/include",
+					"/Users/cameron/Downloads/lab3d-sdl/src",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2_image/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/zlib/include",
+					/opt/X11/include,
+				);
+				INFOPLIST_FILE = "/Users/cameron/Downloads/lab3d-sdl/macOS/CMakeFiles/Kens-Labyrinth.dir/Info.plist";
+				INSTALL_PATH = "";
+				LD_RUNPATH_SEARCH_PATHS = /Library/Frameworks;
+				LIBRARY_SEARCH_PATHS = "";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = "    ";
+				OTHER_LDFLAGS = (
+					"-Wl,-search_paths_first",
+					"-Wl,-headerpad_max_install_names",
+					"-framework",
+					OpenGL,
+					"-framework",
+					OpenGL,
+					"-framework",
+					SDL2,
+					"-framework",
+					SDL2_image,
+					/usr/lib/libz.dylib,
+					"-framework",
+					CoreFoundation,
+				);
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = "Kens-Labyrinth";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = Debug;
+		};
+		93A56C8BC0C64A5E97F465BC /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = RelWithDebInfo;
+		};
+		A482FF36517A48B980CB20C3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = Debug;
+		};
+		AEB1188D41C04BCAAC92D978 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = MinSizeRel;
+		};
+		B20D31124FDE44D5901FB798 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk;
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS/build";
+			};
+			name = MinSizeRel;
+		};
+		B4F70EC2370A4FE5B1844AF4 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				EXECUTABLE_PREFIX = "";
+				EXECUTABLE_SUFFIX = "";
+				FRAMEWORK_SEARCH_PATHS = /Library/Frameworks;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 2;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
+					KEN_64BIT,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (
+					"/Users/cameron/Downloads/lab3d-sdl/include",
+					"/Users/cameron/Downloads/lab3d-sdl/src",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/SDL2_image/include",
+					"/Users/cameron/Downloads/lab3d-sdl/external/zlib/include",
+					/opt/X11/include,
+				);
+				INFOPLIST_FILE = "/Users/cameron/Downloads/lab3d-sdl/macOS/CMakeFiles/Kens-Labyrinth.dir/Info.plist";
+				INSTALL_PATH = "";
+				LD_RUNPATH_SEARCH_PATHS = /Library/Frameworks;
+				LIBRARY_SEARCH_PATHS = "";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CFLAGS = "       -DNDEBUG  ";
+				OTHER_LDFLAGS = (
+					"-Wl,-search_paths_first",
+					"-Wl,-headerpad_max_install_names",
+					"-framework",
+					OpenGL,
+					"-framework",
+					OpenGL,
+					"-framework",
+					SDL2,
+					"-framework",
+					SDL2_image,
+					/usr/lib/libz.dylib,
+					"-framework",
+					CoreFoundation,
+				);
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = "Kens-Labyrinth";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = RelWithDebInfo;
+		};
+		C648A019F38F4C66941BED5E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = Release;
+		};
+		D2D8C519FECD468CB4DBC6C0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = x86_64;
+				SDKROOT = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk;
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS/build";
+			};
+			name = Release;
+		};
+		FDA5242625014856ACA1426E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'";
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/cameron/Downloads/lab3d-sdl/macOS";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+					"$(inherited)",
+				);
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		90E97F3D68324568B2E9264E /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1A62E669732440468337DC69 /* Debug */,
+				FDA5242625014856ACA1426E /* Release */,
+				81DA4A342C504B42A711CB65 /* MinSizeRel */,
+				93A56C8BC0C64A5E97F465BC /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		92CEDF4B9FC64169AFEA2D60 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A482FF36517A48B980CB20C3 /* Debug */,
+				C648A019F38F4C66941BED5E /* Release */,
+				AEB1188D41C04BCAAC92D978 /* MinSizeRel */,
+				07F09A10F77E481594F9B193 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D19EA6663D6849A5822BD348 /* Build configuration list for PBXNativeTarget "Kens-Labyrinth" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8E8F94FEE981412CACF7BD9B /* Debug */,
+				3BE1A8E0938D454AB5343D20 /* Release */,
+				53F6039A944C4E71A22BF1B7 /* MinSizeRel */,
+				B4F70EC2370A4FE5B1844AF4 /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D6B03AECD64D405BB3B759FD /* Build configuration list for PBXProject "lab3d-sdl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				19EDF7B1FD71443085E5A909 /* Debug */,
+				D2D8C519FECD468CB4DBC6C0 /* Release */,
+				B20D31124FDE44D5901FB798 /* MinSizeRel */,
+				4DB932C6979A4E578811307E /* RelWithDebInfo */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BBB199639BCE4CA78FBFDB2D /* Project object */;
+}

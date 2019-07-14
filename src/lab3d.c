@@ -590,7 +590,7 @@ int main(int argc,char **argv)
         gamelaunchermenu();
         initgameversion();
         SDL_CloseAudioDevice(audiodevice);
-        #ifndef __SWITCH__
+        #if !defined(__SWITCH__) && !defined(__APPLE__) // macOS doesn't like this in fullscreen
         SDL_DestroyWindow(mainwindow);
         SDL_GL_DeleteContext(maincontext);
         #endif
