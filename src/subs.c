@@ -632,6 +632,8 @@ void loadtables()
 {
     K_INT16 fil;
 
+    printf("%s", gameroot);
+
     sprintf(filepath, "%stables.dat", gameroot);
     sprintf(filepathUpper, "%sTABLES.DAT", gameroot);
     if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||
