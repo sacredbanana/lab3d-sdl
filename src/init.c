@@ -610,7 +610,7 @@ void initgameversion()
     CFURLRef appUrlRef = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("kenfiles"), NULL, NULL);
     CFStringRef filePathRef = CFURLCopyPath(appUrlRef);
     const char* filePath = CFStringGetCStringPtr(filePathRef, kCFStringEncodingUTF8);
-    sprintf(gameroot, "%s/", filePath);
+    sprintf(gameroot, "%s", filePath);
     
     // Release references
     CFRelease(filePathRef);
