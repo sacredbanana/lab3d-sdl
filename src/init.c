@@ -225,11 +225,7 @@ void initvideo()
 
     fprintf(stderr,"Activating video...\n");
 
-    if (mainwindow != NULL) {
-        #ifndef __SWITCH__
-        fatal_error("window already created (init)");
-        #endif
-    } else {
+    if (mainwindow == NULL) {
         if (fullscreen) {
             mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
                                       0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
@@ -237,10 +233,9 @@ void initvideo()
             mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       screenwidth, screenheight, SDL_WINDOW_OPENGL);
         }
-    }
-
-    if (mainwindow == NULL) {
-        fatal_error("Video mode set failed.");
+        if (mainwindow == NULL) {
+            fatal_error("Video mode set failed.");
+        }
     }
 
     SDL_GetWindowSize(mainwindow, &screenwidth, &screenheight);
@@ -607,31 +602,45 @@ void inittablesandsettings()
 void initgameversion()
 {
     int fil;
+    
+    int isapple = 0;
+    
+#ifdef __APPLE__
+    isapple = 1;
+    CFURLRef appUrlRef = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("kenfiles"), NULL, NULL);
+    CFStringRef filePathRef = CFURLCopyPath(appUrlRef);
+    const char* filePath = CFStringGetCStringPtr(filePathRef, kCFStringEncodingUTF8);
+    sprintf(gameroot, "%s/", filePath);
+    
+    // Release references
+    CFRelease(filePathRef);
+    CFRelease(appUrlRef);
+#endif
 
     // Check if the gamedata directory exists
     const char* directory = "gamedata";
     struct stat sb;
 
-    if (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+    if (isapple || (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode))) {
         legacyload = 0;
         switch (lab3dversion) {
             case KENS_LABYRINTH_1_0:
-            sprintf(gameroot, "%s", "gamedata/Ken1.0/");
+            sprintf(gameroot, "%s%s", gameroot, "gamedata/Ken1.0/");
             rnumwalls=192;
             fprintf(stderr, "Ken's Labyrinth version 1.0 selected.\n");
             break;
             case KENS_LABYRINTH_1_1:
-            sprintf(gameroot, "%s", "gamedata/Ken1.1/");
+            sprintf(gameroot, "%s%s", gameroot, "gamedata/Ken1.1/");
             rnumwalls=0xe0;
             fprintf(stderr, "Ken's Labyrinth version 1.1 selected.\n");
             break;
             case KENS_LABYRINTH_2_0:
-            sprintf(gameroot, "%s", "gamedata/Ken2.0/");
+            sprintf(gameroot, "%s%s", gameroot, "gamedata/Ken2.0/");
             rnumwalls=448;
             fprintf(stderr, "Ken's Labyrinth version 2.0 selected.\n");
             break;
             case KENS_LABYRINTH_2_1:
-            sprintf(gameroot, "%s", "gamedata/Ken2.1/");
+            sprintf(gameroot, "%s%s", gameroot, "gamedata/Ken2.1/");
             rnumwalls=448;
             fprintf(stderr, "Ken's Labyrinth version 2.1 selected.\n");
             break;

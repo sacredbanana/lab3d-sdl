@@ -1,5 +1,9 @@
 #include "buildconfig.h"
 
+#ifdef __APPLE__
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 #include <stdint.h>
 #if INTPTR_MAX == INT64_MAX
 #define IS64BIT
@@ -497,7 +501,7 @@ EXTERN K_INT16 posz, hvel, lastunlock, lastshoot, saidwelcome;
 EXTERN K_UINT16 convavailpages, convwalls;
 EXTERN unsigned char gamehead[8][27], gamexist[8];
 EXTERN K_INT16 legacyload;
-EXTERN char gameroot[32], filepath[64], filepathUpper[32];
+EXTERN char gameroot[512], filepath[1024], filepathUpper[512];
 EXTERN K_INT16 texturecreationneeded;
 EXTERN K_INT16 stereo;
 
@@ -909,8 +913,7 @@ EXTERN double gammalevel;
 
 /* Data from wallparam.ini */
 
-
-EXTERN int shadow[numwalls];
+EXTERN int shadow2[numwalls]; // Renamed to avoid conflict with shadow in CoreFoundation
 EXTERN double walltexcoord[numwalls][2];
 
 #if SDL_BYTE_ORDER==SDL_LITTLE_ENDIAN
