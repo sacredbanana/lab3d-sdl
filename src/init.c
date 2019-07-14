@@ -604,6 +604,8 @@ void initgameversion()
     int fil;
     
     int isapple = 0;
+
+    gameroot[0] = 0;
     
 #ifdef __APPLE__
     isapple = 1;
