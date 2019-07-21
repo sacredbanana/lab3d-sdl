@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #if INTPTR_MAX == INT64_MAX
-#define IS64BIT
+#define KEN_64BIT
 #elif INTPTR_MAX != INT32_MAX
 #error Unknown pointer size or missing size macros!
 #endif
