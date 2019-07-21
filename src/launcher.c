@@ -40,6 +40,41 @@ void whatsnew1() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
+           "Version 4.1.1 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Critical fix for Switch");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "Versions above 4.0.0 were untested");
+    textprint(30, 76, 96);
+
+    strcpy(textbuf, "on the Nintendo Switch and it crashes");
+    textprint(30, 86, 96);
+
+    strcpy(textbuf, "immediately after the game launches.");
+    textprint(30, 96, 96);
+
+    strcpy(textbuf, "Now it will correctly use a 64 bit");
+    textprint(30, 106, 96);
+
+    strcpy(textbuf, "integer pointer instead of a 32 bit");
+    textprint(30, 116, 96);
+
+    strcpy(textbuf, "one.");
+    textprint(30, 126, 96);
+
+    strcpy(textbuf, "Sorry about that!");
+    textprint(30, 136, 96);
+
+    finalisemenu();
+    pressakey();
+}
+
+void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
            "Version 4.1.0 Release");
     textprint(30, 48, 80);
 
@@ -74,7 +109,7 @@ void whatsnew1() {
     pressakey();
 }
 
-void whatsnew2() {
+void whatsnew3() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -118,7 +153,7 @@ void whatsnew2() {
     pressakey();
 }
 
-void whatsnew3() {
+void whatsnew4() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -159,7 +194,7 @@ void whatsnew3() {
     pressakey();
 }
 
-void whatsnew4() {
+void whatsnew5() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -240,6 +275,7 @@ void gamelaunchermenu() {
                         whatsnew2();
                         whatsnew3();
                         whatsnew4();
+                        whatsnew5();
                         break;
                     case 5:
                         setupmenu(0);
