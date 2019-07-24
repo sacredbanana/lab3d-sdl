@@ -8,7 +8,7 @@ through Adlib emulation or MIDI (MIDI only on Windows, Linux and other
 operating systems with OSS-compatible sound APIs).
 
 This code has been tested on Windows 98, Windows ME, Windows XP,
-SuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8),
+Windows 10, macOS Mojave, macOS Catalina, SuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8),
 FreeBSD 4.7 and Nintendo Switch.
 
 Improvements over the original Ken's Labyrinth:
@@ -23,6 +23,12 @@ Improvements over the original Ken's Labyrinth:
 - Adlib emulation.
 - Game controller support.
 - Many bug fixes.
+
+<h1>macOS and Linux systems note:</h1>
+Before the game will run you will need to install SDL2 and SDL2_Image runtime binaries on your system.
+
+
+
 
 Installation instructions can be found in install.txt.
 
