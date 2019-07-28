@@ -40,7 +40,39 @@ void whatsnew1() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
-           "Version 4.1.1 Release");
+        "Version 4.1.2 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Memory errors fixed");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "A bug in the Ken's Labyrinth 1.x");
+    textprint(30, 76, 96);
+
+    strcpy(textbuf, "welcome screen that appears before");
+    textprint(30, 86, 96);
+
+    strcpy(textbuf, "every stage caused an access violation");
+    textprint(30, 96, 96);
+
+    strcpy(textbuf, "which depending on which platform and");
+    textprint(30, 106, 96);
+
+    strcpy(textbuf, "build you're running could cause it");
+    textprint(30, 116, 96);
+
+    strcpy(textbuf, "to crash.");
+    textprint(30, 126, 96);
+
+    finalisemenu();
+    pressakey();
+}
+
+void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.1.1 Release");
     textprint(30, 48, 80);
 
     strcpy(textbuf, "Critical fix for Switch");
@@ -71,7 +103,7 @@ void whatsnew1() {
     pressakey();
 }
 
-void whatsnew2() {
+void whatsnew3() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -109,7 +141,7 @@ void whatsnew2() {
     pressakey();
 }
 
-void whatsnew3() {
+void whatsnew4() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -153,7 +185,7 @@ void whatsnew3() {
     pressakey();
 }
 
-void whatsnew4() {
+void whatsnew5() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -194,7 +226,7 @@ void whatsnew4() {
     pressakey();
 }
 
-void whatsnew5() {
+void whatsnew6() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -276,6 +308,7 @@ void gamelaunchermenu() {
                         whatsnew3();
                         whatsnew4();
                         whatsnew5();
+                        whatsnew6();
                         break;
                     case 5:
                         setupmenu(0);
