@@ -1,3 +1,6 @@
+4.2.2: 2019-07-28
+* Memory errors caused by bug in the welcome screen for each level in Ken 1.x has now been fixed
+
 4.1.1: 2019-07-21
 * Instacrash on the Nintendo Switch fixed
 

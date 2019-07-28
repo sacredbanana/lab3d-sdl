@@ -2518,7 +2518,7 @@ K_INT16 oldintroduction(void)
         tempbuf[i*3+2] = (i*63)>>4;
     }
     updateoverlaypalette(240,16,tempbuf);
-    for(m=0;m<=320;m+=64)
+    /*for(m=0;m<=320;m+=64)
     {
         pageoffset = 22320;
         lastpageoffset = 22320;
@@ -2532,6 +2532,7 @@ K_INT16 oldintroduction(void)
             lastpageoffset += 5760;
         }
     }
+    */
     pageoffset = 22320;
     lastpageoffset = 22320;
     boardnum = -1;

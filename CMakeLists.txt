@@ -6,7 +6,7 @@ project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
 set (LAB3D_VERSION_MINOR 1)
-set (LAB3D_VERSION_PATCH 1)
+set (LAB3D_VERSION_PATCH 2)
 
 if (APPLE OR WIN32)
     set(KEN_EXE_NAME "Kens-Labyrinth")
