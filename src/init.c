@@ -514,6 +514,8 @@ void initgraphics()
 {
     K_INT16 i, j, k, oclockspeed;
 
+    glDrawBuffer(GL_BACK);
+
     texturecreationneeded = 1;
 
     fprintf(stderr,"Loading intro pictures...\n");

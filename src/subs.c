@@ -1635,20 +1635,15 @@ void loadwalls(int replace)
                 lborder[i+1] = 0;
                 rborder[i+1] = 4096;
             }
-            if ((i < 127) && ((i&1)==0)) {
+            if (i < 127) {
                 if (debugmode)
                     fprintf(stderr, "Trying to draw screen buffer.\n");
-                glDrawBuffer(GL_BACK);
                 fade(64+(i>>1));
                 SetVisibleScreenOffset(0);
                 if (debugmode)
                     fprintf(stderr, "Screen buffer draw OK.\n");
             } else {
-                glDrawBuffer(GL_FRONT);
-
-                if (i==128) {
                     fade(63);
-                }
             }
 
             j=(160-(rnumwalls>>2)+i);
@@ -1661,7 +1656,7 @@ void loadwalls(int replace)
                     j-=rnumwalls>>1;
                     screenbuffer[screenbufferwidth*219+j]=0;
                 }
-                UploadPartialOverlay(j, 219, 1, 1);
+                UploadPartialOverlay(j, 199, 1, 1);
             } else {
                 if (i < (rnumwalls>>1)) {
                     screenbuffer[screenbufferwidth*199+j]=255;
@@ -1678,12 +1673,9 @@ void loadwalls(int replace)
             }
 
             /* Use double buffer when fading, single buffer when not.
-               Yes, I know I'm too clever for my own good. */
-
-            if ((i<127) && ((i&1)==0))
-                SDL_GL_SwapWindow(mainwindow);
-            else
-                glFlush();
+               Yes, I know I'm too clever for my own good.
+               Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
+            SDL_GL_SwapWindow(mainwindow);
             cwparam=&wparams[i];
             int minfilt=cwparam->minfilt;
             int magfilt=cwparam->magfilt;
@@ -1845,7 +1837,6 @@ pressakey();
         }
 
     }
-    glDrawBuffer(GL_BACK);
 }
 
 #define COPYLINE                                \
@@ -2750,7 +2741,6 @@ void introduction(K_INT16 songnum)
     fadehurtval = 0;
     visiblescreenyoffset=0;
     wipeoverlay(0, 0, 361, statusbaryoffset);
-    glDrawBuffer(GL_BACK);
     statusbaralldraw();
 }
 
@@ -4201,6 +4191,8 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
     int left, right, top, bottom, i, j;
     int lr, rr, tr, br;
 
+    static Uint64 lol = 0;
+
     if (!ClipToBuffer(&x, &y, &w, &h))
         return;
 
@@ -4808,7 +4800,6 @@ void hiscorecheck()
             return;
     }
 
-    glDrawBuffer(GL_FRONT);
     wipeoverlay(0, 0, 361, statusbaryoffset);
     lseek(fil, (long)(boardnum<<7), SEEK_SET);
     read(fil, &tempbuf[0], 128);
@@ -4877,6 +4868,7 @@ void hiscorecheck()
         textprint(215, 145+1, (char)35);
     if ((scorecount > hiscore[7]) && (cheated == 0))
     {
+        picrot(posx, posy, posz, ang);
         if (hiscorenamstat == 0) {
             getname();
         } else
@@ -5034,8 +5026,6 @@ void hiscorecheck()
     sprintf(&textbuf[0], "Press any key to continue.");
     textprint(180-(strlen(textbuf)<<2), 135+1, (char)65);
     finalisemenu();
-    glFlush();
-    glDrawBuffer(GL_BACK);
     while ((getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
@@ -5090,6 +5080,8 @@ void getname()
         textbuf[j] = 8;
     textbuf[12] = 0;
     textprint(94, 145+1, (char)0);
+    SDL_GL_SwapWindow(mainwindow);
+    textprint(94, 145 + 1, (char)0);
     j = 0;
 /*    }
       else
@@ -5105,10 +5097,12 @@ void getname()
 
     ch = 0;
     finalisemenu();
-    glDrawBuffer(GL_FRONT);
     sprintf(&textbuf[0], "Please type your name!");
 
-    textprint(180-(strlen(textbuf)<<2), 135+1, (char)161);
+    textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
+    SDL_GL_SwapWindow(mainwindow);
+    textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
+
     ch = 0;
     clearkeydefstat(ACTION_MENU);
     clearkeydefstat(ACTION_MENU_CANCEL);
@@ -5130,13 +5124,13 @@ void getname()
             textbuf[0] = 95;
             textbuf[1] = 0;
             textprint(94+(j<<3), 145, (char)97);
-            glFlush();
-            SDL_Delay(10); /* Just to avoid soaking all CPU. */
+            SDL_GL_SwapWindow(mainwindow);
+            textprint(94 + (j << 3), 145, (char)97);
+            SDL_Delay(8); /* Just to avoid soaking all CPU. */
             textbuf[0] = 8;
             textbuf[1] = 0;
             textprint(94+(j<<3), 145, (char)0);
-            glFlush();
-            SDL_Delay(10); /* Just to avoid soaking all CPU. */
+            SDL_Delay(8); /* Just to avoid soaking all CPU. */
         }
         if (uni == 1) {
             if (ch == SDLK_DELETE)
@@ -5169,6 +5163,7 @@ void getname()
                     j++;
             }
         }
+        SDL_GL_SwapWindow(mainwindow);
     }
     SDL_StopTextInput();
     setnewkeystatus(SDLK_ESCAPE, 0);
@@ -5196,8 +5191,10 @@ void getname()
             for(i=0;i<9;i++)
                 textbuf[i] = hiscorenam[i];
             textbuf[9] = 0;
-            if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)
-                textprint(70, 20+statusbaryoffset, (char)177);
+            if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1) {
+                textprint(70, 20 + statusbaryoffset, (char)177);
+                SDL_GL_SwapWindow(mainwindow);
+            }
         }
     }
 }
@@ -5359,39 +5356,39 @@ void drawmainmenu() {
 
 K_INT16 mainmenu()
 {
-    K_INT16 j, k, done;
+    K_INT16 j, k, done = 0;
 
     spriteyoffset=0;
+
+    picrot(posx, posy, posz, ang);
 
     ksayui(27);
     fade(63);
     if (sortcnt == -1) {
         /* Emulating the original a bit too closely, this... */
 
-        glDrawBuffer(GL_BACK);
         spriteyoffset=20;
         drawintroduction();
         spriteyoffset=0;
         SDL_GL_SwapWindow(mainwindow);
     } else {
-        glDrawBuffer(GL_FRONT);
         ShowStatusBar();
     }
 
-    glDrawBuffer(GL_FRONT);
-
-    done = 0;
+    // Must be applied to both front and back buffers
     if (sortcnt != -1)
-    {
         wipeoverlay(0, 0, 361, statusbaryoffset);
-    }
+    drawmainmenu();
+    SDL_GL_SwapWindow(mainwindow);
+    if (sortcnt != -1)
+        wipeoverlay(0, 0, 361, statusbaryoffset);
+    drawmainmenu();
+
     j = scrsize;
     if (j < 18000)
         j = 18000;
     if (vidmode == 1)
         j = 21600;
-
-    drawmainmenu();
 
     while ((mainmenuplace >= 0) && (done == 0))
     {
@@ -5438,31 +5435,25 @@ K_INT16 mainmenu()
             if (mainmenuplace == MAINMENU_EXIT) done = areyousure();
             if (done == 0)
             {
+                checkGLStatus();
                 /* Redraw whatever was beneath the menu. Double buffer to
                    avoid annoying flicker. */
-                if (sortcnt == -1) {
-                    spriteyoffset=20;
-                    glDrawBuffer(GL_BACK);
+                for (int i = 0; i < 2; i++) {
+                    if (sortcnt == -1) {
+                        spriteyoffset=20;
+                        kgif(1);
+                        drawintroduction();
+                        spriteyoffset=0;
+                        drawmainmenu();
+                    }
+                    else {
+                        wipeoverlay(0, 0, 361, statusbaryoffset);
+                        statusbaralldraw();
+                        if (compass > 0) showcompass(ang);
+                        picrot(posx, posy, posz, ang);
+                        drawmainmenu();
+                    }
                     checkGLStatus();
-                    kgif(1);
-                    drawintroduction();
-                    spriteyoffset=0;
-                    drawmainmenu();
-                    checkGLStatus();
-                    SDL_GL_SwapWindow(mainwindow);
-                    glDrawBuffer(GL_FRONT);
-                }
-                else {
-                    glDrawBuffer(GL_BACK);
-                    checkGLStatus();
-                    wipeoverlay(0, 0, 361, statusbaryoffset);
-                    statusbaralldraw();
-                    if (compass>0) showcompass(ang);
-                    picrot(posx, posy, posz, ang);
-                    drawmainmenu();
-                    checkGLStatus();
-                    SDL_GL_SwapWindow(mainwindow);
-                    glDrawBuffer(GL_FRONT);
                 }
             }
         }
@@ -5476,7 +5467,6 @@ K_INT16 mainmenu()
     j = mainmenuplace;
     if (mainmenuplace < 0)
         mainmenuplace = (-mainmenuplace)-1;
-    glDrawBuffer(GL_BACK);
     return(j);
 }
 
@@ -5490,7 +5480,6 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
     int mousx, mousy;
     K_INT16 bstatus, obstatus;
 
-    glDrawBuffer(GL_FRONT);
     if (vidmode == 0)
         n = 0;
     else
@@ -5533,48 +5522,57 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
             bstatus=readmouse(&mousx, &mousy);
         }
 
+        Direction menuDirection = DIRECTION_NONE;
         if (repeatkeydef(ACTION_MENU_UP1) || repeatkeydef(ACTION_MENU_UP2) || (mousy < -128))
-        {
-            if (mousy < -128)
-                mousy += 128;
-            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-                wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
-            else
-                statusbardraw(16, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
-            nowselector--;
+            menuDirection = DIRECTION_UP;
+        else if (repeatkeydef(ACTION_MENU_DOWN1) || repeatkeydef(ACTION_MENU_DOWN2) || (mousy > 128))
+            menuDirection = DIRECTION_DOWN;
+
+        if (mousy < -128)
+            mousy += 128;
+        if (mousy > 128)
+            mousy -= 128;
+
+        if (menuDirection != DIRECTION_NONE) {
             ksayui(27);
+            for (int i = 0; i < 2; i++) {
+                if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
+                    wipeoverlay(xoffs + 39 - n, nowselector * 12 + yoffs + n - 1, 15, 15);
+                else
+                    statusbardraw(16, 15, 13, 13, xoffs + 20 - n, nowselector * 12 + yoffs + n - 1 + 1, menu);
+                SDL_GL_SwapWindow(mainwindow);
+            }
+        }
+
+        SDL_GL_SwapWindow(mainwindow);
+
+        switch (menuDirection) {
+        case DIRECTION_NONE:
+            if (getkeydefstatlock(ACTION_MENU) || getkeydefstatlock(ACTION_MENU_CANCEL))
+                esckeystate |= 1;
+            if (getkeydefstatlock(ACTION_MENU_SELECT1) || getkeydefstatlock(ACTION_MENU_SELECT2) || getkeydefstatlock(ACTION_MENU_SELECT3))
+                esckeystate |= 2;
+
+            if ((obstatus == 0) && (bstatus > 0))
+                esckeystate |= (bstatus ^ 3);
+            break;
+        case DIRECTION_UP:
+            nowselector--;
             if (nowselector < 0)
                 nowselector = totselectors-1;
-        }
-
-        if (repeatkeydef(ACTION_MENU_DOWN1) || repeatkeydef(ACTION_MENU_DOWN2) || (mousy > 128))
-        {
-            if (mousy > 128)
-                mousy -= 128;
-            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-                wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
-            else
-                statusbardraw(16, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
+            break;
+        case DIRECTION_DOWN:
             nowselector++;
-            ksayui(27);
             if (nowselector == totselectors)
                 nowselector = 0;
+            break;
         }
-        if (getkeydefstatlock(ACTION_MENU) || getkeydefstatlock(ACTION_MENU_CANCEL))
-            esckeystate |= 1;
-        if (getkeydefstatlock(ACTION_MENU_SELECT1) || getkeydefstatlock(ACTION_MENU_SELECT2) || getkeydefstatlock(ACTION_MENU_SELECT3))
-            esckeystate |= 2;
-
-        if ((obstatus == 0) && (bstatus > 0))
-            esckeystate |= (bstatus^3);
-        glFlush();
-        /*SDL_GL_SwapWindow(mainwindow);*/
     }
     ksayui(27);
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-        wipeoverlay(xoffs+39-n, nowselector*12+yoffs+n-1, 15, 15);
+       wipeoverlay(xoffs + 39 - n, nowselector * 12 + yoffs + n - 1, 15, 15);
     else
-        statusbardraw(36-n, 15, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, menu);
+        statusbardraw(36 - n, 15, 13, 13, xoffs + 20 - n, nowselector * 12 + yoffs + n - 1 + 1, menu);
     if ((esckeystate&2) > 0)
         return(nowselector);
     else
@@ -5583,6 +5581,8 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
 
 void finalisemenu() {
     menuing=0;
+    UploadPartialOverlay(menuleft, menutop, menuwidth, menuheight);
+    SDL_GL_SwapWindow(mainwindow);
     UploadPartialOverlay(menuleft, menutop, menuwidth, menuheight);
 }
 
@@ -5791,7 +5791,6 @@ void sodamenu()
     K_INT16 n, valid;
 
     wipeoverlay(0, 0, 361, statusbaryoffset);
-    glDrawBuffer(GL_FRONT);
     ototclocker = totalclock;
     if (vidmode == 0)
         n = 0;
@@ -5942,7 +5941,6 @@ void sodamenu()
     SDL_LockMutex(timermutex);
     clockspeed = 0;
     SDL_UnlockMutex(timermutex);
-    glDrawBuffer(GL_BACK);
     wipeoverlay(0, 0, 361, statusbaryoffset);
     linecompare(statusbar);
 }
