@@ -1825,7 +1825,6 @@ void setup(void) {
         kgif(1);
         fade(63);
     }
-    glDrawBuffer(GL_FRONT);
 
     setupmenu(0);
 

@@ -34,7 +34,6 @@ void oldmain(void)
 
     clockspd=0;
 
-    glDrawBuffer(GL_BACK);
     settransferpalette();
     lastunlock = 1;
     lastshoot = 1;
@@ -1897,10 +1896,8 @@ void oldmain(void)
                     if (m) {
                         if (hiscorenamstat == 0)
                         {
-                            glDrawBuffer(GL_FRONT);
                             drawinputbox();
                             getname();
-                            glDrawBuffer(GL_BACK);
                         }
                         oldsavegame(i);
                     }

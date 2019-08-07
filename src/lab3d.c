@@ -3500,11 +3500,11 @@ int main(int argc,char **argv)
                 picrot(posx,posy,posz,ang);
                 SDL_GL_SwapWindow(mainwindow);
                 j = mainmenu();
-                picrot(posx,posy,posz,ang);
                 if (j < MAINMENU_COPYRIGHT)
                 {
                     if (j == MAINMENU_NEWGAME)
                     {
+                        picrot(posx, posy, posz, ang);
                         musicoff();
                         fade(0);
                         if (newgameplace == 0) boardnum = 0;
@@ -3577,10 +3577,10 @@ int main(int argc,char **argv)
                     {
                         if (hiscorenamstat == 0)
                         {
-                            glDrawBuffer(GL_FRONT);
+                            drawinputbox();
+                            SDL_GL_SwapWindow(mainwindow);
                             drawinputbox();
                             getname();
-                            glDrawBuffer(GL_BACK);
                         }
                         /*if (hiscorenamstat > 0)*/
                         savegame(loadsavegameplace);
@@ -3602,6 +3602,7 @@ int main(int argc,char **argv)
             }
             else
             {
+                picrot(posx, posy, posz, ang);
                 clearkeydefstat(ACTION_MENU);
                 lastunlock = 1;
                 lastshoot = 1;

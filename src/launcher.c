@@ -3,7 +3,6 @@
 static void draw_gamelaunchermenu(void) {
     inlauncher = 1;
 
-    glDrawBuffer(GL_FRONT);
     int n = 18;
     drawmenu(360,240,menu);
 

@@ -328,6 +328,12 @@ enum {
     MUSIC_SOURCE_ADLIB_RANDOM
 };
 
+typedef enum {
+    DIRECTION_NONE,
+    DIRECTION_UP,
+    DIRECTION_DOWN
+} Direction;
+
 #define KEY_REPEAT_START 250
 #define KEY_REPEAT 80
 
