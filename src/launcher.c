@@ -65,9 +65,64 @@ void whatsnew1() {
 
     finalisemenu();
     pressakey();
+
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf, "This version also now uses double");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "buffering everywhere instead of");
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "single buffering since this is no");
+    textprint(30, 78, 96);
+
+    strcpy(textbuf, "longer supported on modern GPUs.");
+    textprint(30, 88, 96);
+
+    strcpy(textbuf, "Nvidia cards will no longer flicker");
+    textprint(30, 98, 96);
+
+    strcpy(textbuf, "during the intro.");
+    textprint(30, 108, 96);
+
+    finalisemenu();
+    pressakey();
 }
 
 void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.1.2 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Memory errors fixed");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "A bug in the Ken's Labyrinth 1.x");
+    textprint(30, 76, 96);
+
+    strcpy(textbuf, "welcome screen that appears before");
+    textprint(30, 86, 96);
+
+    strcpy(textbuf, "every stage caused an access violation");
+    textprint(30, 96, 96);
+
+    strcpy(textbuf, "which depending on which platform and");
+    textprint(30, 106, 96);
+
+    strcpy(textbuf, "build you're running could cause it");
+    textprint(30, 116, 96);
+
+    strcpy(textbuf, "to crash.");
+    textprint(30, 126, 96);
+
+    finalisemenu();
+    pressakey();
+}
+
+void whatsnew3() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -102,7 +157,7 @@ void whatsnew2() {
     pressakey();
 }
 
-void whatsnew3() {
+void whatsnew4() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -140,7 +195,7 @@ void whatsnew3() {
     pressakey();
 }
 
-void whatsnew4() {
+void whatsnew5() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -184,7 +239,7 @@ void whatsnew4() {
     pressakey();
 }
 
-void whatsnew5() {
+void whatsnew6() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -225,7 +280,7 @@ void whatsnew5() {
     pressakey();
 }
 
-void whatsnew6() {
+void whatsnew7() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -308,6 +363,7 @@ void gamelaunchermenu() {
                         whatsnew4();
                         whatsnew5();
                         whatsnew6();
+                        whatsnew7();
                         break;
                     case 5:
                         setupmenu(0);
