@@ -1650,30 +1650,30 @@ void loadwalls(int replace)
 
             const unsigned int SCREEN_BUFFER_SIZE = screenbufferwidth * screenbufferheight;
 
-            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
-                if (i < (rnumwalls >> 1)) {
-                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
-                }
-                else {
-                    j -= rnumwalls >> 1;
-                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
-                }
-                UploadPartialOverlay(j, 219, 1, 1);
-            }
-            else {
-                if (i < (rnumwalls >> 1)) {
-                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
-                }
-                else {
-                    j -= rnumwalls >> 1;
-                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
-                }
-                if (debugmode)
-                    fprintf(stderr, "Trying to update screen buffer.\n");
-                UploadPartialOverlay(j, 199, 1, 1);
-                if (debugmode)
-                    fprintf(stderr, "Screen buffer update OK.\n");
-            }
+            //if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+            //    if (i < (rnumwalls >> 1)) {
+            //        screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+            //    }
+            //    else {
+            //        j -= rnumwalls >> 1;
+            //        screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
+            //    }
+            //    UploadPartialOverlay(j, 219, 1, 1);
+            //}
+            //else {
+            //    if (i < (rnumwalls >> 1)) {
+            //        screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+            //    }
+            //    else {
+            //        j -= rnumwalls >> 1;
+            //        screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
+            //    }
+            //    if (debugmode)
+            //        fprintf(stderr, "Trying to update screen buffer.\n");
+            //    UploadPartialOverlay(j, 199, 1, 1);
+            //    if (debugmode)
+            //        fprintf(stderr, "Screen buffer update OK.\n");
+            //}
 
             /* Use double buffer when fading, single buffer when not.
                Yes, I know I'm too clever for my own good.
@@ -6675,7 +6675,7 @@ void getUsername()
     Result rc=0;
 
     u128 userID=0;
-    bool account_selected=0;
+
     AccountProfile profile;
     AccountUserData userdata;
     AccountProfileBase profilebase;
@@ -6691,14 +6691,10 @@ void getUsername()
     }
 
     if (R_SUCCEEDED(rc)) {
-        rc = accountGetActiveUser(&userID, &account_selected);
+        rc = accountGetPreselectedUser(&userID);
 
         if (R_FAILED(rc)) {
-            TRACE("accountGetActiveUser() failed: 0x%x\n", rc);
-        }
-        else if(!account_selected) {
-            TRACE("No user is currently selected.\n");
-            rc = -1;
+            TRACE("accountGetPreselectedser() failed: 0x%x\n", rc);
         }
 
         if (R_SUCCEEDED(rc)) {
