@@ -562,6 +562,7 @@ int getnumber(void) {
         textbuf[j] = 8;
     textbuf[12] = 0;
     textprint(94,145+1,(char)0);
+    SDL_GL_SwapWindow(mainwindow);
     j = 0;
     buf[0]=0;
     ch = 0;
@@ -573,13 +574,15 @@ int getnumber(void) {
             textbuf[0] = 95;
             textbuf[1] = 0;
             textprint(94+(j<<3),145,(char)97);
-            glFlush();
-            SDL_Delay(10); /* Just to avoid soaking all CPU. */
+            SDL_GL_SwapWindow(mainwindow);
+            textprint(94 + (j << 3), 145, (char)97);
+            SDL_Delay(8); /* Just to avoid soaking all CPU. */
             textbuf[0] = 8;
             textbuf[1] = 0;
             textprint(94+(j<<3),145,(char)0);
-            glFlush();
-            SDL_Delay(10); /* Just to avoid soaking all CPU. */
+            SDL_GL_SwapWindow(mainwindow);
+            textprint(94 + (j << 3), 145, (char)0);
+            SDL_Delay(8); /* Just to avoid soaking all CPU. */
         }
         if (uni==1) {
             if (ch == SDLK_DELETE)
@@ -591,6 +594,8 @@ int getnumber(void) {
                     textbuf[j] = 8;
                 textbuf[12] = 0;
                 textprint(94,145+1,(char)0);
+                SDL_GL_SwapWindow(mainwindow);
+                textprint(94,145+1,(char)0);
                 j = 0;
                 ch = 0;
             }
@@ -600,17 +605,19 @@ int getnumber(void) {
                 textbuf[0] = ch;
                 textbuf[1] = 0;
                 textprint(94+(j<<3),145+1,(char)0);
+                SDL_GL_SwapWindow(mainwindow);
+                textprint(94+(j<<3),145+1,(char)0);
             }
-        } else {
-            if ((ch >= 48) && (ch <= 57) && (j < 4))
-            {
-                textbuf[0] = ch;
-                textbuf[1] = 0;
-                textprint(94+(j<<3),145+1,(char)97);
-                buf[j] = ch;
-                if ((ch != 32) || (j > 0))
+        } else if ((ch >= 48) && (ch <= 57) && (j < 4))
+        {
+            textbuf[0] = ch;
+            textbuf[1] = 0;
+            textprint(94+(j<<3),145+1,(char)97);
+            SDL_GL_SwapWindow(mainwindow);
+            textprint(94+(j<<3),145+1,(char)97);
+            buf[j] = ch;
+            if ((ch != 32) || (j > 0))
                     j++;
-            }
         }
     }
     SDL_StopTextInput();
@@ -630,12 +637,16 @@ void customresolution(void) {
     finalisemenu();
     sprintf(&textbuf[0],"Enter screen width:");
     textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
+    SDL_GL_SwapWindow(mainwindow);
+    textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
     x=getnumber();
     if (x>0) {
         drawinputbox();
         finalisemenu();
         sprintf(&textbuf[0],"Enter screen height:");
         textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
+        SDL_GL_SwapWindow(mainwindow);
+        textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
         y=getnumber();
         if (y>0) {
             window_width = x;

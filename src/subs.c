@@ -4788,6 +4788,10 @@ void hiscorecheck()
     K_INT16 i, j, k, m, inse, namexist, fil;
     K_INT32 hiscore[8], scorexist, templong;
 
+    picrot(posx, posy, posz, ang);
+    SDL_GL_SwapWindow(mainwindow);
+    picrot(posx, posy, posz, ang);
+
     sprintf(filepath, "%shiscore.dat", gameroot);
     sprintf(filepathUpper, "%sHISCORE.DAT", gameroot);
     fil = open(filepath, O_RDWR|O_BINARY, 0);
@@ -4815,7 +4819,6 @@ void hiscorecheck()
 
     /* Score box looks awful when interpolated, and we need it in the
        overlay for proper anti-aliasing, so software scale. */
-
     drawscorebox();
 /*    spridraw(20, 0, 320*4, scorebox);*/
     for(i=0;i<8;i++)
@@ -4868,7 +4871,6 @@ void hiscorecheck()
         textprint(215, 145+1, (char)35);
     if ((scorecount > hiscore[7]) && (cheated == 0))
     {
-        picrot(posx, posy, posz, ang);
         if (hiscorenamstat == 0) {
             getname();
         } else
@@ -4966,6 +4968,7 @@ void hiscorecheck()
                     setuptextbuf(hiscore[i]);
                     textprint(215, 60+(i<<3)+i+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 0 : (char)96);
                 }
+            SDL_GL_SwapWindow(mainwindow);
             sprintf(&textbuf[0], "Time penalty: 10 * ");
             textbuf[19] = (char)((templong/10000000L)%10L)+48;
             textbuf[20] = (char)((templong/1000000L)%10L)+48;
@@ -5125,10 +5128,12 @@ void getname()
             textbuf[1] = 0;
             textprint(94+(j<<3), 145, (char)97);
             SDL_GL_SwapWindow(mainwindow);
-            textprint(94 + (j << 3), 145, (char)97);
+            textprint(94+(j<<3), 145, (char)97);
             SDL_Delay(8); /* Just to avoid soaking all CPU. */
             textbuf[0] = 8;
             textbuf[1] = 0;
+            textprint(94+(j<<3), 145, (char)0);
+            SDL_GL_SwapWindow(mainwindow);
             textprint(94+(j<<3), 145, (char)0);
             SDL_Delay(8); /* Just to avoid soaking all CPU. */
         }
@@ -5142,6 +5147,8 @@ void getname()
                     textbuf[j] = 8;
                 textbuf[12] = 0;
                 textprint(94, 145+1, (char)0);
+                SDL_GL_SwapWindow(mainwindow);
+                textprint(94, 145+1, (char)0);
                 j = 0;
                 ch = 0;
             }
@@ -5151,6 +5158,8 @@ void getname()
                 textbuf[0] = ch;
                 textbuf[1] = 0;
                 textprint(94+(j<<3), 145+1, (char)0);
+                SDL_GL_SwapWindow(mainwindow);
+                textprint(94+(j<<3), 145+1, (char)0);
             }
         } else {
             if ((ch >= 32) && (ch <= 127) && (j < 12))
@@ -5158,12 +5167,13 @@ void getname()
                 textbuf[0] = ch;
                 textbuf[1] = 0;
                 textprint(94+(j<<3), 145+1, (char)97);
+                SDL_GL_SwapWindow(mainwindow);
+                textprint(94+(j<<3), 145+1, (char)97);
                 hiscorenam[j] = ch;
                 if ((ch != 32) || (j > 0))
                     j++;
             }
         }
-        SDL_GL_SwapWindow(mainwindow);
     }
     SDL_StopTextInput();
     setnewkeystatus(SDLK_ESCAPE, 0);
