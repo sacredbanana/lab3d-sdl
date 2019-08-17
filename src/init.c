@@ -319,7 +319,7 @@ void initvideo()
 
 void freememory()
 {
-    SDL_CloseAudio();
+    SDL_CloseAudioDevice(audiodevice);
     free(lzwbuf);
     free(lzwbuf2);
     free(pic);

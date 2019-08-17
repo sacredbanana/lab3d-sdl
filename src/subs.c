@@ -1447,7 +1447,7 @@ void loadwalls(int replace)
     K_INT16 currstr, strtot, compleng, dat, goalstr;
     unsigned char *walsegg;
 
-    K_UINT16 stack[LZW_STACK_SIZE];
+    K_UINT16 *stack = malloc(LZW_STACK_SIZE * sizeof(K_UINT16));
     K_UINT16 stackp=0;
 
     unsigned char *RGBATexture=malloc(64*64*4);
@@ -1546,7 +1546,7 @@ void loadwalls(int replace)
         lzwbuf2[0]=0;
         lzwbuf[0]=0;
 
-        for(i=0;i<rnumwalls;i++)
+        for (i = 0; i < rnumwalls; i++)
         {
             readLE16(fil, &strtot, 2);
             if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
@@ -1555,13 +1555,13 @@ void loadwalls(int replace)
                 compleng = tileng[i];
             read(fil, &tempbuf[0], compleng);
 
-            walsegg=walseg[i];
+            walsegg = walseg[i];
 
             if (strtot > 0)
             {
                 tempbuf[compleng] = 0;
-                tempbuf[compleng+1] = 0;
-                tempbuf[compleng+2] = 0;
+                tempbuf[compleng + 1] = 0;
+                tempbuf[compleng + 2] = 0;
                 bytecnt2 = 0;
                 bytecnt1 = 0;
                 bitcnt = 0;
@@ -1570,100 +1570,108 @@ void loadwalls(int replace)
                 numbits = 9;
                 do
                 {
-                    dat=(((tempbuf[bytecnt2])|
-                          ((K_UINT16)(tempbuf[bytecnt2+1]))<<8)>>bitcnt)&
-                        ((1<<numbits)-1);
-/*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
-                    >>bitcnt)&
-                    ((1<<numbits)-1);*/
-                    if (bitcnt+numbits>16) {
-                        dat+=(((K_UINT16)tempbuf[bytecnt2+2])&
-                              ((1<<((bitcnt+numbits)&15))-1))<<
-                            (16-bitcnt);
+                    dat = (((tempbuf[bytecnt2]) |
+                        ((K_UINT16)(tempbuf[bytecnt2 + 1])) << 8) >> bitcnt) &
+                        ((1 << numbits) - 1);
+                    /*		    dat=((*((K_UINT16 *)(tempbuf+bytecnt2)))
+                                        >>bitcnt)&
+                                        ((1<<numbits)-1);*/
+                    if (bitcnt + numbits > 16) {
+                        dat += (((K_UINT16)tempbuf[bytecnt2 + 2]) &
+                            ((1 << ((bitcnt + numbits) & 15)) - 1)) <<
+                            (16 - bitcnt);
                     }
 
-                    bitcnt+=numbits;
-                    bytecnt2+=bitcnt>>3;
-                    bitcnt&=7;
+                    bitcnt += numbits;
+                    bytecnt2 += bitcnt >> 3;
+                    bitcnt &= 7;
 
-                    lzwbuf2[currstr]=dat;
+                    lzwbuf2[currstr] = dat;
 
-                    while(dat>=256) {
-                        stack[stackp++]=lzwbuf[dat];
+                    while (dat >= 256) {
+                        stack[stackp++] = lzwbuf[dat];
 
-                        dat=lzwbuf2[dat];
+                        dat = lzwbuf2[dat];
                     }
 
-                    lzwbuf[currstr-1]=dat;
-                    lzwbuf[currstr]=dat;
-                    dat=lzwbuf2[dat];
-                    stack[stackp++]=dat;
+                    lzwbuf[currstr - 1] = dat;
+                    lzwbuf[currstr] = dat;
+                    dat = lzwbuf2[dat];
+                    stack[stackp++] = dat;
 
-                    while(stackp>0) {
+                    while (stackp > 0) {
                         stackp--;
-                        if (bytecnt1<4096)
-                            walsegg[bytecnt1++]=stack[stackp];
+                        if (bytecnt1 < 4096)
+                            walsegg[bytecnt1++] = stack[stackp];
                     }
                     currstr++;
                     if (currstr == goalstr)
                     {
                         numbits++;
-                        goalstr = (goalstr<<1);
+                        goalstr = (goalstr << 1);
                     }
-                }
-                while (currstr <= strtot);
+                } while (currstr <= strtot);
             }
             else
                 memcpy(walsegg, tempbuf, 4096);
 
-            if (bmpkind[i+1] >= 2)
+            if (bmpkind[i + 1] >= 2)
             {
-                j=0;
-                while((j<4096)&&(walsegg[j]!=255))
+                j = 0;
+                while ((j < 4096) && (walsegg[j] != 255))
                     j++;
-                j&=0xfc0;
-                lborder[i+1]=j;
-                j=4095;
-                while((j>=0)&&(walsegg[j]!=255))
+                j &= 0xfc0;
+                lborder[i + 1] = j;
+                j = 4095;
+                while ((j >= 0) && (walsegg[j] != 255))
                     j--;
-                j&=0xfc0;
-                j+=64;
-                rborder[i+1]=j;
+                j &= 0xfc0;
+                j += 64;
+                rborder[i + 1] = j;
             }
             else
             {
-                lborder[i+1] = 0;
-                rborder[i+1] = 4096;
+                lborder[i + 1] = 0;
+                rborder[i + 1] = 4096;
             }
             if (i < 127) {
                 if (debugmode)
                     fprintf(stderr, "Trying to draw screen buffer.\n");
-                fade(64+(i>>1));
+                fade(64 + (i >> 1));
                 SetVisibleScreenOffset(0);
                 if (debugmode)
                     fprintf(stderr, "Screen buffer draw OK.\n");
-            } else {
-                    fade(63);
+            }
+            else {
+                fade(63);
             }
 
-            j=(160-(rnumwalls>>2)+i);
+            j = (160 - (rnumwalls >> 2) + i);
 
             if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
-                if (i < (rnumwalls>>1)) {
-                    screenbuffer[screenbufferwidth*219+j]=255;
+                // Make sure the loading bar doesn't go outside the screen buffer
+                int loadingBarPixel = screenbufferwidth * 219 + j;
+                if (loadingBarPixel >= (screenbufferwidth * screenbufferheight))
+                    loadingBarPixel = (screenbufferwidth * screenbufferheight) - 1;
+                if (i < (rnumwalls >> 1)) {
+                    screenbuffer[loadingBarPixel] = 255;
                 }
                 else {
-                    j-=rnumwalls>>1;
-                    screenbuffer[screenbufferwidth*219+j]=0;
+                    j -= rnumwalls >> 1;
+                    screenbuffer[loadingBarPixel] = 0;
                 }
-                UploadPartialOverlay(j, 199, 1, 1);
-            } else {
-                if (i < (rnumwalls>>1)) {
-                    screenbuffer[screenbufferwidth*199+j]=255;
+                UploadPartialOverlay(j, 219, 1, 1);
+            }
+            else {
+                int loadingBarPixel = screenbufferwidth * 199 + j;
+                if (loadingBarPixel >= (screenbufferwidth * screenbufferheight))
+                    loadingBarPixel = (screenbufferwidth * screenbufferheight) - 1;
+                if (i < (rnumwalls >> 1)) {
+                    screenbuffer[loadingBarPixel] = 255;
                 }
                 else {
-                    j-=rnumwalls>>1;
-                    screenbuffer[screenbufferwidth*199+j]=63;
+                    j -= rnumwalls >> 1;
+                    screenbuffer[loadingBarPixel] = 63;
                 }
                 if (debugmode)
                     fprintf(stderr, "Trying to update screen buffer.\n");
@@ -1676,21 +1684,21 @@ void loadwalls(int replace)
                Yes, I know I'm too clever for my own good.
                Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
             SDL_GL_SwapWindow(mainwindow);
-            cwparam=&wparams[i];
-            int minfilt=cwparam->minfilt;
-            int magfilt=cwparam->magfilt;
+            cwparam = &wparams[i];
+            int minfilt = cwparam->minfilt;
+            int magfilt = cwparam->magfilt;
 
-            if (fullfilter==GL_NEAREST) {
-                magfilt=GL_NEAREST;
-                minfilt=GL_NEAREST;
+            if (fullfilter == GL_NEAREST) {
+                magfilt = GL_NEAREST;
+                minfilt = GL_NEAREST;
             }
-            if (cwparam->bmpkind_override!=-1)
-                bmpkind[i+1] = cwparam->bmpkind_override;
+            if (cwparam->bmpkind_override != -1)
+                bmpkind[i + 1] = cwparam->bmpkind_override;
 
-            int wrapmode=(bmpkind[i+1]<2?1:0);
+            int wrapmode = (bmpkind[i + 1] < 2 ? 1 : 0);
 
-            if (cwparam->wrapmode!=-1)
-                wrapmode=cwparam->wrapmode;
+            if (cwparam->wrapmode != -1)
+                wrapmode = cwparam->wrapmode;
 
 #if 0
             printf("Wall information for wall %d:\n", i);
@@ -1699,20 +1707,21 @@ void loadwalls(int replace)
             printf("Wrap Mode: %d\n", wrapmode);
             printf("Min Filter: %d\n", minfilt);
             printf("Mag Filter: %d\n", magfilt);
-            printf("bmpkind: %d\n", bmpkind[i+1]);
-            printf("Shadow: %d\n", shadow[i+1]);
+            printf("bmpkind: %d\n", bmpkind[i + 1]);
+            printf("Shadow: %d\n", shadow[i + 1]);
             printf("\n");
 #endif
             if (cwparam->texreplace) {
-                imgcache* cache=LoadImageCache(cwparam->texreplace, wrapmode, minfilt, magfilt);
-                texName[i]=cache->texnum;
-                if (cwparam->tch==-1) cwparam->tch=cache->w;
-                walltexcoord[i][0]= ((double)cwparam->tcl/(double)cache->w);
+                imgcache* cache = LoadImageCache(cwparam->texreplace, wrapmode, minfilt, magfilt);
+                texName[i] = cache->texnum;
+                if (cwparam->tch == -1) cwparam->tch = cache->w;
+                walltexcoord[i][0] = ((double)cwparam->tcl / (double)cache->w);
                 walltexcoord[i][1] = ((double)cwparam->tch / (double)cache->w);
                 //printf("TexCoords for %d: %d %d /%d %.6f %.6f\n", i, cwparam->tcl, cwparam->tch, cache->w, walltexcoord[i][0], walltexcoord[i][1]);
-            } else {
-                walltexcoord[i][0]=0.0;
-                walltexcoord[i][1]=1.0;
+            }
+            else {
+                walltexcoord[i][0] = 0.0;
+                walltexcoord[i][1] = 1.0;
 
                 glGenTextures(1, &texName[i]);
 
@@ -1721,7 +1730,8 @@ void loadwalls(int replace)
 
                 if (wrapmode) {
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                } else {
+                }
+                else {
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
                 }
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -1737,14 +1747,14 @@ void loadwalls(int replace)
                 /* Replace door1 with colour test image. */
 
 #ifdef COLOURTEST
-                if (i==door1-1) {
-                    for(j=0;j<64;j++)
-                        for(k=0;k<64;k++)
-                            walsegg[j*64+k]=((j>>2)<<4)|(k>>2);
+                if (i == door1 - 1) {
+                    for (j = 0; j < 64; j++)
+                        for (k = 0; k < 64; k++)
+                            walsegg[j * 64 + k] = ((j >> 2) << 4) | (k >> 2);
                 }
 #endif
 
-                TextureConvert(walsegg, RGBATexture, bmpkind[i+1]);
+                TextureConvert(walsegg, RGBATexture, bmpkind[i + 1]);
 
                 if (debugmode)
                     fprintf(stderr, "Trying to upload texture.\n");
@@ -1755,7 +1765,7 @@ void loadwalls(int replace)
 
                 if (debugmode)
                     fprintf(stderr, "Upload texture complete.\n");
-                if (i==gameover-1) {
+                if (i == gameover - 1) {
                     /* Keep two copies of this; one for walls, the other for spinning
                        overlay text. */
                     glGenTextures(1, &gameoversprite);
@@ -1765,7 +1775,7 @@ void loadwalls(int replace)
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                                    fullfilter);
+                        fullfilter);
                     TextureConvert(walsegg, RGBATexture, 4);
 
                     if (anisotropic)
@@ -1790,6 +1800,7 @@ void loadwalls(int replace)
     } else {
         fatal_error("Can't find walls.kzp.");
     }
+    free(stack);
     free(RGBATexture);
 
 //      Examine textures...
@@ -6502,7 +6513,7 @@ void quit() {
         /* SDL is very careful to allow the sound thread to stop. Good for
            us. */
 
-        SDL_CloseAudio();
+        SDL_CloseAudioDevice(audiodevice);
         free(SoundBuffer);
     }
 
