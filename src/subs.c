@@ -1648,30 +1648,25 @@ void loadwalls(int replace)
 
             j = (160 - (rnumwalls >> 2) + i);
 
+            const unsigned int SCREEN_BUFFER_SIZE = screenbufferwidth * screenbufferheight;
+
             if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
-                // Make sure the loading bar doesn't go outside the screen buffer
-                int loadingBarPixel = screenbufferwidth * 219 + j;
-                if (loadingBarPixel >= (screenbufferwidth * screenbufferheight))
-                    loadingBarPixel = (screenbufferwidth * screenbufferheight) - 1;
                 if (i < (rnumwalls >> 1)) {
-                    screenbuffer[loadingBarPixel] = 255;
+                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
                 }
                 else {
                     j -= rnumwalls >> 1;
-                    screenbuffer[loadingBarPixel] = 0;
+                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
                 }
                 UploadPartialOverlay(j, 219, 1, 1);
             }
             else {
-                int loadingBarPixel = screenbufferwidth * 199 + j;
-                if (loadingBarPixel >= (screenbufferwidth * screenbufferheight))
-                    loadingBarPixel = (screenbufferwidth * screenbufferheight) - 1;
                 if (i < (rnumwalls >> 1)) {
-                    screenbuffer[loadingBarPixel] = 255;
+                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
                 }
                 else {
                     j -= rnumwalls >> 1;
-                    screenbuffer[loadingBarPixel] = 63;
+                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
                 }
                 if (debugmode)
                     fprintf(stderr, "Trying to update screen buffer.\n");
@@ -4201,8 +4196,6 @@ void ConvertPartialOverlay(int sx, int sy, int w, int h) {
 void UploadPartialOverlay(int x, int y, int w, int h) {
     int left, right, top, bottom, i, j;
     int lr, rr, tr, br;
-
-    static Uint64 lol = 0;
 
     if (!ClipToBuffer(&x, &y, &w, &h))
         return;
