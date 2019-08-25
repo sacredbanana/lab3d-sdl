@@ -64,6 +64,7 @@ void whatsnew1() {
     textprint(30, 126, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 
     drawmenu(320, 172, menu);
@@ -87,6 +88,7 @@ void whatsnew1() {
     textprint(30, 108, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -119,6 +121,7 @@ void whatsnew2() {
     textprint(30, 126, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -154,6 +157,7 @@ void whatsnew3() {
     textprint(30, 136, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -192,6 +196,7 @@ void whatsnew4() {
     textprint(30, 146, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -236,6 +241,7 @@ void whatsnew5() {
     textprint(30, 166, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -277,6 +283,7 @@ void whatsnew6() {
     textprint(30, 156, 96);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -318,6 +325,7 @@ void whatsnew7() {
     textprint(30, 176, 48);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -329,54 +337,54 @@ void gamelaunchermenu() {
     loadmusic("LABSNG22");
     musicon();
 
+    draw_ptr[++drawStackTopIndex] = draw_gamelaunchermenu;
+ 
     while(!done) {
-        draw_gamelaunchermenu();
-
         if ((sel = getselection(12,7,sel,8)) < 0)
             done = 1;
         else {
-                switch(sel) {
-                    case 0:
-                        /* Version 2.1 */
-                        lab3dversion = KENS_LABYRINTH_2_1;
-                        done = 1;
-                        break;
-                    case 1:
-                        /* Version 2.0 */
-                        lab3dversion = KENS_LABYRINTH_2_0;
-                        done = 1;
-                        break;
-                    case 2:
-                        /* Version 1.1 */
-                        lab3dversion = KENS_LABYRINTH_1_1;
-                        done=1;
-                        break;
-                    case 3:
-                        /* Version 1.0 */
-                        lab3dversion = KENS_LABYRINTH_1_0; 
-                        done = 1;
-                        break;
-                    case 4:
-                        whatsnew1();
-                        whatsnew2();
-                        whatsnew3();
-                        whatsnew4();
-                        whatsnew5();
-                        whatsnew6();
-                        whatsnew7();
-                        break;
-                    case 5:
-                        setupmenu(0);
-                        savesettings();
-                        break;
-                    case 6:
-                        orderinfomenu();
-                        break;
-                    case 7:
-                        quitgame = 1;
-                        quit();
-                        break;
-                }
+            switch(sel) {
+                case 0:
+                    /* Version 2.1 */
+                    lab3dversion = KENS_LABYRINTH_2_1;
+                    done = 1;
+                    break;
+                case 1:
+                    /* Version 2.0 */
+                    lab3dversion = KENS_LABYRINTH_2_0;
+                    done = 1;
+                    break;
+                case 2:
+                    /* Version 1.1 */
+                    lab3dversion = KENS_LABYRINTH_1_1;
+                    done = 1;
+                    break;
+                case 3:
+                    /* Version 1.0 */
+                    lab3dversion = KENS_LABYRINTH_1_0; 
+                    done = 1;
+                    break;
+                case 4:
+                    whatsnew1();
+                    whatsnew2();
+                    whatsnew3();
+                    whatsnew4();
+                    whatsnew5();
+                    whatsnew6();
+                    whatsnew7();
+                    break;
+                case 5:
+                    setupmenu(0);
+                    savesettings();
+                    break;
+                case 6:
+                    orderinfomenu();
+                    break;
+                case 7:
+                    quitgame = 1;
+                    quit();
+                    break;
             }
+        }
     }
 }

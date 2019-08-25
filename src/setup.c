@@ -501,6 +501,11 @@ static void makeupper(char* txt) {
 }
 
 int selectionmenu(int alts,char *titles[], int *value, const char* menutitle) {
+    selectionMenuStruct.alts = alts;
+    selectionMenuStruct.titles = titles;
+    selectionMenuStruct.value = value;
+    selectionMenuStruct.menutitle = menutitle;
+
     int i;
     int j=12*alts+24;
     int ofs = 0;
@@ -509,22 +514,14 @@ int selectionmenu(int alts,char *titles[], int *value, const char* menutitle) {
         j += 16;
     }
 
-    drawmenu(304,j,menu);
-    if (menutitle) {
-        strcpy(textbuf, menutitle);
-        textprint(180-(strlen(textbuf)<<2), 112 - 6 * alts, 0);
-    }
-    for(i=0;i<alts;i++) {
-        strcpy(textbuf,titles[i]);
-        textprint(71,120 - 6 * alts + 12 * i + ofs, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32  : 34);
-    }
-
-    finalisemenu();
+    draw_ptr[++drawStackTopIndex] = drawselectionmenu;
 
     if (j>240)
         i=getselection(28, 97 - 6*alts + ofs, *value, alts);
     else
         i=getselection(28, 99 - 6*alts + ofs, *value, alts);
+
+    drawStackTopIndex--;
 
     if (i>=0) *value=i;
     return i;
@@ -562,7 +559,6 @@ int getnumber(void) {
         textbuf[j] = 8;
     textbuf[12] = 0;
     textprint(94,145+1,(char)0);
-    SDL_GL_SwapWindow(mainwindow);
     j = 0;
     buf[0]=0;
     ch = 0;
@@ -571,17 +567,17 @@ int getnumber(void) {
     {
         while ((uni=getkeypress(&ch)) == 0)
         {
+            finalisemenu();
             textbuf[0] = 95;
             textbuf[1] = 0;
             textprint(94+(j<<3),145,(char)97);
             SDL_GL_SwapWindow(mainwindow);
-            textprint(94 + (j << 3), 145, (char)97);
             SDL_Delay(8); /* Just to avoid soaking all CPU. */
+            finalisemenu();
             textbuf[0] = 8;
             textbuf[1] = 0;
             textprint(94+(j<<3),145,(char)0);
             SDL_GL_SwapWindow(mainwindow);
-            textprint(94 + (j << 3), 145, (char)0);
             SDL_Delay(8); /* Just to avoid soaking all CPU. */
         }
         if (uni==1) {
@@ -594,8 +590,6 @@ int getnumber(void) {
                     textbuf[j] = 8;
                 textbuf[12] = 0;
                 textprint(94,145+1,(char)0);
-                SDL_GL_SwapWindow(mainwindow);
-                textprint(94,145+1,(char)0);
                 j = 0;
                 ch = 0;
             }
@@ -605,15 +599,11 @@ int getnumber(void) {
                 textbuf[0] = ch;
                 textbuf[1] = 0;
                 textprint(94+(j<<3),145+1,(char)0);
-                SDL_GL_SwapWindow(mainwindow);
-                textprint(94+(j<<3),145+1,(char)0);
             }
         } else if ((ch >= 48) && (ch <= 57) && (j < 4))
         {
             textbuf[0] = ch;
             textbuf[1] = 0;
-            textprint(94+(j<<3),145+1,(char)97);
-            SDL_GL_SwapWindow(mainwindow);
             textprint(94+(j<<3),145+1,(char)97);
             buf[j] = ch;
             if ((ch != 32) || (j > 0))
@@ -637,16 +627,12 @@ void customresolution(void) {
     finalisemenu();
     sprintf(&textbuf[0],"Enter screen width:");
     textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
-    SDL_GL_SwapWindow(mainwindow);
-    textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
     x=getnumber();
     if (x>0) {
         drawinputbox();
         finalisemenu();
         sprintf(&textbuf[0],"Enter screen height:");
         textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
-        SDL_GL_SwapWindow(mainwindow);
-        textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
         y=getnumber();
         if (y>0) {
             window_width = x;
@@ -1070,8 +1056,9 @@ void setupmenu(int ingame) {
     int quit=0,sel=0;
     setup_ingame = ingame;
 
+    draw_ptr[++drawStackTopIndex] = draw_mainmenu;
+
     while(!quit) {
-        draw_mainmenu();
 #ifdef HAVE_DESKTOP
         char errbuf[64] = {0};
         if ((sel = getselection(12,7 + (ingame ? -12 : 0),sel,16)) < 0)
@@ -1139,6 +1126,8 @@ void setupmenu(int ingame) {
                 }
             }
     }
+
+    drawStackTopIndex--;
 }
 
 void configure(void) {

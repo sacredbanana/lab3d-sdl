@@ -1896,6 +1896,7 @@ void oldmain(void)
                     if (m) {
                         if (hiscorenamstat == 0)
                         {
+                            spridraw((int)180 - 64, (int)halfheight - 64, (int)128 << 2, (int)79);
                             drawinputbox();
                             getname();
                         }

@@ -1164,7 +1164,7 @@ void ShrinkImageWeight (Uint32* src, Uint32* dest, int sw, int sh, int xs, int y
         }
     }
 }
-#ifndef min
+#if !defined(min) && !defined(__SWITCH__) 
 #define min(x, y) ({ typeof(x) _x_; typeof(y) _y_; _x_=(x); _y_=(y); _x_ < _y_ ? _x_ : _y_ })
 #endif
 
@@ -1650,30 +1650,31 @@ void loadwalls(int replace)
 
             const unsigned int SCREEN_BUFFER_SIZE = screenbufferwidth * screenbufferheight;
 
-            //if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
-            //    if (i < (rnumwalls >> 1)) {
-            //        screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
-            //    }
-            //    else {
-            //        j -= rnumwalls >> 1;
-            //        screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
-            //    }
-            //    UploadPartialOverlay(j, 219, 1, 1);
-            //}
-            //else {
-            //    if (i < (rnumwalls >> 1)) {
-            //        screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
-            //    }
-            //    else {
-            //        j -= rnumwalls >> 1;
-            //        screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
-            //    }
-            //    if (debugmode)
-            //        fprintf(stderr, "Trying to update screen buffer.\n");
-            //    UploadPartialOverlay(j, 199, 1, 1);
-            //    if (debugmode)
-            //        fprintf(stderr, "Screen buffer update OK.\n");
-            //}
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+                if (i < (rnumwalls >> 1)) {
+                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+                }
+                else {
+                    j -= rnumwalls >> 1;
+                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
+                }
+                UploadPartialOverlay(j, 219, 1, 1);
+            }
+            else {
+                if (i < (rnumwalls >> 1)) {
+                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+                }
+                else {
+                    j -= rnumwalls >> 1;
+                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
+                    screenbuffer[min(screenbufferwidth * 199 + j - 1, SCREEN_BUFFER_SIZE - 1)] = 63;
+                }
+                if (debugmode)
+                    fprintf(stderr, "Trying to update screen buffer.\n");
+                UploadPartialOverlay(j-1, 199, 2, 1);
+                if (debugmode)
+                    fprintf(stderr, "Screen buffer update OK.\n");
+            }
 
             /* Use double buffer when fading, single buffer when not.
                Yes, I know I'm too clever for my own good.
@@ -3575,8 +3576,14 @@ void wingame(K_INT16 episode)
 
                     updateoverlaypalette(240, 16, textpalette);
 
-                    if (episode == 1) loadstory(-21);
-                    if (episode == 2) loadstory(-19);
+                    if (episode == 1) {
+                        loadstory(-21);
+                        displaystory(-21);
+                    }
+                    if (episode == 2) {
+                        loadstory(-19);
+                        displaystory(-19);
+                    }
 
                     finalisemenu();
 
@@ -3589,8 +3596,14 @@ void wingame(K_INT16 episode)
                     clearkeydefstat(ACTION_MENU_SELECT1);
                     clearkeydefstat(ACTION_MENU_SELECT2);
                     clearkeydefstat(ACTION_MENU_SELECT3);
-                    if (episode == 1) loadstory(-20);
-                    if (episode == 2) loadstory(-18);
+                    if (episode == 1) {
+                        loadstory(-20);
+                        displaystory(-20);
+                    }
+                    if (episode == 2) {
+                        loadstory(-18);
+                        displaystory(-18);
+                    }
                     finalisemenu();
                     settransferpalette();
                     SDL_GL_SwapWindow(mainwindow);
@@ -3685,6 +3698,7 @@ void winallgame()
             updateoverlaypalette(240, 16, textpalette);
             fade(63);
             loadstory(-17);
+            displaystory(-17);
             finalisemenu();
             ksayui(23);
             SDL_GL_SwapWindow(mainwindow);
@@ -3696,6 +3710,7 @@ void winallgame()
             clearkeydefstat(ACTION_MENU_SELECT2);
             clearkeydefstat(ACTION_MENU_SELECT3);
             loadstory(-16);
+            displaystory(-16);
             finalisemenu();
             settransferpalette();
             SDL_GL_SwapWindow(mainwindow);
@@ -4482,13 +4497,12 @@ void textprint(K_INT16 x, K_INT16 y, char coloffs)
     }
 }
 
-/* Load and display some text (story, help, whatever). */
+/* Load some text (story, help, whatever). */
 
 K_INT16 loadstory(K_INT16 boardnume)
 {
-    unsigned char xordat, otextcol, textcol;
     K_UINT16 storyoffs[128];
-    K_INT16 fil, i, textbufcnt, textypos;
+    K_INT16 fil;
 
     ototclock = totalclock;
     sprintf(filepath, "%sstory.kzp", gameroot);
@@ -4498,7 +4512,19 @@ K_INT16 loadstory(K_INT16 boardnume)
         return(-1);
     readLE16(fil, &storyoffs[0], 256);
     lseek(fil, (long)(storyoffs[boardnume+34]), SEEK_SET);
-    read(fil, &tempbuf[0], 4096);
+    read(fil, &storybuf[0], 4096);
+
+    close(fil);
+    return 0;
+}
+
+void displaystory(K_INT16 boardnume)
+{
+    unsigned char xordat, otextcol, textcol;
+    K_INT16 i, textbufcnt, textypos;
+
+    memcpy(tempbuf, storybuf, sizeof(tempbuf));
+
     i = 0;
     xordat = 0;
     if (vidmode == 0)
@@ -4534,7 +4560,7 @@ K_INT16 loadstory(K_INT16 boardnume)
         if (tempbuf[i] == 13)
         {
             textbuf[textbufcnt] = 0;
-            textprint(180-(textbufcnt<<2), textypos+1, textcol);
+            textprint(180 - (textbufcnt << 2), textypos + 1, textcol);
             textypos += 12;
             textbufcnt = 0;
         }
@@ -4542,9 +4568,7 @@ K_INT16 loadstory(K_INT16 boardnume)
         tempbuf[i] ^= xordat;
     }
     textbuf[textbufcnt] = 0;
-    textprint(180-(textbufcnt<<2), textypos+1, textcol);
-    close(fil);
-    return 0;
+    textprint(180 - (textbufcnt << 2), textypos + 1, textcol);
 }
 
 K_INT16 setupmouse()
@@ -5033,6 +5057,7 @@ void hiscorecheck()
     sprintf(&textbuf[0], "Press any key to continue.");
     textprint(180-(strlen(textbuf)<<2), 135+1, (char)65);
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     while ((getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
@@ -5066,51 +5091,37 @@ void setuptextbuf(K_INT32 templong)
     textbuf[11] = 0;
 }
 
-/* Get player's name... */
-
-void getname()
+void drawnameinput()
 {
-    int ch;
-    K_INT16 i, j;
-
-    /* Apparently, the program is supposed to remember the name you used last
-       time you played and allow you to modify that.
-
-       In practice, this code is so buggy and useless that I think it's best to
-       just leave it out. */
-
-/*    if (namrememberstat == 0)
-      {*/
-    for(j=0;j<16;j++)
-        hiscorenam[j] = 0;
-    for(j=0;j<12;j++)
-        textbuf[j] = 8;
-    textbuf[12] = 0;
-    textprint(94, 145+1, (char)0);
-    SDL_GL_SwapWindow(mainwindow);
-    textprint(94, 145 + 1, (char)0);
-    j = 0;
-/*    }
-      else
-      {
-      for(j=0;j<12;j++)
-      textbuf[j] = hiscorenam[j];
-      textbuf[12] = 0;
-      j = 12;
-      while ((hiscorenam[j] == 0) && (j > 0))
-      j--;
-      textprint(94, 125+1, (char)97);
-      }*/
-
-    ch = 0;
     finalisemenu();
     sprintf(&textbuf[0], "Please type your name!");
 
     textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
-    SDL_GL_SwapWindow(mainwindow);
-    textprint(180 - (strlen(textbuf) << 2), 135 + 1, (char)161);
+}
 
-    ch = 0;
+/* Get player's name... */
+
+void getname()
+{
+    int ch = 0;
+    K_INT16 i, j = 0;
+
+    /* Apparently, the program is supposed to remember the name you used last
+            time you played and allow you to modify that.
+
+            In practice, this code is so buggy and useless that I think it's best to
+            just leave it out. */
+
+            /*    if (namrememberstat == 0)
+             {*/
+    for (j = 0; j < 16; j++)
+        hiscorenam[j] = 0;
+    for (j = 0; j < 12; j++)
+        textbuf[j] = 8;
+    textbuf[12] = 0;
+
+    j = 0;
+
     clearkeydefstat(ACTION_MENU);
     clearkeydefstat(ACTION_MENU_CANCEL);
 
@@ -5128,17 +5139,17 @@ void getname()
                 ch = 27;
                 break;
             }
+            drawnameinput();
             textbuf[0] = 95;
             textbuf[1] = 0;
-            textprint(94+(j<<3), 145, (char)97);
+            textprint(94 + (j << 3), 145, (char)97);
             SDL_GL_SwapWindow(mainwindow);
-            textprint(94+(j<<3), 145, (char)97);
             SDL_Delay(8); /* Just to avoid soaking all CPU. */
+            drawnameinput();
             textbuf[0] = 8;
             textbuf[1] = 0;
             textprint(94+(j<<3), 145, (char)0);
             SDL_GL_SwapWindow(mainwindow);
-            textprint(94+(j<<3), 145, (char)0);
             SDL_Delay(8); /* Just to avoid soaking all CPU. */
         }
         if (uni == 1) {
@@ -5151,8 +5162,6 @@ void getname()
                     textbuf[j] = 8;
                 textbuf[12] = 0;
                 textprint(94, 145+1, (char)0);
-                SDL_GL_SwapWindow(mainwindow);
-                textprint(94, 145+1, (char)0);
                 j = 0;
                 ch = 0;
             }
@@ -5162,16 +5171,12 @@ void getname()
                 textbuf[0] = ch;
                 textbuf[1] = 0;
                 textprint(94+(j<<3), 145+1, (char)0);
-                SDL_GL_SwapWindow(mainwindow);
-                textprint(94+(j<<3), 145+1, (char)0);
             }
         } else {
             if ((ch >= 32) && (ch <= 127) && (j < 12))
             {
                 textbuf[0] = ch;
                 textbuf[1] = 0;
-                textprint(94+(j<<3), 145+1, (char)97);
-                SDL_GL_SwapWindow(mainwindow);
                 textprint(94+(j<<3), 145+1, (char)97);
                 hiscorenam[j] = ch;
                 if ((ch != 32) || (j > 0))
@@ -5207,7 +5212,6 @@ void getname()
             textbuf[9] = 0;
             if (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1) {
                 textprint(70, 20 + statusbaryoffset, (char)177);
-                SDL_GL_SwapWindow(mainwindow);
             }
         }
     }
@@ -5389,26 +5393,23 @@ K_INT16 mainmenu()
         ShowStatusBar();
     }
 
-    // Must be applied to both front and back buffers
-    if (sortcnt != -1)
-        wipeoverlay(0, 0, 361, statusbaryoffset);
-    drawmainmenu();
-    SDL_GL_SwapWindow(mainwindow);
-    if (sortcnt != -1)
-        wipeoverlay(0, 0, 361, statusbaryoffset);
-    drawmainmenu();
-
     j = scrsize;
     if (j < 18000)
         j = 18000;
     if (vidmode == 1)
         j = 21600;
 
+    draw_ptr[++drawStackTopIndex] = drawmainmenu;
+
     while ((mainmenuplace >= 0) && (done == 0))
     {
+        SDL_GL_SwapWindow(mainwindow);
+        picrot(posx, posy, posz, ang);
         if ((mainmenuplace = getselection(88, 41, mainmenuplace, 10)) >= 0)
         {
-            if (mainmenuplace == MAINMENU_NEWGAME)
+            switch (mainmenuplace)
+            {
+            case MAINMENU_NEWGAME:
                 if ((k = newgamemenu()) >= 0)
                 {
                     done = 1;
@@ -5423,30 +5424,45 @@ K_INT16 mainmenu()
                         done = 0;
                     }
                 }
-            if (mainmenuplace == MAINMENU_LOADGAME)
-                if (loadsavegamemenu(1) >= 0)
+                break;
+            case MAINMENU_LOADGAME:
+                whichmenu = 1;
+                if (loadsavegamemenu() >= 0)
                     done = 1;
-            if (mainmenuplace == MAINMENU_SAVEGAME)
-            {
+                break;
+            case MAINMENU_SAVEGAME:
                 if (sortcnt == -1)
                     ksayui(12);
                 else
                 {
-                    if (loadsavegamemenu(2) >= 0)
+                    whichmenu = 2;
+                    if (loadsavegamemenu() >= 0)
                         done = 1;
                 }
-            }
-            if (mainmenuplace == MAINMENU_RETURN)
-                mainmenuplace = (-mainmenuplace)-1;
-            if (mainmenuplace == MAINMENU_SETUP) {
+                break;
+            case MAINMENU_RETURN:
+                mainmenuplace = (-mainmenuplace) - 1;
+                break;
+            case MAINMENU_SETUP:
                 setupmenu(1);
                 savesettings();
+                break;
+            case MAINMENU_HELP:
+                helpmenu();
+                break;
+            case MAINMENU_STORY:
+                bigstorymenu();
+                break;
+            case MAINMENU_COPYRIGHT:
+                orderinfomenu();
+                break;
+            case MAINMENU_CREDITS:
+                creditsmenu();
+                break;
+            case MAINMENU_EXIT:
+                done = areyousure();
             }
-            if (mainmenuplace == MAINMENU_HELP) helpmenu();
-            if (mainmenuplace == MAINMENU_STORY) bigstorymenu();
-            if (mainmenuplace == MAINMENU_COPYRIGHT) orderinfomenu();
-            if (mainmenuplace == MAINMENU_CREDITS) creditsmenu();
-            if (mainmenuplace == MAINMENU_EXIT) done = areyousure();
+
             if (done == 0)
             {
                 checkGLStatus();
@@ -5467,14 +5483,17 @@ K_INT16 mainmenu()
                         picrot(posx, posy, posz, ang);
                         drawmainmenu();
                     }
+                    SDL_GL_SwapWindow(mainwindow);
                     checkGLStatus();
                 }
             }
         }
     }
+    drawStackTopIndex--;
     if (sortcnt != -1) {
         linecompare(statusbar);
         wipeoverlay(0, 0, 361, statusbaryoffset);
+        statusbaralldraw();
     }
     else
         kgif(1);
@@ -5514,12 +5533,17 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
     obstatus = 1;
     mousx = 0;
     mousy = 0;
+
     while (esckeystate == 0)
     {
         PollInputs();
         animater6++;
         if (animater6 == 6)
             animater6 = 0;
+
+        wipeoverlay(0, 0, 512, 512);
+        for (int i = 0; i <= drawStackTopIndex; i++)
+            draw_ptr[i]();
 
         SDL_Delay(10); /* Let's not soak up all CPU... */
 
@@ -5531,6 +5555,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
             else
                 statusbardraw(20+(animater6-3)*14, 46, 13, 13, xoffs+20-n, nowselector*12+yoffs+n-1+1, statusbarback);
         }
+
         obstatus = bstatus;
         if (moustat == 0) {
             bstatus=readmouse(&mousx, &mousy);
@@ -5549,13 +5574,10 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
 
         if (menuDirection != DIRECTION_NONE) {
             ksayui(27);
-            for (int i = 0; i < 2; i++) {
-                if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-                    wipeoverlay(xoffs + 39 - n, nowselector * 12 + yoffs + n - 1, 15, 15);
-                else
-                    statusbardraw(16, 15, 13, 13, xoffs + 20 - n, nowselector * 12 + yoffs + n - 1 + 1, menu);
-                SDL_GL_SwapWindow(mainwindow);
-            }
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
+                wipeoverlay(xoffs + 39 - n, nowselector * 12 + yoffs + n - 1, 15, 15);
+            else
+                statusbardraw(16, 15, 13, 13, xoffs + 20 - n, nowselector * 12 + yoffs + n - 1 + 1, menu);
         }
 
         SDL_GL_SwapWindow(mainwindow);
@@ -5583,10 +5605,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         }
     }
     ksayui(27);
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-       wipeoverlay(xoffs + 39 - n, nowselector * 12 + yoffs + n - 1, 15, 15);
-    else
-        statusbardraw(36 - n, 15, 13, 13, xoffs + 20 - n, nowselector * 12 + yoffs + n - 1 + 1, menu);
+
     if ((esckeystate&2) > 0)
         return(nowselector);
     else
@@ -5595,8 +5614,6 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
 
 void finalisemenu() {
     menuing=0;
-    UploadPartialOverlay(menuleft, menutop, menuwidth, menuheight);
-    SDL_GL_SwapWindow(mainwindow);
     UploadPartialOverlay(menuleft, menutop, menuwidth, menuheight);
 }
 
@@ -5671,6 +5688,29 @@ void drawmenu(K_INT16 xsiz, K_INT16 ysiz, K_INT16 walnume)
             statusbardraw(16, 16, 16, 16, i, j+1, walnume);
 }
 
+void drawselectionmenu()
+{
+    int i;
+    int j = 12 * selectionMenuStruct.alts + 24;
+    int ofs = 0;
+    if (selectionMenuStruct.menutitle) {
+        ofs = 8;
+        j += 16;
+    }
+
+    drawmenu(304, j, menu);
+    if (selectionMenuStruct.menutitle) {
+        strcpy(textbuf, selectionMenuStruct.menutitle);
+        textprint(180 - (strlen(textbuf) << 2), 112 - 6 * selectionMenuStruct.alts, 0);
+    }
+    for (i = 0; i < selectionMenuStruct.alts; i++) {
+        strcpy(textbuf, selectionMenuStruct.titles[i]);
+        textprint(71, 120 - 6 * selectionMenuStruct.alts + 12 * i + ofs, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    }
+
+    finalisemenu();
+}
+
 /* Show credits. */
 
 void creditsmenu()
@@ -5685,7 +5725,9 @@ void creditsmenu()
     strcpy(&textbuf[0], "Credits");
     textprint(149, 20+n+1, 32);
     loadstory(-1);
+    displaystory(-1);
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 }
 
@@ -5710,10 +5752,11 @@ void bigstorymenu()
     {
         drawmenu(304, 192, menu);
         loadstory(i);
+        displaystory(i);
         finalisemenu();
+        SDL_GL_SwapWindow(mainwindow);
         nowenterstate = 15;
         lastenterstate = 15;
-        glFlush();
         while ((nowenterstate <= lastenterstate) && (bstatus <= obstatus))
         {
             PollInputs();
@@ -5754,11 +5797,9 @@ void bigstorymenu()
     }
 }
 
-/* Quit (Y/N)? */
-
-K_INT16 areyousure()
+void drawareyousure()
 {
-    K_INT16 i, n;
+    K_INT16 n;
 
     if (vidmode == 0)
         n = 0;
@@ -5766,13 +5807,21 @@ K_INT16 areyousure()
         n = 20;
     drawmenu(224, 64, menu);
     strcpy(&textbuf[0], "Really want to quit?");
-    textprint(99, 84+n+1, 112);
+    textprint(99, 84 + n + 1, 112);
     strcpy(&textbuf[0], "Yes");
-    textprint(105, 96+n+1, 32);
+    textprint(105, 96 + n + 1, 32);
     strcpy(&textbuf[0], "No");
-    textprint(105, 108+n+1, 32);
+    textprint(105, 108 + n + 1, 32);
     finalisemenu();
-    i = getselection(60, 95, 0, 2);
+}
+
+/* Quit (Y/N)? */
+
+K_INT16 areyousure()
+{
+    draw_ptr[++drawStackTopIndex] = drawareyousure;
+    K_INT16 i = getselection(60, 95, 0, 2);
+    drawStackTopIndex--;
     if (i == 0)
         return(1);
     else
@@ -5791,10 +5840,36 @@ void helpmenu()
         n = 20;
     drawmenu(256, 176, menu);
     loadstory(-15);
+    displaystory(-15);
     strcpy(&textbuf[0], "Help");
     textprint(161, 18+n+1, 32);
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
+}
+
+void drawsodamenu()
+{
+    K_INT16 n;
+
+    wipeoverlay(0, 0, 361, statusbaryoffset);
+
+    if (vidmode == 0)
+        n = 0;
+    else
+        n = 20;
+    drawmenu(256, 160, menu);
+
+    if (boardnum < 10)
+        displaystory(-34);
+    else
+        displaystory(-33);
+
+    statusbardraw(0, 0, 12, 36, 85 - n, 49 + n + 1, sodapics);
+    statusbardraw(12, 0, 12, 36, 85 - n, 85 + n + 1, sodapics);
+    statusbardraw(24, 0, 12, 36, 85 - n, 121 + n + 1, sodapics);
+    statusbardraw(36, 0, 12, 12, 85 - n, 157 + n + 1, sodapics);
+    finalisemenu();
 }
 
 /* Soda menu. */
@@ -5802,26 +5877,20 @@ void helpmenu()
 void sodamenu()
 {
     K_INT32 ototclocker;
-    K_INT16 n, valid;
+    K_INT16 valid = 0;
 
-    wipeoverlay(0, 0, 361, statusbaryoffset);
     ototclocker = totalclock;
-    if (vidmode == 0)
-        n = 0;
-    else
-        n = 20;
+
     ksayui(27);
-    drawmenu(256, 160, menu);
+
     if (boardnum < 10)
         loadstory(-34);
     else
         loadstory(-33);
-    statusbardraw(0, 0, 12, 36, 85-n, 49+n+1, sodapics);
-    statusbardraw(12, 0, 12, 36, 85-n, 85+n+1, sodapics);
-    statusbardraw(24, 0, 12, 36, 85-n, 121+n+1, sodapics);
-    statusbardraw(36, 0, 12, 12, 85-n, 157+n+1, sodapics);
-    valid = 0;
-    finalisemenu();
+   
+
+    draw_ptr[++drawStackTopIndex] = drawsodamenu;
+
     while (valid == 0)
     {
         sodaplace = getselection(46, 49, sodaplace, 10);
@@ -5844,6 +5913,7 @@ void sodamenu()
         else
             valid = 1;
     }
+    drawStackTopIndex--;
     if ((sodaplace >= 0) && (valid == 1))
     {
         ksay(24);
@@ -5956,6 +6026,7 @@ void sodamenu()
     clockspeed = 0;
     SDL_UnlockMutex(timermutex);
     wipeoverlay(0, 0, 361, statusbaryoffset);
+    statusbaralldraw();
     linecompare(statusbar);
 }
 
@@ -5999,7 +6070,7 @@ void orderinfomenu() {
     textprint(30, 116, 48);
 
     strcpy(textbuf,
-           "gitlab.com/ktpanda/lab3d-sdl");
+           "http://ktpanda.org");
     textprint(30, 126, 48);
 
     strcpy(textbuf,
@@ -6019,16 +6090,14 @@ void orderinfomenu() {
     textprint(30, 176, 48);
 
     finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
     pressakey();
 
 }
 
-/* Save/load game selector. */
-
-K_INT16 loadsavegamemenu(K_INT16 whichmenu)
+void drawloadsavegamemenu()
 {
-    char filename[20];
-    K_INT16 fil, i, j, k, n;
+    K_INT16 i, j, k, n;
     K_INT32 templong;
 
     if (vidmode == 0)
@@ -6039,22 +6108,93 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
     if (whichmenu == 1)
     {
         strcpy(&textbuf[0], "Load game");
-        textprint(137, 26+n+1, 32);
+        textprint(137, 26 + n + 1, 32);
     }
     else
     {
         strcpy(&textbuf[0], "Save game");
-        textprint(137, 26+n+1, 112);
+        textprint(137, 26 + n + 1, 112);
     }
     strcpy(&textbuf[0], "#: Name:       Board: Score: Time:");
-    textprint(55, 52+n+1, 48);
+    textprint(55, 52 + n + 1, 48);
+    
+    j = 0;
+    for (i = 70 + n; i < 166 + n; i += 12)
+    {
+        if (gamexist[j] == 1)
+        {
+            textbuf[0] = j + 49, textbuf[1] = 32, textbuf[2] = 32;
+            for (k = 0; k < 12; k++)
+            {
+                textbuf[k + 3] = gamehead[j][k];
+                if (textbuf[k + 3] == 0)
+                    textbuf[k + 3] = 32;
+            }
+            textbuf[15] = 32;
+            textbuf[16] = ((gamehead[j][17] + 1) / 10) + 48;
+            if (textbuf[16] == 48)
+                textbuf[16] = 32;
+            textbuf[17] = ((gamehead[j][17] + 1) % 10) + 48;
+            textbuf[18] = 32;
+            textbuf[19] = 32;
+            textbuf[20] = 32;
+            k = j * 27;
+            templong = readlong(&gamehead[j][19]);
+            //	    templong=*((K_INT32 *)(&gamehead[j][19]));
+
+            textbuf[21] = (char)((templong / 100000L) % 10L) + 48;
+            textbuf[22] = (char)((templong / 10000L) % 10L) + 48;
+            textbuf[23] = (char)((templong / 1000L) % 10L) + 48;
+            textbuf[24] = (char)((templong / 100L) % 10L) + 48;
+            textbuf[25] = (char)((templong / 10L) % 10L) + 48;
+            textbuf[26] = (char)(templong % 10L) + 48;
+            textbuf[27] = 32;
+            k = 21;
+            while ((textbuf[k] == 48) && (k < 26))
+                textbuf[k++] = 32;
+            k = j * 27;
+            templong = readlong(&gamehead[j][23]);
+            //	    templong=*((K_INT32 *)(&gamehead[j][23]));
+
+            templong /= 240;
+            textbuf[28] = (char)((templong / 10000L) % 10L) + 48;
+            textbuf[29] = (char)((templong / 1000L) % 10L) + 48;
+            textbuf[30] = (char)((templong / 100L) % 10L) + 48;
+            textbuf[31] = (char)((templong / 10L) % 10L) + 48;
+            textbuf[32] = (char)(templong % 10L) + 48;
+            textbuf[33] = 0;
+            k = 28;
+            while ((textbuf[k] == 48) && (k < 32))
+                textbuf[k++] = 32;
+            textprint(56, i - 1 + 1, 30);
+            textprint(55, i - 1 + 1, 32);
+        }
+        else
+        {
+            textbuf[0] = j + 49;
+            textbuf[1] = 0;
+            textprint(56, i - 1 + 1, 28);
+            textprint(55, i - 1 + 1, 30);
+        }
+        j++;
+    }
+    finalisemenu();
+}
+
+/* Save/load game selector. */
+
+K_INT16 loadsavegamemenu()
+{
+    char filename[20];
+    K_INT16 j, fil;
+
     if (gameheadstat == 0)
     {
-        for(j=0;j<8;j++)
+        for (j = 0; j < 8; j++)
         {
             sprintf(filename, "SAVGAME%d.DAT", j);
             sprintf(filepathUpper, "%s%s", gameroot, filename);
-            if((fil=open(filepathUpper, O_RDONLY|O_BINARY, 0))!=-1)
+            if ((fil = open(filepathUpper, O_RDONLY | O_BINARY, 0)) != -1)
             {
                 gamexist[j] = 1;
                 read(fil, &gamehead[j][0], 27);
@@ -6063,7 +6203,7 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
             else {
                 sprintf(filename, "savgame%d.dat", j);
                 sprintf(filepath, "%s%s", gameroot, filename);
-                if((fil=open(filepath, O_RDONLY|O_BINARY, 0))!=-1)
+                if ((fil = open(filepath, O_RDONLY | O_BINARY, 0)) != -1)
                 {
                     gamexist[j] = 1;
                     read(fil, &gamehead[j][0], 27);
@@ -6075,67 +6215,9 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
         }
         gameheadstat = 1;
     }
-    j = 0;
-    for(i=70+n;i<166+n;i+=12)
-    {
-        if (gamexist[j] == 1)
-        {
-            textbuf[0] = j+49, textbuf[1] = 32, textbuf[2] = 32;
-            for(k=0;k<12;k++)
-            {
-                textbuf[k+3] = gamehead[j][k];
-                if (textbuf[k+3] == 0)
-                    textbuf[k+3] = 32;
-            }
-            textbuf[15] = 32;
-            textbuf[16] = ((gamehead[j][17]+1)/10)+48;
-            if (textbuf[16] == 48)
-                textbuf[16] = 32;
-            textbuf[17] = ((gamehead[j][17]+1)%10)+48;
-            textbuf[18] = 32;
-            textbuf[19] = 32;
-            textbuf[20] = 32;
-            k = j*27;
-            templong=readlong(&gamehead[j][19]);
-//	    templong=*((K_INT32 *)(&gamehead[j][19]));
 
-            textbuf[21] = (char)((templong/100000L)%10L)+48;
-            textbuf[22] = (char)((templong/10000L)%10L)+48;
-            textbuf[23] = (char)((templong/1000L)%10L)+48;
-            textbuf[24] = (char)((templong/100L)%10L)+48;
-            textbuf[25] = (char)((templong/10L)%10L)+48;
-            textbuf[26] = (char)(templong%10L)+48;
-            textbuf[27] = 32;
-            k = 21;
-            while ((textbuf[k] == 48) && (k < 26))
-                textbuf[k++] = 32;
-            k = j*27;
-            templong=readlong(&gamehead[j][23]);
-//	    templong=*((K_INT32 *)(&gamehead[j][23]));
-
-            templong /= 240;
-            textbuf[28] = (char)((templong/10000L)%10L)+48;
-            textbuf[29] = (char)((templong/1000L)%10L)+48;
-            textbuf[30] = (char)((templong/100L)%10L)+48;
-            textbuf[31] = (char)((templong/10L)%10L)+48;
-            textbuf[32] = (char)(templong%10L)+48;
-            textbuf[33] = 0;
-            k = 28;
-            while ((textbuf[k] == 48) && (k < 32))
-                textbuf[k++] = 32;
-            textprint(56, i-1+1, 30);
-            textprint(55, i-1+1, 32);
-        }
-        else
-        {
-            textbuf[0] = j+49;
-            textbuf[1] = 0;
-            textprint(56, i-1+1, 28);
-            textprint(55, i-1+1, 30);
-        }
-        j++;
-    }
-    finalisemenu();
+    draw_ptr[++drawStackTopIndex] = drawloadsavegamemenu;
+    
     if (whichmenu == 1)
     {
         do
@@ -6154,7 +6236,52 @@ K_INT16 loadsavegamemenu(K_INT16 whichmenu)
         if (loadsavegameplace < 0)
             loadsavegameplace = (-loadsavegameplace)-1;
     }
+
+    drawStackTopIndex--;
     return(j);
+}
+
+void drawepisodeselectionmenu()
+{
+    K_INT16 j, n;
+
+    if (vidmode == 0)
+        n = 0;
+    else
+        n = 20;
+    drawmenu(288, 64, menu);
+    strcpy(&textbuf[0], "New game");
+    textprint(137, 74 + n + 1, 112);
+    strcpy(&textbuf[0], "Episode 1: Search for Sparky");
+    textprint(67, 88 + n + 1, 32);
+    if (numboards >= 20) j = 32; else j = 28;
+    strcpy(&textbuf[0], "Episode 2: Sparky's Revenge");
+    textprint(67, 100 + n + 1, ((char)j));
+    if (numboards >= 30) j = 32; else j = 28;
+    strcpy(&textbuf[0], "Episode 3: Find the Way Home");
+    textprint(67, 112 + n + 1, ((char)j));
+    if (newgameplace < 0) newgameplace = 0;
+    if (newgameplace > 2) newgameplace = 2;
+    finalisemenu();
+}
+
+void drawdifficultymenu()
+{
+    K_INT16 n;
+
+    if (vidmode == 0)
+        n = 0;
+    else
+        n = 20;
+
+    drawmenu(288, 64, menu);
+    strcpy(&textbuf[0], "New game");
+    textprint(137, 74 + n + 1, 112);
+    strcpy(&textbuf[0], "Easy: Don't touch me.");
+    textprint(67, 92 + n + 1, 32);
+    strcpy(&textbuf[0], "Hard: OUCH!");
+    textprint(67, 104 + n + 1, 32);
+    finalisemenu();
 }
 
 /* Choose episode... */
@@ -6167,40 +6294,30 @@ K_INT16 newgamemenu()
         n = 0;
     else
         n = 20;
-    drawmenu(288, 64, menu);
-    strcpy(&textbuf[0], "New game");
-    textprint(137, 74+n+1, 112);
-    strcpy(&textbuf[0], "Episode 1: Search for Sparky");
-    textprint(67, 88+n+1, 32);
-    if (numboards >= 20) j = 32; else j = 28;
-    strcpy(&textbuf[0], "Episode 2: Sparky's Revenge");
-    textprint(67, 100+n+1, ((char)j));
-    if (numboards >= 30) j = 32; else j = 28;
-    strcpy(&textbuf[0], "Episode 3: Find the Way Home");
-    textprint(67, 112+n+1, ((char)j));
-    if (newgameplace < 0) newgameplace = 0;
-    if (newgameplace > 2) newgameplace = 2;
-    finalisemenu();
+    
+    draw_ptr[++drawStackTopIndex] = drawepisodeselectionmenu;
+
     newgameplace = getselection(28, 87, newgameplace, 3);
-    if ((newgameplace == 1) && (numboards < 20))
+    if ((newgameplace == 1) && (numboards < 20)) {
+        drawStackTopIndex--;
         return(newgameplace);
-    if ((newgameplace == 2) && (numboards < 30))
+    }
+    if ((newgameplace == 2) && (numboards < 30)) {
+        drawStackTopIndex--;
         return(newgameplace);
+    }
     if (newgameplace<0) {
+        drawStackTopIndex--;
         newgameplace=(-newgameplace)-1;
         return -1;
     }
-    drawmenu(288, 64, menu);
-    strcpy(&textbuf[0], "New game");
-    textprint(137, 74+n+1, 112);
-    strcpy(&textbuf[0], "Easy: Don't touch me.");
-    textprint(67, 92+n+1, 32);
-    strcpy(&textbuf[0], "Hard: OUCH!");
-    textprint(67, 104+n+1, 32);
-    finalisemenu();
+    
+    draw_ptr[++drawStackTopIndex] = drawdifficultymenu;
+
     if (skilevel < 0) skilevel = 0;
     if (skilevel > 1) skilevel = 1;
     skilevel = getselection(28, 91, skilevel, 2);
+    drawStackTopIndex -= 2;
     if (skilevel<0) {
         skilevel=(-skilevel)-1;
         return -1;
@@ -6211,13 +6328,11 @@ K_INT16 newgamemenu()
     return(j);
 }
 
-/* Wait for keypress (or mouse click). */
+/* Wait for key press (or mouse click). */
 
 void pressakey()
 {
     K_INT16 bstatus, obstatus;
-
-    glFlush();
 
     bstatus = 1;
     obstatus = 1;

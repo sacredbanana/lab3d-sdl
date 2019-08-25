@@ -350,6 +350,9 @@ void initmemory()
     K_UINT16 l;
     unsigned char *v;
 
+    memset(draw_ptr, NULL, sizeof(draw_ptr));
+    drawStackTopIndex = -1;
+
     fprintf(stderr,"Allocating memory...\n");
     if (((lzwbuf = malloc(12304-8200)) == NULL)||
         ((lzwbuf2=malloc(8200))==NULL))
