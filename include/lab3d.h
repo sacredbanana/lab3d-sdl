@@ -423,6 +423,19 @@ EXTERN K_UINT16 sortx[512], sorty[512];
 EXTERN K_INT16 sorti[512], sortbnum[512];
 EXTERN char wallheader[numwalls + 1], bmpkind[numwalls + 1];
 
+/* A stack of function pointers for drawing the menu */
+EXTERN void (*draw_ptr[4])(void);
+EXTERN K_UINT16 drawStackTopIndex;
+
+EXTERN struct {
+    int alts;
+    char** titles;
+    int* value;
+    const char* menutitle;
+} selectionMenuStruct;
+
+EXTERN K_INT16 whichmenu;
+
 /*
    Why not just skip over the functions that draw the
    intro? Because they do important initialization stuff.
@@ -443,7 +456,7 @@ EXTERN K_INT16 mshock[512], mstat[512];
 EXTERN K_INT16 vidmode, dside, scrsize;
 EXTERN K_INT16 board[64][64], videotype, mute, numboards, skilevel;
 EXTERN unsigned char option[numoptions], keydefs[ACTION_LAST];
-EXTERN unsigned char tempbuf[4096], palette[768], mshot[512];
+EXTERN unsigned char tempbuf[4096], storybuf[4096], palette[768], mshot[512];
 EXTERN char hiscorenam[16], hiscorenamstat, namrememberstat;
 EXTERN K_INT16 cliptowall;
 EXTERN K_UINT16 explox[16];
@@ -613,6 +626,7 @@ K_INT16 kgif(K_INT16);
 void setgamevideomode();
 void textprint(K_INT16, K_INT16, char);
 K_INT16 loadstory(K_INT16);
+void displaystory(K_INT16);
 K_INT16 setupmouse();
 void setupmenu(int ingame);
 void statusbaralldraw();
@@ -624,12 +638,13 @@ void drawtime(K_INT32);
 void screencapture();
 K_INT16 mainmenu();
 K_INT16 getselection(K_INT16, K_INT16, K_INT16, K_INT16);
+void drawselectionmenu();
 void drawmenu(K_INT16, K_INT16, K_INT16);
 void finalisemenu();
 void creditsmenu();
 void helpmenu();
 void orderinfomenu();
-K_INT16 loadsavegamemenu(K_INT16);
+K_INT16 loadsavegamemenu();
 K_INT16 newgamemenu();
 void pressakey();
 void wingame(K_INT16);

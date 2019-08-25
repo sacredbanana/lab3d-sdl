@@ -1404,10 +1404,8 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
     int i;
     if (newkeystatus(SDLK_1)) {
         g_stereo_sep -= 1;
-        printf("sep = %d\n", g_stereo_sep);
     } else if (newkeystatus(SDLK_2)) {
         g_stereo_sep += 1;
-        printf("sep = %d\n", g_stereo_sep);
     }
     int sep = g_stereo_sep >> 3;
     int asep = stereo == 2 ? 0 : 4;

@@ -3378,6 +3378,7 @@ int main(int argc,char **argv)
             mixing=1;
 
             loadstory(boardnum);
+            displaystory(boardnum);
 
             mixing=0;
 
@@ -3497,7 +3498,6 @@ int main(int argc,char **argv)
         {
             if (ototclock > 1)
             {
-                picrot(posx,posy,posz,ang);
                 SDL_GL_SwapWindow(mainwindow);
                 j = mainmenu();
                 if (j < MAINMENU_COPYRIGHT)
@@ -3577,8 +3577,6 @@ int main(int argc,char **argv)
                     {
                         if (hiscorenamstat == 0)
                         {
-                            drawinputbox();
-                            SDL_GL_SwapWindow(mainwindow);
                             drawinputbox();
                             getname();
                         }
