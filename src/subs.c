@@ -5405,6 +5405,11 @@ K_INT16 mainmenu()
     {
         SDL_GL_SwapWindow(mainwindow);
         picrot(posx, posy, posz, ang);
+       // SDL_GL_SwapWindow(mainwindow);
+        //picrot(posx, posy, posz, ang);
+        //SDL_GL_SwapWindow(mainwindow);
+        //picrot(posx, posy, posz, ang);
+
         if ((mainmenuplace = getselection(88, 41, mainmenuplace, 10)) >= 0)
         {
             switch (mainmenuplace)
@@ -5541,7 +5546,11 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         if (animater6 == 6)
             animater6 = 0;
 
-        wipeoverlay(0, 0, 512, 512);
+        if (ingame)
+            picrot(posx, posy, posz, ang);
+        else
+            wipeoverlay(0, 0, 512, 512);
+
         for (int i = 0; i <= drawStackTopIndex; i++)
             draw_ptr[i]();
 
