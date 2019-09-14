@@ -1638,7 +1638,6 @@ void loadwalls(int replace)
                 if (debugmode)
                     fprintf(stderr, "Trying to draw screen buffer.\n");
                 fade(64 + (i >> 1));
-                SetVisibleScreenOffset(0);
                 if (debugmode)
                     fprintf(stderr, "Screen buffer draw OK.\n");
             }
@@ -1667,11 +1666,10 @@ void loadwalls(int replace)
                 else {
                     j -= rnumwalls >> 1;
                     screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
-                    screenbuffer[min(screenbufferwidth * 199 + j - 1, SCREEN_BUFFER_SIZE - 1)] = 63;
                 }
                 if (debugmode)
                     fprintf(stderr, "Trying to update screen buffer.\n");
-                UploadPartialOverlay(j-1, 199, 2, 1);
+                UploadPartialOverlay(j, 199, 2, 1);
                 if (debugmode)
                     fprintf(stderr, "Screen buffer update OK.\n");
             }
@@ -1679,6 +1677,7 @@ void loadwalls(int replace)
             /* Use double buffer when fading, single buffer when not.
                Yes, I know I'm too clever for my own good.
                Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
+            SetVisibleScreenOffset(0);
             SDL_GL_SwapWindow(mainwindow);
             cwparam = &wparams[i];
             int minfilt = cwparam->minfilt;
@@ -5405,10 +5404,6 @@ K_INT16 mainmenu()
     {
         SDL_GL_SwapWindow(mainwindow);
         picrot(posx, posy, posz, ang);
-       // SDL_GL_SwapWindow(mainwindow);
-        //picrot(posx, posy, posz, ang);
-        //SDL_GL_SwapWindow(mainwindow);
-        //picrot(posx, posy, posz, ang);
 
         if ((mainmenuplace = getselection(88, 41, mainmenuplace, 10)) >= 0)
         {
