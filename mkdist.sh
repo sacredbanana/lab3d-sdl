@@ -56,7 +56,7 @@ copy_linbin64() {
 copy_data() {
     cpath=$1
     mkdir -p $cpath
-    cp ken.bmp ken.ico $cpath
+    cp icons/ken.bmp icons/ken.ico $cpath
     cp dist/data-files/* $cpath
 }
 

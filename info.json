@@ -2,10 +2,10 @@
   "title": "Ken's Labyrinth",
   "author": "Nightfox",
   "category": "game",
-  "version": "4.0.0",
+  "version": "4.0.3",
   "url": "https://github.com/sacredbanana/lab3d-sdl",
   "license": "n/a",
   "description": "Enhanced version of the MS-DOS classic 3D shooter Ken's Labyrinth.",
   "details": "LAB3D/SDL\\n\\nLAB3D/SDL is a port of Ken's Labyrinth to modern operating systems, using\\nOpenGL for graphics output and the SDL library to provide user input, sound\\noutput, threading, and some graphics support functions. Music output is\\nthrough Adlib emulation or MIDI (MIDI only on Windows, Linux and other\\noperating systems with OSS-compatible sound APIs).\\n\\nThis code has been tested on Windows 98, Windows ME, Windows XP,\\nSuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8),\\nFreeBSD 4.7 and Nintendo Switch.\\n\\nImprovements over the original Ken's Labyrinth:\\n\\n- Runs natively on 32-bit/64-bit Windows, Unix or Nintendo Switch.\\n- Supports big-endian CPUs.\\n- Uses OpenGL to provide hardware accelerated, anti-aliased graphics with\\n  trilinear interpolation in true colour (where available).\\n- Hi-res texture support.\\n- Multiple simultaneous sound effects.\\n- Improved General MIDI music.\\n- Adlib emulation.\\n- Game controller support.\\n- Many bug fixes.",
-  "changelog": "3.2.2\\n* Brand new game launcher menu allowing you to launch any version of the game\n* Ken's Labyrinth 1.0/1.1 graphical bug fixes\n* Stereoscopic 3D added as an option in setup menu"
+  "changelog": "4.0.3 \\n* Brand new game launcher menu allowing you to launch any version of the game\n* Ken's Labyrinth 1.0/1.1 graphical bug fixes\n* Stereoscopic 3D added as an option in setup menu"
 }
