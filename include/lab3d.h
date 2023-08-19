@@ -820,7 +820,7 @@ EXTERN K_INT16* SoundBuffer;
 EXTERN int FeedPoint;
 
 /* SDL Audio Device ID */
-SDL_AudioDeviceID audiodevice;
+EXTERN SDL_AudioDeviceID audiodevice;
 
 /* Last played Music file */
 EXTERN char lastPlayedMusicFile[12];
@@ -897,7 +897,7 @@ int get_enum(char* str, enumpair* cur);
 int smooth_input(int, int, int, int);
 void setup_stereo(int);
 
-SDL_mutex* soundmutex, * timermutex;
+EXTERN SDL_mutex* soundmutex, * timermutex;
 
 #define JOY_FLAG_NEG  0x40000000
 #define JOY_FLAG_AXIS 0x20000000
