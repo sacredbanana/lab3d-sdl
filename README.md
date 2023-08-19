@@ -44,19 +44,17 @@ graphics card capable of OpenGL. macOS (both Apple Silicon and Intel) and Ninten
 
 # Software requirements
 
-Operating system:	Windows 95/98/Me/XP, Linux, Solaris, macOS,BSD, ...
-Libraries:		OpenGL 1.2, GLU 1.3, SDL 2.0. Slightly older versions
-			of GLU may work.
-Compiler:		GCC 2.95.2 or later recommended. Other compilers will
-			require Makefile changes, but should work.
-Other utilities:	Makefiles require GNU Make (or compatible) and sh
-			(or compatible, e.g. bash). Cmake for creating the build files.
-Data files:		
-			(No longer needed as a separate download as all files are now included.)
-			Ken's Labyrinth v2.1 (Epic Megagames registered),
-			Ken's Labyrinth v2.0 (Epic Megagames shareware),
-			Ken's Labyrinth v1.1 (Advanced Systems registered) or
-			Ken's Labyrinth v1.0 (Advanced Systems shareware).
+## Operating system
+Windows 95/98/Me/XP, Linux, Solaris, macOS, BSD, ...
+
+## Libraries
+OpenGL 1.2, GLU 1.3, SDL 2.0. Slightly older versions of GLU may work.
+
+## Compiler
+GCC 2.95.2 or later recommended. Clang will work for macOS. Other compilers will require Makefile changes, but should work.
+
+## Other utilities
+Makefiles require GNU Make (or compatible) and sh (or compatible, e.g. bash). Cmake for creating the build files.
 
 # Installation
 
@@ -75,7 +73,7 @@ sudo apt install libsdl2-2.0-0 libsdl2-image-2.0-0
 
 Before the game will run you will need to install SDL2 and SDL2_Image runtime binaries on your system.
 
-- Install [Homebrew](https://brew.sh/)if you haven't already
+- Install [Homebrew](https://brew.sh/) if you haven't already
 - Run the following command:
 ```
 brew install sdl2 sdl2_image
@@ -148,6 +146,7 @@ cd build
 cmake ..
 make
 ```
+
 The app `Kens-Labyrinth` and its dependencies will be copied to the build folder. You may move this to your Applications folder.
 
 ## Linux/UNIX
