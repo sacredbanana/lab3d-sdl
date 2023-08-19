@@ -14,6 +14,11 @@ else ()
     set(KEN_EXE_NAME "ken")
 endif ()
 
+set(MAIN_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
+set(MAIN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
+set(EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
+set(ICONS_DIR ${CMAKE_SOURCE_DIR}/icons)
+
 if (APPLE)
   # Detect macOS architecture (arm64 or x86_64)
   execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE OSX_ARCHITECTURES)
@@ -27,11 +32,10 @@ if (APPLE)
   set(MACOSX_LONG_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_BUNDLE_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_INFO_STRING "Copyright © 2019. All rights reserved.")
+  set(MACOSX_BUNDLE_ICON_FILE ken.icns)
+  set(APP_ICON_MACOSX ${ICONS_DIR}/ken.icns)
+  set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif ()
-
-set(MAIN_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-set(MAIN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
-set(EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/buildconfig.h.in"
@@ -75,7 +79,12 @@ if (UNIX AND (NOT APPLE))
   set(KEN_USE_OSS ON CACHE BOOL "Use OSS for General MIDI?")
 endif ()
 
-add_executable (${KEN_EXE_NAME} ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ken.rc)
+if (APPLE)
+  add_executable (${KEN_EXE_NAME} MACOSX_BUNDLE ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${APP_ICON_MACOSX} ken.rc)
+else ()
+  add_executable (${KEN_EXE_NAME} ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ken.rc)
+endif()
+
 set_target_properties(${KEN_EXE_NAME} PROPERTIES LINKER_LANGUAGE C)
 target_compile_definitions(${KEN_EXE_NAME} PUBLIC KEN_64BIT)
 
@@ -145,10 +154,10 @@ endif ()
 
 if (NOT APPLE) 
   file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${PROJECT_BINARY_DIR})
-  file(COPY ${CMAKE_SOURCE_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR})
+  file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR})
   file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${PROJECT_BINARY_DIR})
 else ()
   file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
-  file(COPY ${CMAKE_SOURCE_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
+  file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
   file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
 endif ()
