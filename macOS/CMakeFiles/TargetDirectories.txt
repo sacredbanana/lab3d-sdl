@@ -1,3 +1,0 @@
-/Volumes/repos/lab3d-sdl/build/CMakeFiles/Kens-Labyrinth.dir
-/Volumes/repos/lab3d-sdl/build/CMakeFiles/ALL_BUILD.dir
-/Volumes/repos/lab3d-sdl/build/CMakeFiles/ZERO_CHECK.dir
