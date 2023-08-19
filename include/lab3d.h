@@ -40,7 +40,11 @@
 #include <switch.h>
 #else
 #include <SDL_opengl.h>
+#ifdef __APPLE__
+#include <OpenGL/glu.h>
+#else
 #include <GL/glu.h>
+#endif
 #endif
 
 #ifndef GL_BGR
