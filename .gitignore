@@ -54,3 +54,6 @@ settings.ini
 
 # Core dump
 core
+
+# Build directory
+build

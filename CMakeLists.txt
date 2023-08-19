@@ -1,7 +1,7 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.15)
 project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
@@ -15,8 +15,10 @@ else ()
 endif ()
 
 if (APPLE)
+  # Detect macOS architecture (arm64 or x86_64)
+  execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE OSX_ARCHITECTURES)
+  set(CMAKE_OSX_ARCHITECTURES ${OSX_ARCHITECTURES})
   set(CMAKE_C_COMPILER clang)
-  set(CMAKE_OSX_ARCHITECTURES x86_64)
   set(CMAKE_FIND_FRAMEWORK LAST)
   set(MACOSX_BUNDLE_BUNDLE_NAME ${KEN_EXE_NAME})
   set(MACOSX_BUNDLE_GUI_IDENTIFIER ${KEN_EXE_NAME})
@@ -110,7 +112,6 @@ elseif (UNIX AND NOT APPLE)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
   endif ()
 elseif (APPLE)
-  SET(CMAKE_OSX_ARCHITECTURES arm64)
   find_package(OpenGL REQUIRED)
   find_library(SDL2 SDL2)
   find_library(SDL2_image SDL2_image)
