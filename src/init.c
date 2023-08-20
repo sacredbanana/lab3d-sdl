@@ -442,13 +442,6 @@ void initaudio()
 #endif
     }
 
-    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
-        fprintf(stderr,"Opening Adlib emulation for %s music (%s output)...\n",
-                musicpan?"stereo":"mono",(channels-1)?"stereo":"mono");
-        adlibinit(44100,channels,2);
-        adlibsetvolume(musicvolume*48);
-    }
-
     if (speechstatus >= 2)
     {
         sprintf(filepath, "%ssounds.kzp", gameroot);
@@ -499,6 +492,15 @@ void initaudio()
         audiodevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
         if (audiodevice == 0) {
             TRACE("Failed to open audio: %s", SDL_GetError());
+        }
+
+        samplerate = have.freq;
+
+        if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
+        fprintf(stderr,"Opening Adlib emulation for %s music (%s output)...\n",
+                musicpan?"stereo":"mono",(channels-1)?"stereo":"mono");
+        adlibinit(samplerate,channels,2);
+        adlibsetvolume(musicvolume*48);
         }
 
         reset_dsp();

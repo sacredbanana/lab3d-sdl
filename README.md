@@ -178,7 +178,10 @@ music is not available if you do this (not much of a loss).
 
 ## Nintendo Switch
 
-Install DevKitPro and then run `make -f Makefile.Switch` in the source directory.
+- Install [devkitPro](https://devkitpro.org/wiki/Getting_Started)
+- Depending on which environment you have installed devkitPro, you will either need to use the `pacman` or `dkp-pacman` command for the following command:
+`sudo dkp-pacman -S switch-dev switch-sdl2 switch-sdl2_image switch-freetype switch-zlib switch-glfw switch-glad` and then just hit enter when it prompts you for a selection to install everything
+- run `make -f Makefile.Switch` in the source directory.
 
 # FAQ
 

@@ -248,12 +248,12 @@ typedef Sint16 K_INT16;
 #define endtext 448
 //SORTWALLEND
 #ifndef __SWITCH__
-#define KEY_PLUS 0
-#define KEY_MINUS 0
-#define KEY_L 0
-#define KEY_ZL 0
-#define KEY_R 0
-#define KEY_ZR 0
+#define HidNpadButton_Plus 0
+#define HidNpadButton_Minus 0
+#define HidNpadButton_L 0
+#define HidNpadButton_ZL 0
+#define HidNpadButton_R 0
+#define HidNpadButton_ZR 0
 #endif
 
 #ifndef ENABLE_NXLINK
@@ -497,6 +497,7 @@ EXTERN K_INT32 scoreclock, scorecount;
 EXTERN char textbuf[52];
 EXTERN K_INT16 musicsource, midiscrap;
 EXTERN K_UINT32 musicstatus, count, countstop;
+EXTERN K_UINT16 samplerate;
 EXTERN K_UINT16 numnotes, speed, drumstat, numchans, nownote;
 EXTERN K_UINT32* note;
 EXTERN K_UINT32 chanage[18];
@@ -545,6 +546,14 @@ EXTERN int walltol, neardist;
 
 /* Nintendo Switch globals, defines and functions... */
 #ifdef __SWITCH__
+EXTERN PadState pad;
+EXTERN Result rc, rc2;
+EXTERN HiddbgHdlsHandle HdlsHandle;
+EXTERN HiddbgHdlsDeviceInfo device;
+EXTERN HiddbgHdlsState state;
+EXTERN HiddbgHdlsSessionId session_id;
+EXTERN u8 keyBuffer[256];
+
 void configureResolution();
 void setMesaConfig();
 void initNxLink();

@@ -670,7 +670,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     K_INT16 numfiles;
     K_UINT16 leng;
     K_INT32 sndfiloffs;
-    K_INT32 blocksize=(musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
+    K_INT32 blocksize = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)?samplerate / 11025 * SOUNDBLOCKSIZE11KHZ:SOUNDBLOCKSIZE11KHZ;
 
     if (!ui) {
         psounds[psoundnum & 15] = filenum;
@@ -780,7 +780,7 @@ void preparesound(void *dasnd, long numbytestoprocess)
         minicnt -= speed*i;
         while (minicnt < 0)
         {
-            minicnt += 44100*channels*2;
+            minicnt += samplerate * channels * 2;
             ksmhandler();
         }
     }
@@ -902,39 +902,52 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
 
 /* Copy sound to sound buffer. */
 
-void DumpSound(unsigned char *sound, K_UINT16 leng, K_UINT32 playpoint, int pan) {
-    K_INT32 a, t;
+void DumpSound(unsigned char *sound, K_UINT16 length, K_UINT32 playpoint, int pan) {
+    // Define variables used in the function
+    K_INT32 currentPoint, adjustedVolume;
+    K_UINT32 endPoint, soundLength;
 
-    K_UINT32 e1, pl;
+    // Convert the sound effects from 44.1KHz to the current sample rate
+    SDL_AudioCVT cvt;
+    SDL_BuildAudioCVT(&cvt, AUDIO_U8, 1, 44100, AUDIO_U8, 1, samplerate);
+    cvt.len = length;
+    cvt.buf = (Uint8 *) SDL_malloc(cvt.len * cvt.len_mult);
+    memcpy(cvt.buf, sound, length);
+    SDL_ConvertAudio(&cvt);
 
-    if (channels==1) {
-        e1=playpoint+leng;
-        if (e1>=65536) e1=65536;
-        pl=e1-playpoint;
+    if (channels == 1) {
+        endPoint = playpoint + length;
+        endPoint = (endPoint > 65536) ? 65536 : endPoint;
+        soundLength = endPoint - playpoint;
 
-        for(a=playpoint;a<e1;a++) {
-            t=SoundBuffer[a]+(sound[a-playpoint]-128)*soundvolume;
-            if (t<-32768) t=-32768;
-            if (t>32767) t=32767;
-            SoundBuffer[a]=t;
+        for(currentPoint = playpoint; currentPoint < endPoint; currentPoint++) {
+            adjustedVolume = SoundBuffer[currentPoint] + (cvt.buf[currentPoint - playpoint] - 128) * soundvolume;
+            // Ensure value is within SInt16 range
+            adjustedVolume = (adjustedVolume < -32768) ? -32768 : adjustedVolume;
+            adjustedVolume = (adjustedVolume > 32767) ? 32767 : adjustedVolume;
+            SoundBuffer[currentPoint] = adjustedVolume;
         }
     } else {
-        e1=playpoint+(leng<<1);
-        if (e1>=65536) e1=65536;
-        pl=(e1-playpoint)>>1;
+        endPoint = playpoint + (length << 1);
+        endPoint = (endPoint > 65536) ? 65536 : endPoint;
+        soundLength = (endPoint - playpoint) >> 1;
 
-        for(a=playpoint;a<e1;a++) {
-            t=((a-playpoint)&1)?pan:(256-pan);
-            t=SoundBuffer[a]+
-                (((sound[(a-playpoint)>>1]-128)*soundvolume*t)>>7);
-            if (t<-32768) t=-32768;
-            if (t>32767) t=32767;
-            SoundBuffer[a]=t;
+        for(currentPoint = playpoint; currentPoint < endPoint; currentPoint++) {
+            int volumeAdjustment = ((currentPoint - playpoint) & 1) ? pan : (256 - pan);
+            adjustedVolume = SoundBuffer[currentPoint] + 
+                    (((cvt.buf[(currentPoint - playpoint) >> 1] - 128) * soundvolume * volumeAdjustment) >> 7);
+            // Ensure value is within SInt16 range
+            adjustedVolume = (adjustedVolume < -32768) ? -32768 : adjustedVolume;
+            adjustedVolume = (adjustedVolume > 32767) ? 32767 : adjustedVolume;
+            SoundBuffer[currentPoint] = adjustedVolume;
         }
     }
 
-    if (pl<leng) DumpSound(sound+pl, leng-pl, 0, pan);
+    if (soundLength < length) DumpSound(sound + soundLength, length - soundLength, 0, pan);
+
+    free(cvt.buf);
 }
+
 
 /* Check if object is visible... */
 
@@ -2766,7 +2779,7 @@ void configureResolution()
             screenwidth = 1280;
             screenheight = 720;
             break;
-        case AppletOperationMode_Docked:
+        case AppletOperationMode_Console:
             screenwidth = 1920;
             screenheight = 1080;
             break;
@@ -6478,6 +6491,19 @@ Uint16 getkeypress(int* key) {
 
 void FindJoysticks() {
     #ifdef __SWITCH__
+    rc = hiddbgInitialize();
+    if (R_FAILED(rc)) {
+        printf("hiddbgInitialize(): 0x%x\n", rc);
+    }
+    rc = hiddbgAttachHdlsWorkBuffer(&session_id, &keyBuffer, 256);
+        printf("hiddbgAttachHdlsWorkBuffer(): 0x%x\n", rc);
+
+    if (R_SUCCEEDED(rc)) {
+        // Attach a new virtual controller.
+        rc = hiddbgAttachHdlsVirtualDevice(&HdlsHandle, &device);
+        printf("hiddbgAttachHdlsVirtualDevice(): 0x%x\n", rc);
+    }
+
     cur_joystick_index = 0;
     cur_controller = SDL_GameControllerOpen(0);
     cur_controller_index = 0;
@@ -6580,8 +6606,7 @@ void PollInputs() {
     // If Nintendo Switch, poll to see if user has changed mode from portable/docked
     #ifdef __SWITCH__
     configureResolution();
-    hidReset();
-    hidScanInput();
+    padUpdate(&pad);
     #endif
 }
 
@@ -6657,6 +6682,16 @@ void quit() {
 
     #ifdef __SWITCH__
     romfsExit();
+    if (R_SUCCEEDED(rc)) {
+        rc = hiddbgDetachHdlsVirtualDevice(HdlsHandle);
+        printf("hiddbgDetachHdlsVirtualDevice(): 0x%x\n", rc);
+    }
+
+    rc = hiddbgReleaseHdlsWorkBuffer(session_id);
+    printf("hiddbgReleaseHdlsWorkBuffer(): 0x%x\n", rc);
+
+    hiddbgExit();
+    consoleExit(NULL);
     #endif
     SDL_VideoQuit();
     SDL_Quit();
@@ -6791,10 +6826,9 @@ void userAppExit()
 
 void getUsername()
 {
-    Result rc=0;
+    Result rc = 0;
 
-    u128 userID=0;
-
+    AccountUid userID;
     AccountProfile profile;
     AccountUserData userdata;
     AccountProfileBase profilebase;
@@ -6804,7 +6838,7 @@ void getUsername()
 
     strncpy(hiscorenam, "Ken", sizeof(hiscorenam));
 
-    rc = accountInitialize();
+    rc = accountInitialize(AccountServiceType_Application);
     if (R_FAILED(rc)) {
         TRACE("accountInitialize() failed: 0x%x\n", rc);
     }
@@ -6817,7 +6851,7 @@ void getUsername()
         }
 
         if (R_SUCCEEDED(rc)) {
-            TRACE("Current userID: 0x%lx 0x%lx\n", (u64)(userID>>64), (u64)userID);
+            TRACE("Current userID: 0x%lx 0x%lx\n", userID.uid[0], userID.uid[1]);
 
             rc = accountGetProfile(&profile, userID);
 
@@ -6834,7 +6868,7 @@ void getUsername()
             }
 
             if (R_SUCCEEDED(rc)) {
-                strncpy(hiscorenam, profilebase.username, sizeof(hiscorenam)-1);//Even though profilebase.username usually has a NUL-terminator, don't assume it does for safety.
+                strncpy(hiscorenam, profilebase.nickname, sizeof(hiscorenam)-1);//Even though profilebase.username usually has a NUL-terminator, don't assume it does for safety.
 
                 TRACE("Username: %s\n", hiscorenam);
             }

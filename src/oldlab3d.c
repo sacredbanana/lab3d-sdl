@@ -1836,11 +1836,11 @@ void oldmain(void)
             K_UINT32 switchKeyPressed = -1;
 
             #ifdef __SWITCH__
-            hidScanInput();
-            switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
+            padUpdate(&pad);
+            switchKeyPressed = padGetButtonsDown(&pad);
             #endif
 
-            if (((switchKeyPressed == KEY_PLUS || (getkeydefstat(ACTION_OLD_SAVE) > 0))) && (death == 4095))
+            if (((switchKeyPressed & HidNpadButton_Plus || (getkeydefstat(ACTION_OLD_SAVE) > 0))) && (death == 4095))
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1856,22 +1856,23 @@ void oldmain(void)
                 {
                     PollInputs();
                     #ifdef __SWITCH__
-                    switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
+                    padUpdate(&pad);
+                    switchKeyPressed = padGetButtonsDown(&pad);
                     #endif
 
-                    if (newkeystatus(SDLK_1) || switchKeyPressed == KEY_L) {
+                    if (newkeystatus(SDLK_1) || switchKeyPressed & HidNpadButton_L) {
                         i=0;
                         m = 1;
                         setnewkeystatus(SDLK_1, 0);
-                    } else if (newkeystatus(SDLK_2) || switchKeyPressed == KEY_ZL) {
+                    } else if (newkeystatus(SDLK_2) || switchKeyPressed & HidNpadButton_ZL) {
                         i=1;
                         m = 1;
                         setnewkeystatus(SDLK_2, 0);
-                    } else if (newkeystatus(SDLK_3) || switchKeyPressed == KEY_R) {
+                    } else if (newkeystatus(SDLK_3) || switchKeyPressed & HidNpadButton_R) {
                         i=2;
                         m = 1;
                         setnewkeystatus(SDLK_3, 0);
-                    } else if (newkeystatus(SDLK_4) || switchKeyPressed == KEY_ZR) {
+                    } else if (newkeystatus(SDLK_4) || switchKeyPressed & HidNpadButton_ZR) {
                         i=3;
                         m = 1;
                         setnewkeystatus(SDLK_4, 0);
@@ -1912,7 +1913,7 @@ void oldmain(void)
                 lastbarchange = 1;
                 picrot(posx,posy,posz,ang);
             }
-            if (switchKeyPressed == KEY_MINUS || getkeydefstat(ACTION_OLD_LOAD) > 0)
+            if (switchKeyPressed & HidNpadButton_Minus || getkeydefstat(ACTION_OLD_LOAD) > 0)
             {
                 j = pageoffset;
                 pageoffset = lastpageoffset;
@@ -1929,22 +1930,23 @@ void oldmain(void)
                 {
                     PollInputs();
                     #ifdef __SWITCH__
-                    switchKeyPressed = hidKeysDown(CONTROLLER_P1_AUTO);
+                    padUpdate(&pad);
+                    switchKeyPressed = padGetButtonsDown(&pad);
                     #endif
 
-                    if (newkeystatus(SDLK_1) || switchKeyPressed == KEY_L) {
+                    if (newkeystatus(SDLK_1) || switchKeyPressed & HidNpadButton_L) {
                         oldloadgame(0);
                         m = 1;
                         setnewkeystatus(SDLK_1, 0);
-                    } else if (newkeystatus(SDLK_2) || switchKeyPressed == KEY_ZL) {
+                    } else if (newkeystatus(SDLK_2) || switchKeyPressed & HidNpadButton_ZL) {
                         oldloadgame(1);
                         m = 1;
                         setnewkeystatus(SDLK_2, 0);
-                    } else if (newkeystatus(SDLK_3) || switchKeyPressed == KEY_R) {
+                    } else if (newkeystatus(SDLK_3) || switchKeyPressed & HidNpadButton_R) {
                         oldloadgame(2);
                         m = 1;
                         setnewkeystatus(SDLK_3, 0);
-                    } else if (newkeystatus(SDLK_4) || switchKeyPressed == KEY_ZR) {
+                    } else if (newkeystatus(SDLK_4) || switchKeyPressed & HidNpadButton_ZR) {
                         oldloadgame(3);
                         m = 1;
                         setnewkeystatus(SDLK_4, 0);
