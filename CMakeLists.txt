@@ -1,7 +1,7 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.15)
+cmake_minimum_required (VERSION 3.5)
 project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
@@ -123,11 +123,12 @@ elseif (UNIX AND NOT APPLE)
 elseif (APPLE)
   find_package(OpenGL REQUIRED)
   find_library(SDL2 SDL2)
+  find_library(MLIB m)
   find_library(SDL2_image SDL2_image)
   find_library(CoreFoundation CoreFoundation)
   find_package(ZLIB REQUIRED)
   target_include_directories(${KEN_EXE_NAME} PUBLIC /opt/X11/include)
-  target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} ${SDL2} ${SDL2_image} ${ZLIB_LIBRARIES} ${CoreFoundation})
+  target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} ${SDL2} ${SDL2_image} ${MLIB} ${ZLIB_LIBRARIES} ${CoreFoundation})
   set_target_properties(${KEN_EXE_NAME} PROPERTIES MACOSX_BUNDLE TRUE)
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
 endif ()
