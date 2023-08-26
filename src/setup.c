@@ -265,7 +265,11 @@ static int action_key_default[ACTION_LAST]={
     /* ACTION_STANDHIGH    */  SDLK_a,
     /* ACTION_STANDLOW     */  SDLK_z,
     /* ACTION_RUN          */  SDLK_LSHIFT,
+    #ifdef __APPLE__
+    /* ACTION_FIRE         */  SDLK_LGUI,
+    #else
     /* ACTION_FIRE         */  SDLK_LCTRL,
+    #endif
     /* ACTION_NEXTWEAPON   */  SDLK_TAB,
     /* ACTION_FIREBALLS    */  SDLK_F1,
     /* ACTION_BOUNCY       */  SDLK_F2,
