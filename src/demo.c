@@ -63,10 +63,10 @@ struct demofile {
 };
 
 
-static unsigned long demofile_read(demofile_t* d, void* data, unsigned long size);
-static unsigned long demofile_write(demofile_t* d, const void* data, unsigned long size);
-static unsigned long demofile_write_hdr(demofile_t* d, long, long);
-static void demofile_seek(demofile_t* d, unsigned long amt);
+static int demofile_read(demofile_t* d, void* data, int size);
+static int demofile_write(demofile_t* d, const void* data, int size);
+static int demofile_write_hdr(demofile_t* d, int, int);
+static void demofile_seek(demofile_t* d, int amt);
 
 static int demofile_read_fileheader(demofile_t* d, demo_vardef_t*, const char* filename);
 static int demofile_write_fileheader(demofile_t* d, demo_vardef_t*, const char* filename);
@@ -112,42 +112,42 @@ int demofile_rewindable(demofile_t* d) {
     return d->format == 1 && !d->compressed;
 }
 
-static unsigned long demofile_read(demofile_t* d, void* data, unsigned long size) {
-    unsigned long r;
+static int demofile_read(demofile_t* d, void* data, int size) {
+    int r;
     if (d->rawfil)
         r = fread(data, 1, size, d->rawfil);
     else
-        r = gzread(d->gzfil, data, (unsigned int) size);
+        r = gzread(d->gzfil, data, size);
 
     if (r > 0)
         d->cursize += r;
     return r;
 }
 
-static void demofile_seek(demofile_t* d, unsigned long amt) {
+static void demofile_seek(demofile_t* d, int amt) {
     if (d->rawfil)
         fseek(d->rawfil, amt, 1);
     else
         gzseek(d->gzfil, amt, 1);
 }
 
-static unsigned long demofile_write(demofile_t* d, const void* data, unsigned long size) {
+static int demofile_write(demofile_t* d, const void* data, int size) {
     if (d->gzfil)
-        return gzwrite(d->gzfil, data, (unsigned int) size);
+        return gzwrite(d->gzfil, data, size);
     else
         return fwrite(data, 1, size, d->rawfil);
 
 }
 
-static unsigned long demofile_write_hdr(demofile_t* d, long size, long clock) {
+static int demofile_write_hdr(demofile_t* d, int size, int clock) {
     Uint8 hdr[4];
     set16(hdr, size);
     set16(hdr+2, clock);
     return demofile_write(d, hdr, 4);
 }
 
-static unsigned long demofile_read_frame(demofile_t* d) {
-    unsigned long i, j;
+static int demofile_read_frame(demofile_t* d) {
+    int i, j;
     int readsize, timediff;
     Uint8 *delta, *rle, *delta_end, hdr[4];
     Uint64 *tdelta, *tdata;
@@ -217,8 +217,8 @@ static unsigned long demofile_read_frame(demofile_t* d) {
     return timediff;
 }
 
-unsigned long demofile_advance(demofile_t* d, unsigned long dir) {
-    unsigned long rc, prevsize;
+int demofile_advance(demofile_t* d, int dir) {
+    int rc, prevsize;
     Uint8 hdr[2];
 
     if (dir == -1) {
@@ -492,8 +492,8 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
     }                                               \
     break
 
-void demofile_write_frame(demofile_t* d, unsigned long timediff) {
-    long i, j, zc, writesize;
+void demofile_write_frame(demofile_t* d, int timediff) {
+    int i, j, zc, writesize;
     Uint8 *ldata, *delta, *rle, *rle_end;
     Uint8 hdr[2];
     vartrack_t* ct;

@@ -14,8 +14,8 @@ typedef struct {
 demofile_t* demofile_open(const char* filename, demo_vardef_t* vars, int record, int format);
 void demofile_close(demofile_t*);
 int demofile_rewindable(demofile_t*);
-void demofile_write_frame(demofile_t*, unsigned long);
+void demofile_write_frame(demofile_t*, int);
 void demofile_write_event(demofile_t* d, unsigned char* data, int size);
 
-unsigned long demofile_advance(demofile_t*, unsigned long);
+int demofile_advance(demofile_t*, int);
 void demofile_update_vars(demofile_t*);
