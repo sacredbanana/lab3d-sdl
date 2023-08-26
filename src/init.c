@@ -486,7 +486,7 @@ void initaudio()
         want.samples = soundblocksize;
         want.userdata = NULL;
         want.callback = AudioCallback;
-        soundbytespertick = channels * want.freq * 2 / 240;
+        soundbytespertick = channels * have.freq * 2 / 240;
         soundtimerbytes = 0;
 
         audiodevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
@@ -688,6 +688,8 @@ void resetaudio()
     SDL_CloseAudioDevice(audiodevice);
     musicoff();
     configure();
+    free(SoundFile);
+    free(SoundBuffer);
     initaudio();
     loadmusic(lastPlayedMusicFile);
     musicon();

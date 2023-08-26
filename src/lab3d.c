@@ -589,8 +589,7 @@ int main(int argc,char **argv)
     if (!legacyload) {
         gamelaunchermenu();
         initgameversion();
-        SDL_CloseAudioDevice(audiodevice);
-        #if !defined(__SWITCH__) && !defined(__APPLE__) // macOS doesn't like this in fullscreen
+        #if !defined(__SWITCH__)
         SDL_DestroyWindow(mainwindow);
         SDL_GL_DeleteContext(maincontext);
         #endif
@@ -599,7 +598,6 @@ int main(int argc,char **argv)
         initgameversion();
         inittablesandsettings();
         initvideo();
-        initaudio();
         initmemory();
         resetaudio();
     }
