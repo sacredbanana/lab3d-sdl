@@ -39,6 +39,33 @@ void whatsnew1() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
+        "Version 4.1.3 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "New port for Apple Silicon and Intel");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "machines running macOS.");
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "Nintendo Switch version built with");
+    textprint(30, 86, 96);
+
+    strcpy(textbuf, "the latest devkitPro.");
+    textprint(30, 96, 96);
+
+    strcpy(textbuf, "Compiles for ARM based Linux.");
+    textprint(30, 116, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
+void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
         "Version 4.1.2 Release");
     textprint(30, 48, 80);
 
@@ -86,39 +113,6 @@ void whatsnew1() {
 
     strcpy(textbuf, "during the intro.");
     textprint(30, 108, 96);
-
-    finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
-    pressakey();
-}
-
-void whatsnew2() {
-    drawmenu(320, 172, menu);
-
-    strcpy(textbuf,
-        "Version 4.1.2 Release");
-    textprint(30, 48, 80);
-
-    strcpy(textbuf, "Memory errors fixed");
-    textprint(30, 58, 96);
-
-    strcpy(textbuf, "A bug in the Ken's Labyrinth 1.x");
-    textprint(30, 76, 96);
-
-    strcpy(textbuf, "welcome screen that appears before");
-    textprint(30, 86, 96);
-
-    strcpy(textbuf, "every stage caused an access violation");
-    textprint(30, 96, 96);
-
-    strcpy(textbuf, "which depending on which platform and");
-    textprint(30, 106, 96);
-
-    strcpy(textbuf, "build you're running could cause it");
-    textprint(30, 116, 96);
-
-    strcpy(textbuf, "to crash.");
-    textprint(30, 126, 96);
 
     finalisemenu();
     SDL_GL_SwapWindow(mainwindow);
