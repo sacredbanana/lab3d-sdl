@@ -670,7 +670,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     K_INT16 numfiles;
     K_UINT16 leng;
     K_INT32 sndfiloffs;
-    K_INT32 blocksize = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)?samplerate / 11025 * SOUNDBLOCKSIZE11KHZ:SOUNDBLOCKSIZE11KHZ;
+    K_INT32 blocksize = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
 
     if (!ui) {
         psounds[psoundnum & 15] = filenum;
