@@ -1472,6 +1472,8 @@ void loadwalls(int replace)
     wallparam* cwparam=NULL;
     memset(shadow2, 0, sizeof(shadow2));
 
+#ifdef ENABLE_HIRES_TEXTURES
+    // This will crash SDL_Image when building from Xcode. Building outside Xcode works though...
     sprintf(filepath, "%swallparams.ini", gameroot);
     if (replace && (params = fopen(filepath, "rt")) != NULL) {
         dotransition = 0;
@@ -1531,6 +1533,7 @@ void loadwalls(int replace)
         }
         fclose(params);
     }
+#endif
     sprintf(filepath, "%swalls.kzp", gameroot);
     sprintf(filepathUpper, "%sWALLS.KZP", gameroot);
     if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||

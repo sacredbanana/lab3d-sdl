@@ -19,10 +19,11 @@ set(MAIN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 set(EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
 set(ICONS_DIR ${CMAKE_SOURCE_DIR}/icons)
 
+set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
+
+
 if (APPLE)
-  # Detect macOS architecture (arm64 or x86_64)
-  execute_process(COMMAND uname -m COMMAND tr -d '\n' OUTPUT_VARIABLE OSX_ARCHITECTURES)
-  set(CMAKE_OSX_ARCHITECTURES ${OSX_ARCHITECTURES})
+  set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
   set(CMAKE_C_COMPILER clang)
   set(CMAKE_FIND_FRAMEWORK LAST)
   set(MACOSX_BUNDLE_GUI_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth")
@@ -80,13 +81,61 @@ if (UNIX AND (NOT APPLE))
 endif ()
 
 if (APPLE)
-  add_executable (${KEN_EXE_NAME} MACOSX_BUNDLE ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${APP_ICON_MACOSX} ${ICONS_DIR}/ken.rc)
+  file(GLOB GAME_DATA1_0 ${CMAKE_SOURCE_DIR}/gamedata/Ken1.0/*)
+  file(GLOB GAME_DATA1_1 ${CMAKE_SOURCE_DIR}/gamedata/Ken1.1/*)
+  file(GLOB GAME_DATA2_0 ${CMAKE_SOURCE_DIR}/gamedata/Ken2.0/*)
+  file(GLOB GAME_DATA2_0_HIRES ${CMAKE_SOURCE_DIR}/gamedata/Ken2.0/hires/*)
+  file(GLOB GAME_DATA2_1 ${CMAKE_SOURCE_DIR}/gamedata/Ken2.1/*)
+  file(GLOB GAME_DATA2_1_HIRES ${CMAKE_SOURCE_DIR}/gamedata/Ken2.1/hires/*)
+  set(RESOURCE_FILES
+  ${ICONS_DIR}/ken.bmp
+  ${CMAKE_SOURCE_DIR}/ksmmidi.txt
+  )
+  set_source_files_properties(
+    ${RESOURCE_FILES}
+    PROPERTIES
+    MACOSX_PACKAGE_LOCATION Resources/kenfiles
+)
+  set_source_files_properties(
+      ${GAME_DATA1_0}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken1.0
+  )
+  set_source_files_properties(
+      ${GAME_DATA1_1}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken1.1
+  )
+  set_source_files_properties(
+      ${GAME_DATA2_0}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.0
+  )
+  set_source_files_properties(
+      ${GAME_DATA2_0_HIRES}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.0/hires
+  )
+  set_source_files_properties(
+      ${GAME_DATA2_1}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.1
+  )
+  set_source_files_properties(
+      ${GAME_DATA2_1_HIRES}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.1/hires
+  )
+  add_executable (${KEN_EXE_NAME} MACOSX_BUNDLE ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${APP_ICON_MACOSX} ${ICONS_DIR}/ken.rc ${RESOURCE_FILES} ${GAME_DATA1_0} ${GAME_DATA1_1} ${GAME_DATA2_0} ${GAME_DATA2_1} ${GAME_DATA2_0_HIRES} ${GAME_DATA2_1_HIRES})
 else ()
   add_executable (${KEN_EXE_NAME} ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${ICONS_DIR}/ken.rc)
 endif()
 
 set_target_properties(${KEN_EXE_NAME} PROPERTIES LINKER_LANGUAGE C)
 target_compile_definitions(${KEN_EXE_NAME} PUBLIC KEN_64BIT)
+if (ENABLE_HIRES_TEXTURES)
+  target_compile_definitions(${KEN_EXE_NAME} PUBLIC ENABLE_HIRES_TEXTURES)
+endif ()
 
 if (WIN32)
   if (KEN_64BIT)
@@ -129,7 +178,7 @@ elseif (APPLE)
   find_package(ZLIB REQUIRED)
   target_include_directories(${KEN_EXE_NAME} PUBLIC /opt/X11/include)
   target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} ${SDL2} ${SDL2_image} ${MLIB} ${ZLIB_LIBRARIES} ${CoreFoundation})
-  set_target_properties(${KEN_EXE_NAME} PROPERTIES MACOSX_BUNDLE TRUE RESOURCE ${ICONS_DIR}/ken.bmp)
+  set_target_properties(${KEN_EXE_NAME} PROPERTIES MACOSX_BUNDLE TRUE RESOURCE ${CMAKE_SOURCE_DIR}/gamedata)
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
   XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR ${PROJECT_BINARY_DIR})
@@ -159,8 +208,4 @@ if (NOT APPLE)
   file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${PROJECT_BINARY_DIR})
   file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR})
   file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${PROJECT_BINARY_DIR})
-else ()
-  file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
-  file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
-  file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents/Resources/kenfiles)
 endif ()
