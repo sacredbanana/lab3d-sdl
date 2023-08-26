@@ -1,7 +1,7 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.5)
+cmake_minimum_required (VERSION 3.24)
 project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
@@ -21,13 +21,13 @@ set(ICONS_DIR ${CMAKE_SOURCE_DIR}/icons)
 
 set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
 
-
 if (APPLE)
   set(BUNDLE_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth")
   set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS deployment version")
   set(CMAKE_C_COMPILER clang)
   set(CMAKE_FIND_FRAMEWORK LAST)
-  set(MACOSX_BUNDLE_GUI_IDENTIFIER ${BUNDLE_IDENTIFIER}})
+  set(MACOSX_BUNDLE_GUI_IDENTIFIER ${BUNDLE_IDENTIFIER})
   set(MACOSX_BUNDLE_IDENTIFIER ${BUNDLE_IDENTIFIER})
   set(MACOSX_BUNDLE_BUNDLE_NAME ${KEN_EXE_NAME})
   set(MACOSX_INFO_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
@@ -185,7 +185,7 @@ elseif (APPLE)
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
   XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR ${PROJECT_BINARY_DIR})
   set_target_properties(${KEN_EXE_NAME} PROPERTIES
-    MACOSX_BUNDLE_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth"
+    PRODUCT_BUNDLE_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth"
 )
 endif ()
 
