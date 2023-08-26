@@ -236,6 +236,7 @@ void initvideo()
         if (mainwindow == NULL) {
             fatal_error("Video mode set failed.");
         }
+        SDL_SetWindowGrab(mainwindow, SDL_TRUE);
     }
 
     SDL_GetWindowSize(mainwindow, &screenwidth, &screenheight);
