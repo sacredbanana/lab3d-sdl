@@ -217,7 +217,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
 
     while (1) {
         double accelf = 0.0;
-        int td, dir = 1;
+        unsigned long td, dir = 1;
         PollInputs();
 
         if (getkeydefstatlock(ACTION_MENU) || getkeydefstatlock(ACTION_MENU_CANCEL)) {

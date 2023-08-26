@@ -554,7 +554,7 @@ int resolutionmenu(int alts,int start,char titles[][30],int def) {
     if (i>=0) return i; else return -1;
 }
 */
-int getnumber(void) {
+long getnumber(void) {
     int ch, uni;
     char buf[10];
     K_INT16 i,j;
@@ -625,7 +625,7 @@ void customresolution(void) {
     #ifdef __SWITCH__
     return;
     #endif
-    int x,y;
+    long x,y;
 
     drawinputbox();
     finalisemenu();
@@ -639,8 +639,8 @@ void customresolution(void) {
         textprint(180-(strlen(textbuf)<<2),135+1,(char)161);
         y=getnumber();
         if (y>0) {
-            window_width = x;
-            window_height = y;
+            window_width = (int)x;
+            window_height = (int)y;
         }
     }
 }
@@ -661,7 +661,7 @@ void setupsetfiltering(void) {
 }
 
 void setupsetstereo(void) {
-    selectionmenu(2,stereoscopicmenu,&stereo, "Stereoscopic 3D");
+    selectionmenu(2,stereoscopicmenu,(int *)&stereo, "Stereoscopic 3D");
     setup_stereo(stereo);
 }
 
@@ -1277,8 +1277,8 @@ typedef struct {
 
 static int _parse_int(const char *svalue, int* p) {
     char* endptr;
-    long val;
-    val = strtol(svalue, &endptr, 0);
+    int val;
+    val = (int)strtol(svalue, &endptr, 0);
     if (*svalue == 0 || *endptr != 0) {
         return 1;
     }

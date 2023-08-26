@@ -407,8 +407,8 @@ void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
         for(k=0;k<bulnum;k++)
             if (bulkind[k] == 7)
             {
-                x1 = ((long)bulx[k]-(long)posx);
-                y1 = ((long)buly[k]-(long)posy);
+                x1 = (K_INT32)((long)bulx[k]-(long)posx);
+                y1 = (K_INT32)((long)buly[k]-(long)posy);
                 if (labs(x1)+labs(y1) < 32768)
                 {
                     x1 >>= 2;
@@ -426,8 +426,8 @@ void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
         for(k=0;k<bulnum;k++)
             if (bulkind[k] == 7)
             {
-                x1 = ((long)bulx[k]-(long)posxs);
-                y1 = ((long)buly[k]-(long)posys);
+                x1 = (K_INT32)((long)bulx[k]-(long)posxs);
+                y1 = (K_INT32)((long)buly[k]-(long)posys);
                 if (labs(x1)+labs(y1) < 32768)
                 {
                     x1 >>= 2;
@@ -788,8 +788,8 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                     for(k=0;k<bulnum;k++)
                         if ((bulkind[k] == 3) || (bulkind[k] == 4))
                         {
-                            x1 = ((long)bulx[k]-(long)mposx[i]);
-                            y1 = ((long)buly[k]-(long)mposy[i]);
+                            x1 = (K_INT32)((long)bulx[k]-(long)mposx[i]);
+                            y1 = (K_INT32)((long)buly[k]-(long)mposy[i]);
                             if (labs(x1)+labs(y1) < 32768)
                             {
                                 x1 >>= 2;
@@ -898,8 +898,8 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                     for(k=0;k<bulnum;k++)
                         if ((bulkind[k] == 3) || (bulkind[k] == 4))
                         {
-                            x1 = ((long)bulx[k]-(long)mposx[i]);
-                            y1 = ((long)buly[k]-(long)mposy[i]);
+                            x1 = (K_INT32)((long)bulx[k]-(long)mposx[i]);
+                            y1 = (K_INT32)((long)buly[k]-(long)mposy[i]);
                             if (labs(x1)+labs(y1) < 32768)
                             {
                                 x1 >>= 2;
