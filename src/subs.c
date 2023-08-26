@@ -759,7 +759,7 @@ void reset_dsp()
 }
 
 #ifndef min
-int min(long a, long b) {
+long min(long a, long b) {
     return((a<b)?a:b);
 }
 #endif
@@ -1547,7 +1547,7 @@ void loadwalls(int replace)
         tioffs[0] = (long)(numwalls+numwalls+numwalls);
         for(i=1;i<=rnumwalls;i++)
         {
-            tioffs[i] = tioffs[i-1]+((long)(tileng[i-1]+2));
+            tioffs[i] = (K_INT32)(tioffs[i-1]+((long)(tileng[i-1]+2)));
             bmpkind[i] = 1+(wallheader[i]&7);
             if (bmpkind[i] == 3)
                 bmpkind[i] = 4;
@@ -1823,7 +1823,7 @@ void loadwalls(int replace)
 SDL_GL_SwapWindow(mainwindow);
 pressakey();
 }
-/**/
+*/
 
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         visiblescreenyoffset=0;
@@ -3414,8 +3414,8 @@ void checkhitwall(K_UINT16 oposx, K_UINT16 oposy, K_UINT16 posix,
                 for(i=0;i<mnum;i++)
                     if (mstat[i] == mondog)
                     {
-                        if (mposx[i] > posx) templong = (long)(mposx[i]-posx);
-                        else templong = (long)(posx-mposx[i]);
+                        if (mposx[i] > posx) templong = (K_INT32)(mposx[i]-posx);
+                        else templong = (K_INT32)(posx-mposx[i]);
                         if (mposy[i] > posy) templong += (long)(mposy[i]-posy);
                         else templong += (long)(posy-mposy[i]);
                         j = 0;

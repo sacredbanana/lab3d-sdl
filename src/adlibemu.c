@@ -252,7 +252,7 @@ void cellon (int i, int j, celltype *c, unsigned char iscarrier)
 
 	frn = ((((int)adlibreg[i+0xb0])&3)<<8) + (int)adlibreg[i+0xa0];
 	oct = ((((int)adlibreg[i+0xb0])>>2)&7);
-	toff = (oct<<1) + ((frn>>9)&((frn>>8)|((adlibreg[8]>>6)&1^1)));
+    toff = (oct<<1) + ((frn>>9)&((frn>>8)|(((adlibreg[8]>>6)&1)^1)));
 	if (!(adlibreg[j+0x20]&16)) toff >>= 2;
 
 	f = pow(2.0,(adlibreg[j+0x60]>>4)+(toff>>2)-1)*attackconst[toff&3]*recipsamp;
