@@ -5,6 +5,11 @@
 #endif
 
 #include <stdint.h>
+#if INTPTR_MAX == INT64_MAX
+#define KEN_64BIT
+#elif INTPTR_MAX != INT32_MAX
+#error Unknown pointer size or missing size macros!
+#endif
 
 #if !defined(KEN_64BIT)
 #define INT_TYPE int

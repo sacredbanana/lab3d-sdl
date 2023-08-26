@@ -1,3 +1,8 @@
+4.1.4: 2023-08-26
+* Update Nintendo Switch version to latest devkitPro
+* macOs Apple Silicon and Intel version
+* compiles for ARM Linux
+
 4.1.2: 2019-07-28
 * Memory errors caused by bug in the welcome screen for each level in Ken 1.x has now been fixed
 * Double buffering used everywhere to fix display errors with NVidia cards on Windows

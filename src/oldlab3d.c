@@ -848,7 +848,7 @@ void oldmain(void)
                     k = 512;
                     if (mposx[i] != posx)
                     {
-                        tanz = (K_INT32) (((((long)mposy[i]-(long)posy)<<12)/((long)mposx[i]-(long)posx))<<4);
+                        tanz = (((((long)mposy[i]-(long)posy)<<12)/((long)mposx[i]-(long)posx))<<4);
                         if (tanz < 0)
                             k = 768;
                         else
