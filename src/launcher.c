@@ -39,6 +39,24 @@ void whatsnew1() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
+        "Version 4.1.4 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Update SDL.");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "Fix crash on Windows.");
+    textprint(30, 78, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
+void whatsnew2() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
         "Version 4.1.3 Release");
     textprint(30, 48, 80);
 
@@ -62,7 +80,7 @@ void whatsnew1() {
     pressakey();
 }
 
-void whatsnew2() {
+void whatsnew3() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -119,7 +137,7 @@ void whatsnew2() {
     pressakey();
 }
 
-void whatsnew3() {
+void whatsnew4() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -155,7 +173,7 @@ void whatsnew3() {
     pressakey();
 }
 
-void whatsnew4() {
+void whatsnew5() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -194,7 +212,7 @@ void whatsnew4() {
     pressakey();
 }
 
-void whatsnew5() {
+void whatsnew6() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -239,7 +257,7 @@ void whatsnew5() {
     pressakey();
 }
 
-void whatsnew6() {
+void whatsnew7() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -281,7 +299,7 @@ void whatsnew6() {
     pressakey();
 }
 
-void whatsnew7() {
+void whatsnew8() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -366,6 +384,7 @@ void gamelaunchermenu() {
                     whatsnew5();
                     whatsnew6();
                     whatsnew7();
+                    whatsnew8();
                     break;
                 case 5:
                     setupmenu(0);

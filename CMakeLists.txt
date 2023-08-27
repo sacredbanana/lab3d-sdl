@@ -1,12 +1,12 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.24)
+cmake_minimum_required (VERSION 3.20)
 project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
 set (LAB3D_VERSION_MINOR 1)
-set (LAB3D_VERSION_PATCH 3)
+set (LAB3D_VERSION_PATCH 4)
 
 if (APPLE OR WIN32)
     set(KEN_EXE_NAME "Kens-Labyrinth")
