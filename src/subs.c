@@ -945,7 +945,7 @@ void DumpSound(unsigned char *sound, K_UINT16 length, K_UINT32 playpoint, int pa
 
     if (soundLength < length) DumpSound(sound + soundLength, length - soundLength, 0, pan);
 
-    free(cvt.buf);
+    SDL_free(cvt.buf);
 }
 
 
