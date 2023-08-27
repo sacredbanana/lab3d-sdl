@@ -89,8 +89,7 @@ Or
 - Compile the game yourself (see the Nintendo Switch compiling instructions above)
 
 Navigate to the Switch folder inside your Nintendo Switch SD card and create a new folder
-called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files. (This is the "gamedata" directory
-if you wish to have the game launcher. Otherwise just copy a single version of Ken's labyrinth to the directory containing the executable
+called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files. (This is the "gamedata" directory if you wish to have the game launcher. Otherwise just copy a single version of Ken's Labyrinth to the directory containing the executable
 WITHOUT including the gamedata directory.)
 
 # Program arguments
