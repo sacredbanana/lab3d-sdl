@@ -1,7 +1,7 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl, include source and define
 # project specific logic here.
 #
-cmake_minimum_required (VERSION 3.20)
+cmake_minimum_required (VERSION 3.16)
 project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
@@ -172,6 +172,7 @@ elseif (UNIX AND NOT APPLE)
   endif ()
 elseif (APPLE)
   find_package(OpenGL REQUIRED)
+  find_package(SDL2 REQUIRED)
   find_library(SDL2 SDL2)
   find_library(MLIB m)
   find_library(SDL2_image SDL2_image)
