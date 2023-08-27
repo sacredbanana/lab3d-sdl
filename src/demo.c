@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <SDL_endian.h>
 #include <zlib.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "demo.h"
 
