@@ -5,6 +5,7 @@
 #endif
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #if !defined(KEN_64BIT)
 #define INT_TYPE int
