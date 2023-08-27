@@ -138,6 +138,7 @@ recommended for Windows use.
 
 ## macOS
 
+### Quick easy method to build for your own machine
 In the project root run the following commands:
 ```
 mkdir build
@@ -146,7 +147,25 @@ cmake ..
 make
 ```
 
-The app `Kens-Labyrinth` and its dependencies will be copied to the build folder. You may move this to your Applications folder.
+The app `Kens-Labyrinth` will be copied to the build folder. You may move this to your Applications folder.
+
+### Build universal app for running on both Apple Silicon and Intel
+
+* Install the [CMake GUI](https://cmake.org/download/)
+* Create a folder called `build` in the main lab3d-sdl folder
+* Open the CMake app
+* Set the source code folder to the main lab3d-sdl folder
+* Set the build binaries folder to the `build` folder you created
+* Click `Configure`
+* In the generator selector choose `Xcode` and click `Done`
+* Turn off the `ENABLE_HIRES_TEXTURES` option
+* Click `Generate`
+* Click `Open Project`
+* When Xcode opens, in the project explorer panel on the left, click the top item `lab3d-sdl`
+* In the `Targets` section, click `Kens-Labyrinth`
+* In the `Minimum Deployments` section, change the `macOS` version to the lowest one in the list
+* In the bar at the very top of Xcode, if you see `ALL_BUILD`, click on it and choose `Kens-Labyrinth`
+* Click the play button to build and run the app
 
 ## Linux/UNIX
 
