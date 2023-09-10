@@ -2,8 +2,8 @@
 #include "adlibemu.h"
 #include <math.h>
 #include <ctype.h>
-#include "SDL_endian.h"
-#include "SDL_image.h"
+#include "SDL2/SDL_endian.h"
+#include "SDL2_image/SDL_image.h"
 
 /* Various constants that really should be stored in the data files... */
 

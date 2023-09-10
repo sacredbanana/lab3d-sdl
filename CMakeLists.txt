@@ -46,9 +46,7 @@ configure_file (
 
 include_directories("${MAIN_INCLUDE_DIR}")
 include_directories("${MAIN_SOURCE_DIR}")
-include_directories("${EXTERNAL_DIR}/SDL2/include")
-include_directories("${EXTERNAL_DIR}/SDL2_image/include")
-include_directories("${EXTERNAL_DIR}/zlib/include")
+include_directories("${EXTERNAL_DIR}")
 
 file(GLOB LAB3D_PROJECT_INCLUDES
   ${MAIN_INCLUDE_DIR}/*.h
@@ -64,6 +62,7 @@ file(GLOB LAB3D_PROJECT_SOURCES
   ${MAIN_SOURCE_DIR}/oldlab3d.c
   ${MAIN_SOURCE_DIR}/setup.c
   ${MAIN_SOURCE_DIR}/subs.c
+  ${EXTERNAL_DIR}/glad/glad.c
 )
 
 if (WIN32)

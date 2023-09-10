@@ -4,7 +4,6 @@
 #include "lab3d.h"
 #include "adlibemu.h"
 #include "math.h"
-#include "SDL_main.h"
 
 static demo_vardef_t demovars[] = {
 
@@ -474,6 +473,10 @@ int main(int argc,char **argv)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
     #endif
+
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     if (SDL_GL_LoadLibrary(NULL) != 0) {
         TRACE("Could not dynamically open OpenGL library: %s", SDL_GetError());

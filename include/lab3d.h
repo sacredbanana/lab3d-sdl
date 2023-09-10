@@ -29,13 +29,13 @@
 #endif
 #endif
 
-#include "SDL.h"
+#include "SDL2/SDL.h"
+#include "glad/glad.h"
 
 #ifdef __SWITCH__
-#include "glad.h"
 #include <switch.h>
 #else
-#include <SDL_opengl.h>
+#include <SDL2/SDL_opengl.h>
 #ifdef __APPLE__
 #include <OpenGL/glu.h>
 #else
@@ -93,6 +93,42 @@ typedef Sint16 K_INT16;
 #endif
 
 #include "demo.h"
+
+// No-ops
+inline void glMatrixMode(int mode) {}
+inline void glBegin(int mode) {}
+inline void glEnd() {}
+inline void glLoadIdentity() {}
+inline void glPushMatrix() {}
+inline void glPopMatrix() {}
+inline void glTranslatef(float x, float y, float z) {}
+inline void glRotatef(float angle, float x, float y, float z) {}
+inline void glFrustum(double left, double right, double bottom, double top, double near, double far) {}
+inline void glTexEnvf(int target, int pname, float param) {}
+inline void glOrtho(double left, double right, double bottom, double top, double near, double far) {}
+inline void glColor3f(float r, float g, float b) {}
+inline void glColor4f(float r, float g, float b, float a) {}
+inline void glTexCoord2f(float s, float t) {}
+inline void glVertex2s(int x, int y) {}
+inline void glVertex3i(int x, int y, int z) {}
+inline void glVertex3f(float x, float y, float z) {}
+inline void glScalef(float x, float y, float z) {}
+inline void glPixelMapfv(int map, int mapsize, const float* values) {}
+inline void glAlphaFunc(int func, float ref) {}
+
+#define GL_PROJECTION 0
+#define GL_MODELVIEW 0
+#define GL_QUADS 0
+#define GL_LIGHTING 0
+#define GL_TEXTURE_ENV 0
+#define GL_TEXTURE_ENV_MODE 0
+#define GL_MODULATE 0
+#define GL_CLAMP 0
+#define GL_PIXEL_MAP_I_TO_R 0
+#define GL_PIXEL_MAP_I_TO_G 0
+#define GL_PIXEL_MAP_I_TO_B 0
+#define GL_PIXEL_MAP_I_TO_A 0
+#define GL_ALPHA_TEST 0
 
 /* Some (obsolete) port numbers... */
 

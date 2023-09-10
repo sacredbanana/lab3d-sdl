@@ -38,6 +38,7 @@ DATA		:=	data
 INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 ROMFS		:= 	romfs
+EXTERNAL    :=  external
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
@@ -68,13 +69,12 @@ LIBS    := `aarch64-none-elf-pkg-config SDL2_image --libs`
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(PORTLIBS) $(LIBNX)
 
-INC_GLAD	:= external/glad
 SRC_GLAD	:= external/glad/glad.c
 
 SOURCEFILES_C	:= \
 	$(SRC_GLAD)
 
-INCLUDES	:= $(INCLUDES) $(INC_GLAD)
+INCLUDES	:= $(INCLUDES) $(EXTERNAL)
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional

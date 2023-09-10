@@ -249,11 +249,12 @@ void initvideo()
     maincontext = SDL_GL_CreateContext(mainwindow);
  
     if (maincontext == NULL) {
+        fprintf(stderr, "Could not create GL context: %s\n", SDL_GetError());
         fatal_error("Could not create GL context.");
     }
 
     #ifdef __SWITCH__
-    gladLoadGL();
+    // gladLoadGL();
     #endif
 
     SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
@@ -262,10 +263,15 @@ void initvideo()
     SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
     SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER,&reald);
 
-    fprintf(stderr,"GL Vendor: %s\n",glGetString(GL_VENDOR));
-    fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
-    fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
-    //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
+    // Turn on V-sync
+    SDL_GL_SetSwapInterval(1);
+
+    // Check OpenGL properties
+    printf("OpenGL loaded\n");
+    gladLoadGLLoader(SDL_GL_GetProcAddress);
+    printf("Vendor:   %s\n", glGetString(GL_VENDOR));
+    printf("Renderer: %s\n", glGetString(GL_RENDERER));
+    printf("Version:  %s\n", glGetString(GL_VERSION));
 
     #ifndef __SWITCH__
     fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
