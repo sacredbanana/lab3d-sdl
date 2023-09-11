@@ -5,8 +5,8 @@ cmake_minimum_required (VERSION 3.16)
 project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
-set (LAB3D_VERSION_MINOR 1)
-set (LAB3D_VERSION_PATCH 4)
+set (LAB3D_VERSION_MINOR 2)
+set (LAB3D_VERSION_PATCH 0)
 
 if (APPLE OR WIN32)
     set(KEN_EXE_NAME "Kens-Labyrinth")
@@ -18,6 +18,7 @@ set(MAIN_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 set(MAIN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 set(EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
 set(ICONS_DIR ${CMAKE_SOURCE_DIR}/icons)
+set(SHADERS_DIR ${CMAKE_SOURCE_DIR}/shaders)
 
 set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
 
@@ -87,6 +88,7 @@ if (APPLE)
   file(GLOB GAME_DATA2_0_HIRES ${CMAKE_SOURCE_DIR}/gamedata/Ken2.0/hires/*)
   file(GLOB GAME_DATA2_1 ${CMAKE_SOURCE_DIR}/gamedata/Ken2.1/*)
   file(GLOB GAME_DATA2_1_HIRES ${CMAKE_SOURCE_DIR}/gamedata/Ken2.1/hires/*)
+  file(GLOB SHADERS ${CMAKE_SOURCE_DIR}/shaders/*)
   set(RESOURCE_FILES
   ${ICONS_DIR}/ken.bmp
   ${CMAKE_SOURCE_DIR}/ksmmidi.txt
@@ -125,6 +127,11 @@ if (APPLE)
       ${GAME_DATA2_1_HIRES}
       PROPERTIES
       MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.1/hires
+  )
+  set_source_files_properties(
+      ${SHADERS}
+      PROPERTIES
+      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/shaders
   )
   add_executable (${KEN_EXE_NAME} MACOSX_BUNDLE ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${APP_ICON_MACOSX} ${ICONS_DIR}/ken.rc ${RESOURCE_FILES} ${GAME_DATA1_0} ${GAME_DATA1_1} ${GAME_DATA2_0} ${GAME_DATA2_1} ${GAME_DATA2_0_HIRES} ${GAME_DATA2_1_HIRES})
 else ()
@@ -212,4 +219,5 @@ if (NOT APPLE)
   file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${PROJECT_BINARY_DIR})
   file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR})
   file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${PROJECT_BINARY_DIR})
+  file(COPY ${SHADERS_DIR} DESTINATION ${PROJECT_BINARY_DIR}/gamedata)
 endif ()

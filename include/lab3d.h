@@ -106,6 +106,7 @@ inline void glRotatef(float angle, float x, float y, float z) {}
 inline void glFrustum(double left, double right, double bottom, double top, double near, double far) {}
 inline void glTexEnvf(int target, int pname, float param) {}
 inline void glOrtho(double left, double right, double bottom, double top, double near, double far) {}
+void ortho(float left, float right, float bottom, float top, float nearVal, float farVal, float *result);
 inline void glColor3f(float r, float g, float b) {}
 inline void glColor4f(float r, float g, float b, float a) {}
 inline void glTexCoord2f(float s, float t) {}
@@ -505,6 +506,16 @@ EXTERN unsigned char psounds[16];
 EXTERN unsigned char psoundpan[16];
 EXTERN K_UINT32 psoundnum;
 
+// OpenGL 3.3+ stuff
+GLuint vertexShader;
+GLuint fragmentShader;
+GLuint shaderProgram;
+GLuint paletteTex;
+GLuint texture;
+GLuint screenQuadVao;
+GLuint screenQuadVbo;
+float projection[16];
+
 EXTERN char showdebug;
 
 EXTERN demofile_t* demoplaying, * demorecording;
@@ -711,6 +722,8 @@ void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y, K_INT16 ang, K_INT16 playerang,
     K_INT16 walnume);
+char* readShaderSource(const char* path);
+GLuint compileShader(GLenum type, const char* source);
 
 typedef struct {
     SDL_Keycode key;

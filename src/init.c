@@ -527,9 +527,89 @@ void initgraphics()
 {
     K_INT16 i, j, k, oclockspeed;
 
-    glDrawBuffer(GL_BACK);
+    const char* vertexShaderSource = readShaderSource("/tmp/shaders/vertex.glsl");
+    const char* fragmentShaderSource = readShaderSource("/tmp/shaders/fragment.glsl");
 
+    vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
+    fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    
+    checkGLStatus();
+    
+    GLint success;
+    char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        fprintf(stderr, "ERROR::PROGRAM_LINKING_ERROR\n%s\n", infoLog);
+    }
+
+    // Detach and delete the individual shaders as they're no longer needed
+    glDetachShader(shaderProgram, vertexShader);
+    glDetachShader(shaderProgram, fragmentShader);
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    
+    checkGLStatus();
+
+    free((void*) vertexShaderSource);
+    free((void*) fragmentShaderSource);
+
+    glUseProgram(shaderProgram);
+    
+    checkGLStatus();
+
+    glDrawBuffer(GL_BACK);
+    checkGLStatus();
     texturecreationneeded = 1;
+
+    float screenQuadVertices[] = {
+    // Position     // Texcoords
+     1.0f,  1.0f,   1.0f, 1.0f,  // Top-right
+     1.0f, -1.0f,   1.0f, 0.0f,  // Bottom-right
+    -1.0f, -1.0f,   0.0f, 0.0f,  // Bottom-left
+
+    -1.0f, -1.0f,   0.0f, 0.0f,  // Bottom-left
+    -1.0f,  1.0f,   0.0f, 1.0f,  // Top-left
+     1.0f,  1.0f,   1.0f, 1.0f   // Top-right
+    };
+
+    glGenVertexArrays(1, &screenQuadVao);
+    glGenBuffers(1, &screenQuadVbo);
+    glBindVertexArray(screenQuadVao);
+    glBindBuffer(GL_ARRAY_BUFFER, screenQuadVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), screenQuadVertices, GL_STATIC_DRAW);
+    
+    checkGLStatus();
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    checkGLStatus();
+    
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    checkGLStatus();
+
+    // Unbind VAO (unbinds VBO and disables vertex attributes)
+    glBindVertexArray(0);
+    
+    checkGLStatus();
+
+    // Unbind VBO (optional)
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    
+    checkGLStatus();
+    
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
 
     fprintf(stderr,"Loading intro pictures...\n");
 
@@ -547,6 +627,7 @@ void initgraphics()
         loadwalls(0);
     } else {
         /* The ingame palette is stored in this GIF! */
+        checkGLStatus();
         kgif(1);
         memcpy(spritepalette,palette,768);
 
@@ -555,7 +636,6 @@ void initgraphics()
         fprintf(stderr,"Loading graphics...\n");
 
         loadwalls(1);
-
         /* Ken's Labyrinth logo. */
         if (!kgif(2))
             kgif(1);

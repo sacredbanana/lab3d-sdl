@@ -403,6 +403,61 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
     }
 }
 
+char* readShaderSource(const char* path) {
+    FILE* file = fopen(path, "rb");
+    if (file == NULL) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* buffer = (char*) malloc(length + 1);
+    if (buffer == NULL) {
+        fclose(file);
+        return NULL;
+    }
+
+    fread(buffer, 1, length, file);
+    buffer[length] = '\0';
+
+    fclose(file);
+    return buffer;
+}
+
+GLuint compileShader(GLenum type, const char* source) {
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+
+    // TODO: Error handling
+
+    return shader;
+}
+
+void ortho(float left, float right, float bottom, float top, float nearVal, float farVal, float *result) {
+    result[0] = 2.0f / (right - left);
+    result[1] = 0.0f;
+    result[2] = 0.0f;
+    result[3] = 0.0f;
+
+    result[4] = 0.0f;
+    result[5] = 2.0f / (top - bottom);
+    result[6] = 0.0f;
+    result[7] = 0.0f;
+
+    result[8] = 0.0f;
+    result[9] = 0.0f;
+    result[10] = -2.0f / (farVal - nearVal);
+    result[11] = 0.0f;
+
+    result[12] = -(right + left) / (right - left);
+    result[13] = -(top + bottom) / (top - bottom);
+    result[14] = -(farVal + nearVal) / (farVal - nearVal);
+    result[15] = 1.0f;
+}
+
 int main(int argc,char **argv)
 {
     char ksmfile[15], hitnet, cheatkeysdown, won;

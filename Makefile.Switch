@@ -39,10 +39,11 @@ INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 ROMFS		:= 	romfs
 EXTERNAL    :=  external
+SHADERS	 	:=  shaders
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
-APP_VERSION	:= 4.1.4
+APP_VERSION	:= 4.2.0
 ICON		:= icons/ken_icon_switch.jpg
 
 #---------------------------------------------------------------------------------

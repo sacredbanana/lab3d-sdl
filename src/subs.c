@@ -1743,9 +1743,9 @@ void loadwalls(int replace)
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
                 }
                 else {
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 }
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilt);
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);
                 checkGLStatus();
@@ -1782,8 +1782,8 @@ void loadwalls(int replace)
                     glGenTextures(1, &gameoversprite);
 
                     glBindTexture(GL_TEXTURE_2D, gameoversprite);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
                     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                         fullfilter);
@@ -3765,26 +3765,26 @@ void winallgame()
 /* Darkened palette for end of game sequences... */
 
 void setdarkenedpalette() {
-    K_INT16 a;
+    // K_INT16 a;
 
-    for(a=0;a<256;a++) {
-        ipalr[a]=(palette[a*3]*27)>>3;
-        ipalg[a]=(palette[a*3+1]*27)>>3;
-        ipalb[a]=(palette[a*3+2]*27)>>3;
+    // for(a=0;a<256;a++) {
+    //     ipalr[a]=(palette[a*3]*27)>>3;
+    //     ipalg[a]=(palette[a*3+1]*27)>>3;
+    //     ipalb[a]=(palette[a*3+2]*27)>>3;
 
-        Red[a]=palette[a*3]*27/4096.0;
-        Green[a]=palette[a*3+1]*27/4096.0;
-        Blue[a]=palette[a*3+2]*27/4096.0;
-        Alpha[a]=1.0;
-    }
+    //     Red[a]=palette[a*3]*27/4096.0;
+    //     Green[a]=palette[a*3+1]*27/4096.0;
+    //     Blue[a]=palette[a*3+2]*27/4096.0;
+    //     Alpha[a]=1.0;
+    // }
 
-    if (ingame)
-        Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
+    // if (ingame)
+    //     Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
 
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
 
     ConvertPartialOverlay(0, 0, 360, 240);
 }
@@ -3799,19 +3799,34 @@ void settransferpalette() {
         ipalg[a]=(palette[a*3+1]*27)>>3;
         ipalb[a]=(palette[a*3+2]*27)>>3;
 
-        Red[a]=palette[a*3]/64.0;
-        Green[a]=palette[a*3+1]/64.0;
-        Blue[a]=palette[a*3+2]/64.0;
-        Alpha[a]=1.0;
+        // Red[a]=palette[a*3]/64.0;
+        // Green[a]=palette[a*3+1]/64.0;
+        // Blue[a]=palette[a*3+2]/64.0;
+        // Alpha[a]=1.0;
     }
 
-    if (ingame)
-        Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
+    // if (ingame)
+    //     Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
 
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
+    // glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
+    checkGLStatus();
+
+    glGenTextures(1, &paletteTex);
+    checkGLStatus();
+    glBindTexture(GL_TEXTURE_1D, paletteTex);
+    
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    
+    checkGLStatus();
+
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB8, 1024, 0, GL_RGB, GL_UNSIGNED_BYTE, palette);
+    
+    checkGLStatus();
+
 
     ConvertPartialOverlay(0, 0, 360, 240);
 }
@@ -4123,8 +4138,9 @@ K_INT16 kgif(K_INT16 filenum)
     fwrite(screenbuffer, screenbufferwidth, screenbufferheight, dfil);
     fclose(dfil);
     */
-
+    checkGLStatus();
     UploadOverlay();
+    checkGLStatus();
 
     return 0;
 }
@@ -4133,7 +4149,15 @@ K_INT16 kgif(K_INT16 filenum)
 
 void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
                                    GLuint tex) {
+    checkGLStatus();
+    glActiveTexture(GL_TEXTURE0);
+    checkGLStatus();
+    glBindTexture(GL_TEXTURE_1D, paletteTex);
+    checkGLStatus();
+    glUniform1i(glGetUniformLocation(shaderProgram, "paletteTexture"), 0);
+    checkGLStatus();
     glBindTexture(GL_TEXTURE_2D, tex);
+    
     checkGLStatus();
 
     glPixelStorei(GL_UNPACK_ROW_LENGTH, screenbufferwidth);
@@ -4143,8 +4167,8 @@ void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
     checkGLStatus();
 
     if (texturecreationneeded) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, partialfilter);
     }
@@ -4154,6 +4178,8 @@ void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
     if (debugmode)
         fprintf(stderr, "Partial overlay upload (%d %d %d %d)... ",
                 w, h, dx, dy);
+    
+    checkGLStatus();
 
     if (texturecreationneeded) {
         if (debugmode)
@@ -4282,10 +4308,10 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
 
 void UploadOverlay(void) {
     int i, j;
-
+    checkGLStatus();
     settransferpalette();
+    checkGLStatus();
     ConvertPartialOverlay(0, 0, screenbufferwidth, screenbufferheight);
-
     if (largescreentexture)
         UploadPartialOverlayToTexture(0, 0, 0, 0, screenbufferwidth,
                                       screenbufferheight,
@@ -4308,6 +4334,17 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
     float vl, vt1, vt2;
 
+    // Use the shader program
+    glUseProgram(shaderProgram);
+
+    // Bind the VAO
+    glBindVertexArray(screenQuadVao);
+
+    // Bind your texture
+    glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
+    
+    checkGLStatus();
+
     if (statusbar==0) {
         y-=visiblescreenyoffset;
         if (x+w>360) w=360-x;
@@ -4321,46 +4358,53 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     if (mixing)
         glEnable(GL_BLEND);
     else {
-        glAlphaFunc(GL_GEQUAL, 0.99);
-        glEnable(GL_ALPHA_TEST);
+        // glAlphaFunc(GL_GEQUAL, 0.99);
+        // glEnable(GL_ALPHA_TEST);
     }
-    glEnable(GL_TEXTURE_2D);
+//    glEnable(GL_TEXTURE_2D);
     glDisable(GL_DEPTH_TEST);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
+    glUniform1i(glGetUniformLocation(shaderProgram, "texture"), 0);
+    // glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    // glMatrixMode(GL_PROJECTION);
+    // glLoadIdentity();
 
     vl=floor(-((float)virtualscreenwidth-360.0)/2.0);
     vt1=floor(240.0+(virtualscreenheight-240.0)/2.0);
     vt2=floor(statusbaryoffset+statusbaryvisible+statusbaryoffset-y);
 
     if (statusbar==1)
-        glOrtho(vl,
+        ortho(vl,
                    vl+virtualscreenwidth,
                    vt2,
                    vt2-virtualscreenheight,
                    -1.0,
-                   1.0);
+                   1.0, projection);
     else if (statusbar==2) {
-        glOrtho(vl+340.0-x,
+        ortho(vl+340.0-x,
                    vl+virtualscreenwidth+340.0-x,
                    vt2,
                    vt2-virtualscreenheight,
                    -1.0,
-                   1.0);
+                   1.0, projection);
         x=340; y=statusbaryoffset;
     }
     else
-        glOrtho(vl,
+        ortho(vl,
                    vl+virtualscreenwidth,
                    vt1,
                    vt1-virtualscreenheight,
                    -1.0,
-                   1.0);
+                   1.0, projection);
 
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    // glMatrixMode(GL_MODELVIEW);
+    // glLoadIdentity();
+    checkGLStatus();
+    GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+    checkGLStatus();
 
     if (largescreentexture) {
         tx1=((float)x)/(float)(screenbufferwidth);
@@ -4371,19 +4415,30 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
         y-=visiblescreenyoffset;
 
+        // Set texture coordinate uniforms (or however you transfer these to your shader)
+        glUniform1f(glGetUniformLocation(shaderProgram, "tx1"), tx1);
+        glUniform1f(glGetUniformLocation(shaderProgram, "tx2"), tx2);
+        glUniform1f(glGetUniformLocation(shaderProgram, "ty1"), ty1);
+        glUniform1f(glGetUniformLocation(shaderProgram, "ty2"), ty2);
+
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
-        glBegin(GL_QUADS);
-        glColor3f(redfactor, greenfactor, bluefactor);
-        /*printf("ty1=%f ty2=%f y1=%d y2=%d\n", ty1, ty2, y, y+h);*/
-        glTexCoord2f(tx1, ty2);
-        glVertex2s(x, y+h);
-        glTexCoord2f(tx2, ty2);
-        glVertex2s(x+w, y+h);
-        glTexCoord2f(tx2, ty1);
-        glVertex2s(x+w, y);
-        glTexCoord2f(tx1, ty1);
-        glVertex2s(x, y);
-        glEnd();
+        checkGLStatus();
+
+        // Draw the quad
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        // glBegin(GL_QUADS);
+        // glColor3f(redfactor, greenfactor, bluefactor);
+        // /*printf("ty1=%f ty2=%f y1=%d y2=%d\n", ty1, ty2, y, y+h);*/
+        // glTexCoord2f(tx1, ty2);
+        // glVertex2s(x, y+h);
+        // glTexCoord2f(tx2, ty2);
+        // glVertex2s(x+w, y+h);
+        // glTexCoord2f(tx2, ty1);
+        // glVertex2s(x+w, y);
+        // glTexCoord2f(tx1, ty1);
+        // glVertex2s(x, y);
+        // glEnd();
     } else {
         left=(x-1)/62;
         if (left<0) left=0;
@@ -4444,8 +4499,8 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     }
     if (mixing)
         glDisable(GL_BLEND);
-    else
-        glDisable(GL_ALPHA_TEST);
+    // else
+    //     glDisable(GL_ALPHA_TEST);
     checkGLStatus();
 
     if (statusbar==1) {
@@ -6082,7 +6137,7 @@ void orderinfomenu() {
     textprint(30, 96, 32);
 
     strcpy(textbuf,
-           "Copyright (c) 2019 Cameron Armstrong");
+           "Copyright (c) 2019-2023 Cameron Armstrong");
     textprint(30, 106, 32);
 
     strcpy(textbuf,
