@@ -593,8 +593,8 @@ void initgraphics()
     checkGLStatus();
     
     // Texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+//    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+//    glEnableVertexAttribArray(1);
     
     checkGLStatus();
 
@@ -607,6 +607,8 @@ void initgraphics()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
     checkGLStatus();
+    
+    glGenTextures(1, &screenbuffertexture);
     
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);

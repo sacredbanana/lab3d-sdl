@@ -4355,17 +4355,17 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
         y+=visiblescreenyoffset;
     }
 
-    if (mixing)
-        glEnable(GL_BLEND);
-    else {
-        // glAlphaFunc(GL_GEQUAL, 0.99);
-        // glEnable(GL_ALPHA_TEST);
-    }
-//    glEnable(GL_TEXTURE_2D);
+//    if (mixing)
+//        glEnable(GL_BLEND);
+//    else {
+//        // glAlphaFunc(GL_GEQUAL, 0.99);
+//        // glEnable(GL_ALPHA_TEST);
+//    }
+////    glEnable(GL_TEXTURE_2D);
     glDisable(GL_DEPTH_TEST);
-    glActiveTexture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
-    glUniform1i(glGetUniformLocation(shaderProgram, "texture"), 0);
+    glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 0);
     // glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     // glMatrixMode(GL_PROJECTION);
     // glLoadIdentity();
@@ -4416,10 +4416,10 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
         y-=visiblescreenyoffset;
 
         // Set texture coordinate uniforms (or however you transfer these to your shader)
-        glUniform1f(glGetUniformLocation(shaderProgram, "tx1"), tx1);
-        glUniform1f(glGetUniformLocation(shaderProgram, "tx2"), tx2);
-        glUniform1f(glGetUniformLocation(shaderProgram, "ty1"), ty1);
-        glUniform1f(glGetUniformLocation(shaderProgram, "ty2"), ty2);
+//        glUniform1f(glGetUniformLocation(shaderProgram, "tx1"), tx1);
+//        glUniform1f(glGetUniformLocation(shaderProgram, "tx2"), tx2);
+//        glUniform1f(glGetUniformLocation(shaderProgram, "ty1"), ty1);
+//        glUniform1f(glGetUniformLocation(shaderProgram, "ty2"), ty2);
 
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
         checkGLStatus();
