@@ -1694,7 +1694,7 @@ void loadwalls(int replace)
                Yes, I know I'm too clever for my own good.
                Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
             SetVisibleScreenOffset(0);
-            SDL_GL_SwapWindow(mainwindow);
+//            SDL_GL_SwapWindow(mainwindow);
             cwparam = &wparams[i];
             int minfilt = cwparam->minfilt;
             int magfilt = cwparam->magfilt;
@@ -3816,6 +3816,7 @@ void settransferpalette() {
 
     glGenTextures(1, &paletteTex);
     checkGLStatus();
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_1D, paletteTex);
     
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -4149,13 +4150,14 @@ K_INT16 kgif(K_INT16 filenum)
 
 void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
                                    GLuint tex) {
-    checkGLStatus();
-    glActiveTexture(GL_TEXTURE0);
-    checkGLStatus();
-    glBindTexture(GL_TEXTURE_1D, paletteTex);
-    checkGLStatus();
-    glUniform1i(glGetUniformLocation(shaderProgram, "paletteTexture"), 0);
-    checkGLStatus();
+//    checkGLStatus();
+//    glActiveTexture(GL_TEXTURE0);
+//    checkGLStatus();
+//    glBindTexture(GL_TEXTURE_1D, paletteTex);
+//    checkGLStatus();
+//    glUniform1i(glGetUniformLocation(shaderProgram, "paletteTexture"), 0);
+//    checkGLStatus();
+//    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
     
     checkGLStatus();
@@ -4462,11 +4464,13 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
         GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
         glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
 
+        glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
         checkGLStatus();
 
         // Draw the quad
         glDrawArrays(GL_TRIANGLES, 0, 6);
+//        SDL_GL_SwapWindow(mainwindow);
 
         // glBegin(GL_QUADS);
         // glColor3f(redfactor, greenfactor, bluefactor);

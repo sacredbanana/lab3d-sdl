@@ -22,8 +22,8 @@ void main()
     vec4 color = textureColor;
     color.rgb *= baseColor;
 
-    if(color.a < 0.99)
-        discard;
+    // if(color.a < 0.99)
+    //     discard;
     
     FragColor = color;
 }

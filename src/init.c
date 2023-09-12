@@ -611,7 +611,7 @@ void initgraphics()
     glGenTextures(1, &screenbuffertexture);
     
     glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
+//    glBindTexture(GL_TEXTURE_2D, texture);
 
     fprintf(stderr,"Loading intro pictures...\n");
 
