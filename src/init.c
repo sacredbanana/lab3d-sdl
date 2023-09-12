@@ -567,44 +567,44 @@ void initgraphics()
     checkGLStatus();
     texturecreationneeded = 1;
 
-    float screenQuadVertices[] = {
-    // Position     // Texcoords
-     1.0f,  1.0f,   1.0f, 1.0f,  // Top-right
-     1.0f, -1.0f,   1.0f, 0.0f,  // Bottom-right
-    -1.0f, -1.0f,   0.0f, 0.0f,  // Bottom-left
+//     float screenQuadVertices[] = {
+//     // Position     // Texcoords
+//      1.0f,  1.0f,   1.0f, 1.0f,  // Top-right
+//      1.0f, -1.0f,   1.0f, 0.0f,  // Bottom-right
+//     -1.0f, -1.0f,   0.0f, 0.0f,  // Bottom-left
+//
+//     -1.0f, -1.0f,   0.0f, 0.0f,  // Bottom-left
+//     -1.0f,  1.0f,   0.0f, 1.0f,  // Top-left
+//      1.0f,  1.0f,   1.0f, 1.0f   // Top-right
+//     };
 
-    -1.0f, -1.0f,   0.0f, 0.0f,  // Bottom-left
-    -1.0f,  1.0f,   0.0f, 1.0f,  // Top-left
-     1.0f,  1.0f,   1.0f, 1.0f   // Top-right
-    };
-
-    glGenVertexArrays(1, &screenQuadVao);
-    glGenBuffers(1, &screenQuadVbo);
-    glBindVertexArray(screenQuadVao);
-    glBindBuffer(GL_ARRAY_BUFFER, screenQuadVbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), screenQuadVertices, GL_STATIC_DRAW);
+//     glGenVertexArrays(1, &screenQuadVao);
+//     glGenBuffers(1, &screenQuadVbo);
+//     glBindVertexArray(screenQuadVao);
+//     glBindBuffer(GL_ARRAY_BUFFER, screenQuadVbo);
+//     glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), screenQuadVertices, GL_STATIC_DRAW);
     
-    checkGLStatus();
+//     checkGLStatus();
 
-    // Position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+//     // Position attribute
+//     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+//     glEnableVertexAttribArray(0);
 
-    checkGLStatus();
+//     checkGLStatus();
     
-    // Texture coordinate attribute
+//     // Texture coordinate attribute
 //    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 //    glEnableVertexAttribArray(1);
     
-    checkGLStatus();
+//     checkGLStatus();
 
-    // Unbind VAO (unbinds VBO and disables vertex attributes)
-    glBindVertexArray(0);
+//     // Unbind VAO (unbinds VBO and disables vertex attributes)
+//     glBindVertexArray(0);
     
-    checkGLStatus();
+//     checkGLStatus();
 
-    // Unbind VBO (optional)
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+//     // Unbind VBO (optional)
+//     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
     checkGLStatus();
     

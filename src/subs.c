@@ -4415,11 +4415,52 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
         y-=visiblescreenyoffset;
 
+        float screenQuadVertices[] = {
+        // Position     // Texcoords
+         x + w,  y + h,   tx2, ty2,  // Top-right
+         x + w, y,   tx2, ty1,  // Bottom-right
+        x, y,   tx1, ty1,  // Bottom-left
+
+        x, y,   tx1, ty1,  // Bottom-left
+        x, y + h,   tx1, ty2,  // Top-left
+         x + w, y + h,   tx2, ty2   // Top-right
+        };
+
+        glGenVertexArrays(1, &screenQuadVao);
+        glGenBuffers(1, &screenQuadVbo);
+        glBindVertexArray(screenQuadVao);
+        glBindBuffer(GL_ARRAY_BUFFER, screenQuadVbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), screenQuadVertices, GL_STATIC_DRAW);
+        
+        checkGLStatus();
+
+        // Position attribute
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        checkGLStatus();
+        
+        // Texture coordinate attribute
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+        
+        checkGLStatus();
+
+        // Unbind VAO (unbinds VBO and disables vertex attributes)
+        // glBindVertexArray(0);
+        
+        // checkGLStatus();
+
+        // // Unbind VBO (optional)
+        // glBindBuffer(GL_ARRAY_BUFFER, 0);
+
         // Set texture coordinate uniforms (or however you transfer these to your shader)
 //        glUniform1f(glGetUniformLocation(shaderProgram, "tx1"), tx1);
 //        glUniform1f(glGetUniformLocation(shaderProgram, "tx2"), tx2);
 //        glUniform1f(glGetUniformLocation(shaderProgram, "ty1"), ty1);
 //        glUniform1f(glGetUniformLocation(shaderProgram, "ty2"), ty2);
+        GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
+        glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
 
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
         checkGLStatus();
@@ -4429,7 +4470,8 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
         // glBegin(GL_QUADS);
         // glColor3f(redfactor, greenfactor, bluefactor);
-        // /*printf("ty1=%f ty2=%f y1=%d y2=%d\n", ty1, ty2, y, y+h);*/
+//        printf("redfactor=%f greenfactor=%f bluefactor=%f\n", redfactor, greenfactor, bluefactor);
+//        printf("ty1=%f ty2=%f y1=%d y2=%d\n", ty1, ty2, y, y+h);
         // glTexCoord2f(tx1, ty2);
         // glVertex2s(x, y+h);
         // glTexCoord2f(tx2, ty2);
@@ -4497,8 +4539,8 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
             }
     }
-    if (mixing)
-        glDisable(GL_BLEND);
+    // if (mixing)
+    //     glDisable(GL_BLEND);
     // else
     //     glDisable(GL_ALPHA_TEST);
     checkGLStatus();
