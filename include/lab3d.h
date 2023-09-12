@@ -507,14 +507,14 @@ EXTERN unsigned char psoundpan[16];
 EXTERN K_UINT32 psoundnum;
 
 // OpenGL 3.3+ stuff
-GLuint vertexShader;
-GLuint fragmentShader;
-GLuint shaderProgram;
-GLuint paletteTex;
-GLuint texture;
-GLuint screenQuadVao;
-GLuint screenQuadVbo;
-float projection[16];
+EXTERN GLuint vertexShader;
+EXTERN GLuint fragmentShader;
+EXTERN GLuint shaderProgram;
+EXTERN GLuint paletteTex;
+EXTERN GLuint texture;
+EXTERN GLuint screenQuadVao;
+EXTERN GLuint screenQuadVbo;
+EXTERN float projection[16];
 
 EXTERN char showdebug;
 
