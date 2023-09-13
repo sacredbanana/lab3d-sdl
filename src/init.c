@@ -526,9 +526,11 @@ void initaudio()
 void initgraphics()
 {
     K_INT16 i, j, k, oclockspeed;
-
-    const char* vertexShaderSource = readShaderSource("/tmp/shaders/vertex.glsl");
-    const char* fragmentShaderSource = readShaderSource("/tmp/shaders/fragment.glsl");
+    
+    sprintf(filepath, "%s/../shaders/vertex.glsl", gameroot);
+    const char* vertexShaderSource = readShaderSource(filepath);
+    sprintf(filepath, "%s/../shaders/fragment.glsl", gameroot);
+    const char* fragmentShaderSource = readShaderSource(filepath);
 
     vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
     fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);

@@ -1694,7 +1694,7 @@ void loadwalls(int replace)
                Yes, I know I'm too clever for my own good.
                Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
             SetVisibleScreenOffset(0);
-//            SDL_GL_SwapWindow(mainwindow);
+            SDL_GL_SwapWindow(mainwindow);
             cwparam = &wparams[i];
             int minfilt = cwparam->minfilt;
             int magfilt = cwparam->magfilt;

@@ -1535,14 +1535,14 @@ void loadsettings(void) {
     char buf[256];
     char *key, *val;
     int curline = 0;
-    const char* filename = "settings.ini";
+    sprintf(filepath, "%s/../settings.ini", gameroot);
 
     setting_section_t* cursection = NULL;
     setting_t* cursetting = NULL;
 
     load_default_settings();
 
-    input = fopen(filename, "r");
+    input = fopen(filepath, "r");
 
     if (input == NULL) {
         #ifdef __SWITCH__
@@ -1611,7 +1611,8 @@ void loadsettings(void) {
 }
 
 void savesettings(void) {
-    FILE *output = fopen("settings.ini", "w");
+    sprintf(filepath, "%s/../settings.ini", gameroot);
+    FILE *output = fopen(filepath, "w");
 
     setting_section_t* cursection = sections;
     setting_t* cursetting = NULL;
