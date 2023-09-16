@@ -441,17 +441,17 @@ void loadIdentityMatrix(float *matrix) {
     matrix[0] = matrix[5] = matrix[10] = matrix[15] = 1.0f;
 }
 
-void translateMatrix(float *matrix, float x, float y, float z) {
+void translateMatrix(float* matrix, float x, float y, float z) {
     float translationMatrix[16] = {
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        x,    y,    z,    1.0f
+        1.0f, 0.0f, 0.0f, x,
+        0.0f, 1.0f, 0.0f, y,
+        0.0f, 0.0f, 1.0f, z,
+        0.0f, 0.0f, 0.0f, 1.0f
     };
 
-    // Multiply your existing matrix by the translation matrix to combine the transformations
-    // Assuming you have a matrixMultiply function
-    matrixMultiply(matrix, translationMatrix, matrix);
+    float result[16];
+    multiplyMatrix(result, matrix, translationMatrix);
+    memcpy(matrix, result, 16 * sizeof(float));
 }
 
 void scaleMatrix(float *matrix, float x, float y, float z) {
@@ -689,33 +689,33 @@ int main(int argc,char **argv)
     }
 
     lab3dversion = KENS_LABYRINTH_2_1;
-    initgameversion();
-    inittablesandsettings();
-    initvideo();
-    initaudio();
-    initmemory();
-
-    if (!legacyload) {
-        loadmusic("BEGIN");
-        musicon();
-    }
-    initgraphics();
-
-    if (!legacyload) {
-        gamelaunchermenu();
-        initgameversion();
-        #if !defined(__SWITCH__)
-        SDL_DestroyWindow(mainwindow);
-        SDL_GL_DeleteContext(maincontext);
-        #endif
-        freememory();
-        clearimgcache();
+//    initgameversion();
+//    inittablesandsettings();
+//    initvideo();
+//    initaudio();
+//    initmemory();
+//
+//    if (!legacyload) {
+//        loadmusic("BEGIN");
+//        musicon();
+//    }
+//    initgraphics();
+//
+//    if (!legacyload) {
+//        gamelaunchermenu();
+//        initgameversion();
+//        #if !defined(__SWITCH__)
+//        SDL_DestroyWindow(mainwindow);
+//        SDL_GL_DeleteContext(maincontext);
+//        #endif
+//        freememory();
+//        clearimgcache();
         initgameversion();
         inittablesandsettings();
         initvideo();
         initmemory();
         resetaudio();
-    }
+//    }
 
     initialize();
     
@@ -755,6 +755,18 @@ int main(int argc,char **argv)
         oldmain();
         quit();
         return 0;
+    }
+    
+    long nu = 0;
+    fade(63);
+    while (1) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        nu++;
+        redfactor =1.0;
+        greenfactor = 1.0;
+        bluefactor = 1.0;
+        pictur(nu, 40, 256, nu, 419);
+        SDL_GL_SwapWindow(mainwindow);
     }
 
     

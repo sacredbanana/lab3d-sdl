@@ -1616,13 +1616,13 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 
     float pictureVertices[] = {
         // Vertex coordinates    // Texture coordinates
-        0.0f, 0.0f, 0.0f,        0.0f, new_tex_coords[0],
-        64.0f, 0.0f, 0.0f,       1.0f, new_tex_coords[0],
-        64.0f, 64.0f, 0.0f,      1.0f, new_tex_coords[1],
+        0.0f, 0.0f,             0.0f, new_tex_coords[0],
+        64.0f, 0.0f,         1.0f, new_tex_coords[0],
+        64.0f, 64.0f,         1.0f, new_tex_coords[1],
 
-        64.0f, 64.0f, 0.0f,      1.0f, new_tex_coords[1],
-        0.0f, 64.0f, 0.0f,       0.0f, new_tex_coords[1],
-        0.0f, 0.0f, 0.0f,        0.0f, new_tex_coords[0]
+        64.0f, 64.0f,        1.0f, new_tex_coords[1],
+        0.0f, 64.0f,         0.0f, new_tex_coords[1],
+        0.0f, 0.0f,         0.0f, new_tex_coords[0]
     };
 
     // Update VBO data
@@ -1652,13 +1652,13 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     checkGLStatus();
 
     // Position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     checkGLStatus();
 
     // Texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     checkGLStatus();
@@ -1674,25 +1674,33 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
+    loadIdentityMatrix(projection);
+    
     // Create projection matrix
     orthoMatrix(projection, -(virtualscreenwidth-360)/2.0f, 360.0f+(virtualscreenwidth-360)/2.0f,
                                 -(virtualscreenheight-240)/2.0f, 240.0f+(virtualscreenheight-240)/2.0f, -1.0f, 1.0f);
 
-    float model[16];
+//    float model[16];
     loadIdentityMatrix(model);
 //    translateMatrix(model, x, 240.0f-y, 0.0f);
 //    translateMatrix(model, 132.0f, -32.0f, 0.0f);
 //    scaleMatrix(model, siz/256.0f/10, siz/256.0f/10, siz/256.0f/10);
 //    rotateMatrix(model, ang/2048.0f * 360.0f);
 //    translateMatrix(model, -32.0f, -32.0f, 0.0f);
-    translateMatrix(model, 0.0, 0.0, 0.0);
+//    translateMatrix(model, 600.0, 600.0, 0.0);
+    translateMatrix(model, 0.008, 0.0, 0.0);
     
     glUseProgram(shaderProgram);
+    
+//    saveTextureToDisk(texName[walnume-1], siz, siz, "/tmp/tex.png");
 
 
     // Pass the matrices to shaders
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, projection);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, model);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &model[0]);
+
+    GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
+    glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
     
     glBindTexture(GL_TEXTURE_2D, 0);
     
