@@ -436,26 +436,83 @@ GLuint compileShader(GLenum type, const char* source) {
     return shader;
 }
 
-void ortho(float left, float right, float bottom, float top, float nearVal, float farVal, float *result) {
-    result[0] = 2.0f / (right - left);
-    result[1] = 0.0f;
-    result[2] = 0.0f;
-    result[3] = 0.0f;
+void loadIdentityMatrix(float *matrix) {
+    memset(matrix, 0, 16 * sizeof(float));
+    matrix[0] = matrix[5] = matrix[10] = matrix[15] = 1.0f;
+}
 
-    result[4] = 0.0f;
-    result[5] = 2.0f / (top - bottom);
-    result[6] = 0.0f;
-    result[7] = 0.0f;
+void translateMatrix(float *matrix, float x, float y, float z) {
+    float translationMatrix[16] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        x,    y,    z,    1.0f
+    };
 
-    result[8] = 0.0f;
-    result[9] = 0.0f;
-    result[10] = -2.0f / (farVal - nearVal);
-    result[11] = 0.0f;
+    // Multiply your existing matrix by the translation matrix to combine the transformations
+    // Assuming you have a matrixMultiply function
+    matrixMultiply(matrix, translationMatrix, matrix);
+}
 
-    result[12] = -(right + left) / (right - left);
-    result[13] = -(top + bottom) / (top - bottom);
-    result[14] = -(farVal + nearVal) / (farVal - nearVal);
-    result[15] = 1.0f;
+void scaleMatrix(float *matrix, float x, float y, float z) {
+    float scaleMatrix[16] = {
+        x, 0.0f, 0.0f, 0.0f,
+        0.0f, y, 0.0f, 0.0f,
+        0.0f, 0.0f, z, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    float result[16];
+    multiplyMatrix(result, matrix, scaleMatrix);
+    memcpy(matrix, result, 16 * sizeof(float));
+}
+
+void rotateMatrix(float *matrix, float angle) {
+    float rad = angle * (M_PI / 180.0f);
+
+    float rotateMatrix[16] = {
+        cosf(rad), -sinf(rad), 0.0f, 0.0f,
+        sinf(rad), cosf(rad), 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    float result[16];
+    multiplyMatrix(result, matrix, rotateMatrix);
+    memcpy(matrix, result, 16 * sizeof(float));
+}
+
+void orthoMatrix(float *matrix, float left, float right, float bottom, float top, float near, float far) {
+    loadIdentityMatrix(matrix);
+    matrix[0] = 2.0f / (right - left);
+    matrix[5] = 2.0f / (top - bottom);
+    matrix[10] = -2.0f / (far - near);
+    matrix[12] = -(right + left) / (right - left);
+    matrix[13] = -(top + bottom) / (top - bottom);
+    matrix[14] = -(far + near) / (far - near);
+}
+
+void matrixMultiply(float *result, const float *a, const float *b) {
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            result[i * 4 + j] = 0.0f;
+            for (int k = 0; k < 4; ++k) {
+                result[i * 4 + j] += a[i * 4 + k] * b[k * 4 + j];
+            }
+        }
+    }
+}
+
+
+void multiplyMatrix(float *result, float *a, float *b) {
+    for (int y = 0; y < 4; ++y) {
+        for (int x = 0; x < 4; ++x) {
+            result[y * 4 + x] = 0.0f;
+            for (int k = 0; k < 4; ++k) {
+                result[y * 4 + x] += a[y * 4 + k] * b[k * 4 + x];
+            }
+        }
+    }
 }
 
 int main(int argc,char **argv)

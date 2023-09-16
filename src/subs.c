@@ -1298,7 +1298,7 @@ void UploadTexture(GLuint tex, void* pixels, int w, int h,  int repx, int repy, 
         glTexImage2D (GL_TEXTURE_2D, 0, hasalpha?GL_RGBA:GL_RGB, w, h, 0, GL_RGBA,
                       GL_UNSIGNED_BYTE, pixels);
     }
-    checkGLStatus ();
+    checkGLStatus();
 }
 
 int checkalpha(Uint32* tex, int w, int cw, int ch) {
@@ -1722,6 +1722,7 @@ void loadwalls(int replace)
             printf("Shadow: %d\n", shadow[i + 1]);
             printf("\n");
 #endif
+            glGenTextures(1, &texName[i]);
             if (cwparam->texreplace) {
                 imgcache* cache = LoadImageCache(cwparam->texreplace, wrapmode, minfilt, magfilt);
                 texName[i] = cache->texnum;
@@ -1899,8 +1900,8 @@ void TransitionTexture(int left, int texture, int right) {
         glBindTexture(GL_TEXTURE_2D, splitTexName[texnum][x]);
         checkGLStatus();
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                         fullfilter);
@@ -4302,6 +4303,8 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
                                               screenbuffertextures[i*6+j]);
             }
     }
+
+
     ShowPartialOverlay(x-1,y-1,w+2,h+2,0);
     /*ShowPartialOverlay(0, 0, virtualscreenwidth, virtualscreenheight, 0);*/
 }
@@ -4338,9 +4341,8 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // Bind the VAO
-    glBindVertexArray(screenQuadVao);
+    
+    checkGLStatus();
 
     // Bind your texture
     glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
@@ -4377,35 +4379,39 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     vt2=floor(statusbaryoffset+statusbaryvisible+statusbaryoffset-y);
 
     if (statusbar==1)
-        ortho(vl,
+        orthoMatrix(projection, vl,
                    vl+virtualscreenwidth,
                    vt2,
                    vt2-virtualscreenheight,
                    -1.0,
-                   1.0, projection);
+                   1.0);
     else if (statusbar==2) {
-        ortho(vl+340.0-x,
+        orthoMatrix(projection, vl+340.0-x,
                    vl+virtualscreenwidth+340.0-x,
                    vt2,
                    vt2-virtualscreenheight,
                    -1.0,
-                   1.0, projection);
+                   1.0);
         x=340; y=statusbaryoffset;
     }
     else
-        ortho(vl,
+        orthoMatrix(projection, vl,
                    vl+virtualscreenwidth,
                    vt1,
                    vt1-virtualscreenheight,
                    -1.0,
-                   1.0, projection);
+                   1.0);
 
 //    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
     // glMatrixMode(GL_MODELVIEW);
     // glLoadIdentity();
+    loadIdentityMatrix(model);
     checkGLStatus();
     GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
+
     checkGLStatus();
 
     if (largescreentexture) {
@@ -4470,6 +4476,14 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
         // Draw the quad
         glDrawArrays(GL_TRIANGLES, 0, 6);
+        
+//        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        
+        checkGLStatus();
+
+        // Unbind VBO (optional)
+//        glBindBuffer(GL_ARRAY_BUFFER, 0);
 //        SDL_GL_SwapWindow(mainwindow);
 
         // glBegin(GL_QUADS);

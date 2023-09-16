@@ -106,7 +106,14 @@ inline void glRotatef(float angle, float x, float y, float z) {}
 inline void glFrustum(double left, double right, double bottom, double top, double near, double far) {}
 inline void glTexEnvf(int target, int pname, float param) {}
 inline void glOrtho(double left, double right, double bottom, double top, double near, double far) {}
-void ortho(float left, float right, float bottom, float top, float nearVal, float farVal, float *result);
+void multiplyMatrix(float *result, float *a, float *b);
+void matrixMultiply(float *result, const float *a, const float *b);
+void loadIdentityMatrix(float *matrix);
+void translateMatrix(float *matrix, float x, float y, float z);
+void scaleMatrix(float *matrix, float x, float y, float z);
+void rotateMatrix(float *matrix, float angle);
+void orthoMatrix(float *matrix, float left, float right, float bottom, float top, float near, float far);
+void saveTextureToDisk(GLuint textureID, int width, int height, const char* filename);
 inline void glColor3f(float r, float g, float b) {}
 inline void glColor4f(float r, float g, float b, float a) {}
 inline void glTexCoord2f(float s, float t) {}
@@ -514,6 +521,7 @@ EXTERN GLuint paletteTex;
 EXTERN GLuint texture;
 EXTERN GLuint screenQuadVao;
 EXTERN GLuint screenQuadVbo;
+EXTERN float model[16];
 EXTERN float projection[16];
 
 EXTERN char showdebug;

@@ -2,6 +2,7 @@
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aTexCoord;
+uniform mat4 model;
 uniform mat4 projection;
 // layout (location = 1) in float aColorIndex; // This should correspond to the attribute in your VAO
 // layout (location = 2) in float tx1;
@@ -20,7 +21,7 @@ out vec3 FragPos;                    // Output position to fragment shader
 
 void main()
 {
-    gl_Position = projection * vec4(aPos, 1.0);
+    gl_Position = projection * model * vec4(aPos, 1.0);
     // colorIndex = aColorIndex; // Set the value that will be passed to the fragment shader
     // txx1 = tx1;
     // tyy1 = ty1;

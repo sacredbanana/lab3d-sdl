@@ -41,6 +41,7 @@ void initialize()
     owecoins = 0;
     owecoinwait = 0;
     slotpos[0] = 0;
+
     slotpos[1] = 0;
     slotpos[2] = 0;
     clockspeed = 0;
@@ -335,6 +336,14 @@ void freememory()
     free(SoundBuffer);
     free(screenbuffer);
     free(screenbuffer32);
+    
+     // Unbind VAO (unbinds VBO and disables vertex attributes)
+    glBindVertexArray(0);
+    
+    checkGLStatus();
+
+    // Unbind VBO (optional)
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     lzwbuf = NULL;
     lzwbuf2 = NULL;

@@ -1,5 +1,7 @@
 #include "lab3d.h"
 #include <math.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 static K_INT16 wallfound[64][64][4];
 static char wallside[16384];
@@ -54,6 +56,33 @@ double angcan(double angle) {
     while(angle<0) angle+=M_PI*2;
     while(angle>=M_PI*2) angle-=M_PI*2;
     return angle;
+}
+
+void saveTextureToDisk(GLuint textureID, int width, int height, const char* filename) {
+    // Bind the texture
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Allocate memory to read the texture data into
+    GLubyte *pixels = (GLubyte*) malloc(width * height * 4 * sizeof(GLubyte)); // 4 for RGBA
+
+    if (pixels == NULL) {
+        printf("Failed to allocate memory for texture capture.\n");
+        return;
+    }
+
+    // Read the texture data
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+    // Save as a PNG (or other format)
+    if (!stbi_write_png(filename, width, height, 4, pixels, width * 4)) {
+        printf("Failed to write image to disk.\n");
+    }
+
+    // Free allocated memory
+    free(pixels);
+
+    // Unbind the texture
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 /* Cast a ray from (posxs,posys) in direction angle, and see what it hits
@@ -1582,49 +1611,149 @@ void spridraw(K_INT16 x, K_INT16 y, K_INT16 siz, K_INT16 walnume)
 
 void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 {
+    // Update texture coordinates
+    float new_tex_coords[2] = { walltexcoord[walnume-1][0], walltexcoord[walnume-1][1] };
+
+    float pictureVertices[] = {
+        // Vertex coordinates    // Texture coordinates
+        0.0f, 0.0f, 0.0f,        0.0f, new_tex_coords[0],
+        64.0f, 0.0f, 0.0f,       1.0f, new_tex_coords[0],
+        64.0f, 64.0f, 0.0f,      1.0f, new_tex_coords[1],
+
+        64.0f, 64.0f, 0.0f,      1.0f, new_tex_coords[1],
+        0.0f, 64.0f, 0.0f,       0.0f, new_tex_coords[1],
+        0.0f, 0.0f, 0.0f,        0.0f, new_tex_coords[0]
+    };
+
+    // Update VBO data
+//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+//    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+//    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+//    float pictureVertices[] = {
+//    // Position     // Texcoords
+//     64.0f,  64.0f,   0.0f, walltexcoord[walnume-1][1],  // Top-right
+//     64.0f, 0.0f,   1.0f, walltexcoord[walnume-1][1],  // Bottom-right
+//    0.0f, 0.0f,   1.0f, walltexcoord[walnume-1][0],  // Bottom-left
+//
+//    0.0f, 0.0f,   1.0f, walltexcoord[walnume-1][0],  // Bottom-left
+//    0.0f, 64.0f,   0.0f, walltexcoord[walnume-1][0],  // Top-left
+//     64.0f, 64.0f,   0.0f, walltexcoord[walnume-1][1]   // Top-right
+//    };
+//
+    GLuint pictureVao, pictureVbo;
+
+    glGenVertexArrays(1, &pictureVao);
+    glGenBuffers(1, &pictureVbo);
+    glBindVertexArray(pictureVao);
+    glBindBuffer(GL_ARRAY_BUFFER, pictureVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(pictureVertices), pictureVertices, GL_STATIC_DRAW);
+
+    checkGLStatus();
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    checkGLStatus();
+
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    checkGLStatus();
+    
     y+=spriteyoffset;
 
     glDisable(GL_DEPTH_TEST);
+    
+    checkGLStatus();
 
-    glDisable(GL_LIGHTING);
-
+//    glDisable(GL_LIGHTING);
+//    checkGLStatus();
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    // Create projection matrix
+    orthoMatrix(projection, -(virtualscreenwidth-360)/2.0f, 360.0f+(virtualscreenwidth-360)/2.0f,
+                                -(virtualscreenheight-240)/2.0f, 240.0f+(virtualscreenheight-240)/2.0f, -1.0f, 1.0f);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(-(virtualscreenwidth-360)/2,
-               360+(virtualscreenwidth-360)/2,
-               -(virtualscreenheight-240)/2,
-               240+(virtualscreenheight-240)/2, -1.0, 1.0);
-//    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
+    float model[16];
+    loadIdentityMatrix(model);
+//    translateMatrix(model, x, 240.0f-y, 0.0f);
+//    translateMatrix(model, 132.0f, -32.0f, 0.0f);
+//    scaleMatrix(model, siz/256.0f/10, siz/256.0f/10, siz/256.0f/10);
+//    rotateMatrix(model, ang/2048.0f * 360.0f);
+//    translateMatrix(model, -32.0f, -32.0f, 0.0f);
+    translateMatrix(model, 0.0, 0.0, 0.0);
+    
+    glUseProgram(shaderProgram);
 
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity( );
-    glTranslatef(x,240.0-y,0.0);
-    glScalef(siz/256.0,siz/256.0,siz/256.0);
-    glRotatef(((GLfloat)ang)/2048.0*360.0,0.0,0.0,1.0);
-    glTranslatef(-32.0,-32.0,0.0);
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+
+    // Pass the matrices to shaders
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, projection);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, model);
+    
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
+    glActiveTexture(GL_TEXTURE1);
+    
     if (walnume==gameover)
         glBindTexture(GL_TEXTURE_2D,gameoversprite); /* Horrible kludge. */
     else
         glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3f(0.0,0.0,0);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3f(64.0,0.0,0);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3f(64.0,64.0,0);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3f(0.0,64.0,0);
-    glEnd();
+    glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
+
+    // Bind VAO and draw
+    glBindVertexArray(screenQuadVao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);  // Assuming you've set up the VAO for a quad
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    
     checkGLStatus();
 
+    // Unbind VBO (optional)
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Disable blend
     glDisable(GL_BLEND);
+    
+//    SDL_GL_SwapWindow(mainwindow);
+
+//    glMatrixMode(GL_PROJECTION);
+//    glLoadIdentity();
+//    glOrtho(-(virtualscreenwidth-360)/2,
+//               360+(virtualscreenwidth-360)/2,
+//               -(virtualscreenheight-240)/2,
+//               240+(virtualscreenheight-240)/2, -1.0, 1.0);
+////    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
+//
+//    glMatrixMode( GL_MODELVIEW );
+//    glLoadIdentity( );
+//    glTranslatef(x,240.0-y,0.0);
+//    glScalef(siz/256.0,siz/256.0,siz/256.0);
+//    glRotatef(((GLfloat)ang)/2048.0*360.0,0.0,0.0,1.0);
+//    glTranslatef(-32.0,-32.0,0.0);
+//    glEnable(GL_TEXTURE_2D);
+//    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+//    if (walnume==gameover)
+//        glBindTexture(GL_TEXTURE_2D,gameoversprite); /* Horrible kludge. */
+//    else
+//        glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
+//    glBegin(GL_QUADS);
+//    glColor3f(redfactor,greenfactor,bluefactor);
+//    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
+//    glVertex3f(0.0,0.0,0);
+//    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
+//    glVertex3f(64.0,0.0,0);
+//    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
+//    glVertex3f(64.0,64.0,0);
+//    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
+//    glVertex3f(0.0,64.0,0);
+//    glEnd();
+//    checkGLStatus();
+//
+//    glDisable(GL_BLEND);
 }
 
 /* Draw wall number walnume-1 at board position (x,y) (multiply by
