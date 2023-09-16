@@ -443,10 +443,10 @@ void loadIdentityMatrix(float *matrix) {
 
 void translateMatrix(float* matrix, float x, float y, float z) {
     float translationMatrix[16] = {
-        1.0f, 0.0f, 0.0f, x,
-        0.0f, 1.0f, 0.0f, y,
-        0.0f, 0.0f, 1.0f, z,
-        0.0f, 0.0f, 0.0f, 1.0f
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        x, y, z, 1.0f
     };
 
     float result[16];
@@ -759,7 +759,7 @@ int main(int argc,char **argv)
     
     long nu = 0;
     fade(63);
-    while (1) {
+    /*while (1) {
         glClear(GL_COLOR_BUFFER_BIT);
         nu++;
         redfactor =1.0;
@@ -767,7 +767,7 @@ int main(int argc,char **argv)
         bluefactor = 1.0;
         pictur(nu, 40, 256, nu, 419);
         SDL_GL_SwapWindow(mainwindow);
-    }
+    }*/
 
     
 

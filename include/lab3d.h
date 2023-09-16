@@ -101,6 +101,8 @@ inline void glEnd() {}
 inline void glLoadIdentity() {}
 inline void glPushMatrix() {}
 inline void glPopMatrix() {}
+#undef near
+#undef far
 inline void glTranslatef(float x, float y, float z) {}
 inline void glRotatef(float angle, float x, float y, float z) {}
 inline void glFrustum(double left, double right, double bottom, double top, double near, double far) {}

@@ -1682,13 +1682,16 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 
 //    float model[16];
     loadIdentityMatrix(model);
-//    translateMatrix(model, x, 240.0f-y, 0.0f);
-//    translateMatrix(model, 132.0f, -32.0f, 0.0f);
-//    scaleMatrix(model, siz/256.0f/10, siz/256.0f/10, siz/256.0f/10);
-//    rotateMatrix(model, ang/2048.0f * 360.0f);
-//    translateMatrix(model, -32.0f, -32.0f, 0.0f);
+    
+    //translateMatrix(model, 132.0f, -32.0f, 0.0f);
+    
+    
+    translateMatrix(model, -32.0f, -32.0f, 0.0f);
+    rotateMatrix(model, ang / 2048.0f * 360.0f);
+    scaleMatrix(model, siz / 256.0f, siz / 256.0f, siz / 256.0f);
+    translateMatrix(model, x, 240.0f - y, 0.0f);
 //    translateMatrix(model, 600.0, 600.0, 0.0);
-    translateMatrix(model, 0.008, 0.0, 0.0);
+    //translateMatrix(model, 20* sin(0.001*x), 0.0, 0.0);
     
     glUseProgram(shaderProgram);
     
