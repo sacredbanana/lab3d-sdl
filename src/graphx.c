@@ -1616,37 +1616,20 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 
     float pictureVertices[] = {
         // Vertex coordinates    // Texture coordinates
-        0.0f, 0.0f,             0.0f, new_tex_coords[0],
-        64.0f, 0.0f,         1.0f, new_tex_coords[0],
-        64.0f, 64.0f,         1.0f, new_tex_coords[1],
+        0.0f, 0.0f,             1.0f, new_tex_coords[0],
+        64.0f, 0.0f,         1.0f, new_tex_coords[1],
+        64.0f, 64.0f,         0.0f, new_tex_coords[1],
 
-        64.0f, 64.0f,        1.0f, new_tex_coords[1],
-        0.0f, 64.0f,         0.0f, new_tex_coords[1],
-        0.0f, 0.0f,         0.0f, new_tex_coords[0]
+        64.0f, 64.0f,        0.0f, new_tex_coords[1],
+        0.0f, 64.0f,         0.0f, new_tex_coords[0],
+        0.0f, 0.0f,         1.0f, new_tex_coords[0]
     };
 
-    // Update VBO data
-//    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
-//    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-//    float pictureVertices[] = {
-//    // Position     // Texcoords
-//     64.0f,  64.0f,   0.0f, walltexcoord[walnume-1][1],  // Top-right
-//     64.0f, 0.0f,   1.0f, walltexcoord[walnume-1][1],  // Bottom-right
-//    0.0f, 0.0f,   1.0f, walltexcoord[walnume-1][0],  // Bottom-left
-//
-//    0.0f, 0.0f,   1.0f, walltexcoord[walnume-1][0],  // Bottom-left
-//    0.0f, 64.0f,   0.0f, walltexcoord[walnume-1][0],  // Top-left
-//     64.0f, 64.0f,   0.0f, walltexcoord[walnume-1][1]   // Top-right
-//    };
-//
     GLuint pictureVao, pictureVbo;
 
     glGenVertexArrays(1, &pictureVao);
     glGenBuffers(1, &pictureVbo);
     glBindVertexArray(pictureVao);
-    glBindBuffer(GL_ARRAY_BUFFER, pictureVbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(pictureVertices), pictureVertices, GL_STATIC_DRAW);
 
     checkGLStatus();
@@ -1670,7 +1653,6 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     checkGLStatus();
 
 //    glDisable(GL_LIGHTING);
-//    checkGLStatus();
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
@@ -1680,23 +1662,13 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     orthoMatrix(projection, -(virtualscreenwidth-360)/2.0f, 360.0f+(virtualscreenwidth-360)/2.0f,
                                 -(virtualscreenheight-240)/2.0f, 240.0f+(virtualscreenheight-240)/2.0f, -1.0f, 1.0f);
 
-//    float model[16];
     loadIdentityMatrix(model);
-    
-    //translateMatrix(model, 132.0f, -32.0f, 0.0f);
-    
-    
     translateMatrix(model, -32.0f, -32.0f, 0.0f);
+    scaleMatrix(model, siz / 256.0f, siz / 256.0f, 1.0);
     rotateMatrix(model, ang / 2048.0f * 360.0f);
-    scaleMatrix(model, siz / 256.0f, siz / 256.0f, siz / 256.0f);
     translateMatrix(model, x, 240.0f - y, 0.0f);
-//    translateMatrix(model, 600.0, 600.0, 0.0);
-    //translateMatrix(model, 20* sin(0.001*x), 0.0, 0.0);
     
     glUseProgram(shaderProgram);
-    
-//    saveTextureToDisk(texName[walnume-1], siz, siz, "/tmp/tex.png");
-
 
     // Pass the matrices to shaders
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, projection);
@@ -1729,8 +1701,6 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     // Disable blend
     glDisable(GL_BLEND);
     
-//    SDL_GL_SwapWindow(mainwindow);
-
 //    glMatrixMode(GL_PROJECTION);
 //    glLoadIdentity();
 //    glOrtho(-(virtualscreenwidth-360)/2,

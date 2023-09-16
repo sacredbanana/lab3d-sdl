@@ -492,27 +492,28 @@ void orthoMatrix(float *matrix, float left, float right, float bottom, float top
     matrix[14] = -(far + near) / (far - near);
 }
 
-void matrixMultiply(float *result, const float *a, const float *b) {
+void printMatrix(const float *matrix) {
+    printf("Matrix:\n");
     for (int i = 0; i < 4; ++i) {
+        printf("  ");
         for (int j = 0; j < 4; ++j) {
-            result[i * 4 + j] = 0.0f;
-            for (int k = 0; k < 4; ++k) {
-                result[i * 4 + j] += a[i * 4 + k] * b[k * 4 + j];
-            }
+            printf("%f ", matrix[j * 4 + i]);
         }
+        printf("\n");
+        
     }
 }
 
 
-void multiplyMatrix(float *result, float *a, float *b) {
-    for (int y = 0; y < 4; ++y) {
-        for (int x = 0; x < 4; ++x) {
-            result[y * 4 + x] = 0.0f;
-            for (int k = 0; k < 4; ++k) {
-                result[y * 4 + x] += a[y * 4 + k] * b[k * 4 + x];
+void multiplyMatrix(float result[4][4], float a[4][4], float b[4][4]) {
+    for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                result[i][j] = 0;
+                for (int k = 0; k < 4; k++) {
+                    result[i][j] += a[i][k] * b[k][j];
+                }
             }
         }
-    }
 }
 
 int main(int argc,char **argv)
