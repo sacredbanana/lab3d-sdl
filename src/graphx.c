@@ -1688,7 +1688,7 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
 
     // Bind VAO and draw
-    glBindVertexArray(screenQuadVao);
+    glBindVertexArray(pictureVao);
     glDrawArrays(GL_TRIANGLES, 0, 6);  // Assuming you've set up the VAO for a quad
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
