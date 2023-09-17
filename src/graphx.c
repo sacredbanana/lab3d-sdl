@@ -615,7 +615,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
        viewport rather than just draw everything that goes under the status
        bar. Perhaps... later. */
 
-    glDisable(GL_LIGHTING);
+//    glDisable(GL_LIGHTING);
     /* Draw floor and roof (save time by clearing to one of them, and drawing
        only one rectangle)... */
 
@@ -631,17 +631,31 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     glDepthMask(1);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glDisable(GL_TEXTURE_2D);
+    // glDisable(GL_TEXTURE_2D);
+    glUseProgram(shaderProgram);
+    orthoMatrix(projection, 0.0, 360, 0.0, 240, -1.0, 1.0);
+//    glMatrixMode(GL_PROJECTION);
+//    glLoadIdentity();
+//    glOrtho(0.0, (GLfloat)360, 0.0, (GLfloat)240, -1.0, 1.0);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, (GLfloat)360, 0.0, (GLfloat)240, -1.0, 1.0);
+    loadIdentityMatrix(model);
+//    glMatrixMode( GL_MODELVIEW );
+//    glLoadIdentity( );
 
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity( );
+    GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLint useTextureLoc = glGetUniformLocation(shaderProgram, "useTexture");
+    GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
+    glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+    glUniform1i(useTextureLoc, GL_FALSE);
 
+    checkGLStatus();
     glDisable(GL_DEPTH_TEST);
+    checkGLStatus();
     glDepthMask(0);
+    checkGLStatus();
 
 
     glBegin(GL_QUADS);
@@ -1671,11 +1685,14 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     glUseProgram(shaderProgram);
 
     // Pass the matrices to shaders
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, projection);
-    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &model[0]);
-
+    GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLint useTextureLoc = glGetUniformLocation(shaderProgram, "useTexture");
     GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
     glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+    glUniform1i(useTextureLoc, GL_TRUE);
     
     glBindTexture(GL_TEXTURE_2D, 0);
     

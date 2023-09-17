@@ -457,8 +457,8 @@ void loadboard()
 
     TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, fullfilter);
 
@@ -4407,10 +4407,15 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     // glLoadIdentity();
     loadIdentityMatrix(model);
     checkGLStatus();
+
     GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    GLint useTextureLoc = glGetUniformLocation(shaderProgram, "useTexture");
+    GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
+    glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+    glUniform1i(useTextureLoc, GL_TRUE);
 
     checkGLStatus();
 
