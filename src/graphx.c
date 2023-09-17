@@ -1611,18 +1611,17 @@ void spridraw(K_INT16 x, K_INT16 y, K_INT16 siz, K_INT16 walnume)
 
 void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 {
-    // Update texture coordinates
     float new_tex_coords[2] = { walltexcoord[walnume-1][0], walltexcoord[walnume-1][1] };
 
     float pictureVertices[] = {
         // Vertex coordinates    // Texture coordinates
         0.0f, 0.0f,             1.0f, new_tex_coords[0],
-        64.0f, 0.0f,         1.0f, new_tex_coords[1],
-        64.0f, 64.0f,         0.0f, new_tex_coords[1],
+        64.0f, 0.0f,            1.0f, new_tex_coords[1],
+        64.0f, 64.0f,           0.0f, new_tex_coords[1],
 
-        64.0f, 64.0f,        0.0f, new_tex_coords[1],
-        0.0f, 64.0f,         0.0f, new_tex_coords[0],
-        0.0f, 0.0f,         1.0f, new_tex_coords[0]
+        64.0f, 64.0f,           0.0f, new_tex_coords[1],
+        0.0f, 64.0f,            0.0f, new_tex_coords[0],
+        0.0f, 0.0f,             1.0f, new_tex_coords[0]
     };
 
     GLuint pictureVao, pictureVbo;
@@ -1630,18 +1629,19 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     glGenVertexArrays(1, &pictureVao);
     glGenBuffers(1, &pictureVbo);
     glBindVertexArray(pictureVao);
+    glBindBuffer(GL_ARRAY_BUFFER, pictureVbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(pictureVertices), pictureVertices, GL_STATIC_DRAW);
 
     checkGLStatus();
 
     // Position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     checkGLStatus();
 
     // Texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     checkGLStatus();

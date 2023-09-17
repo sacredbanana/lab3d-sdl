@@ -109,7 +109,6 @@ inline void glFrustum(double left, double right, double bottom, double top, doub
 inline void glTexEnvf(int target, int pname, float param) {}
 inline void glOrtho(double left, double right, double bottom, double top, double near, double far) {}
 void multiplyMatrix(float result[4][4], float a[4][4], float b[4][4]);
-void matrixMultiply(float *result, const float *a, const float *b);
 void loadIdentityMatrix(float *matrix);
 void translateMatrix(float *matrix, float x, float y, float z);
 void scaleMatrix(float *matrix, float x, float y, float z);
