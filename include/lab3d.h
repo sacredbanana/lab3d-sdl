@@ -112,9 +112,14 @@ void multiplyMatrix(float result[4][4], float a[4][4], float b[4][4]);
 void loadIdentityMatrix(float *matrix);
 void translateMatrix(float *matrix, float x, float y, float z);
 void scaleMatrix(float *matrix, float x, float y, float z);
-void rotateMatrix(float *matrix, float angle);
+void rotateMatrix(float *matrix, float angle, float x, float y, float z);
 void printMatrix(const float *matrix);
 void orthoMatrix(float *matrix, float left, float right, float bottom, float top, float near, float far);
+void frustum(float left, float right, float bottom, float top, float nearVal, float farVal, float result[16]);
+void normalize(float v[3]);
+void cross(float a[3], float b[3], float result[3]);
+void lookAt(float eye[3], float center[3], float up[3], float result[16]);
+float dot(float a[3], float b[3]);
 void saveTextureToDisk(GLuint textureID, int width, int height, const char* filename);
 inline void glColor3f(float r, float g, float b) {}
 inline void glColor4f(float r, float g, float b, float a) {}

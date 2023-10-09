@@ -551,8 +551,8 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                 checkobj(bulx[i],buly[i],posxs,posys,angs,
                          bul11fly+animate7);
                 break;
+            }
         }
-    }
     }
     
 
@@ -648,33 +648,62 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
-    glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+    glUniform4f(baseColorLoc, redfactor, greenfactor, bluefactor, 1.0);
     glUniform1i(useTextureLoc, GL_FALSE);
 
-    checkGLStatus();
     glDisable(GL_DEPTH_TEST);
-    checkGLStatus();
     glDepthMask(0);
+
+    glUniform4f(baseColorLoc, palette[0xe3*3]/64.0*redfactor, palette[0xe3*3+1]/64.0*greenfactor, palette[0xe3*3+2]/64.0*bluefactor, 1.0);
+
+//    glBegin(GL_QUADS);
+
+//    glColor3f(palette[0xe3*3]/64.0*redfactor,
+//              palette[0xe3*3+1]/64.0*greenfactor,
+//              palette[0xe3*3+2]/64.0*bluefactor);
+//    glVertex3i(0,240,0);
+//    glVertex3i(0,240-yy/90,0);
+//    glVertex3i(360,240-yy/90,0);
+//    glVertex3i(360,240,0);
+//    glEnd();
+    
+    GLuint skyVao, skyVbo;
+    
+    float skyVertices[] = {
+    // Position     // Texcoords
+    360.0f, 240.0f,   1.0f, 1.0f,  // Top-right
+    360.0f, 240.0f-yy/90.0f, 0.0f, 1.0f,  // Bottom-right
+    0.0f, 240.0f-yy/90.0f,   0.0f, 0.0f,  // Bottom-left
+
+    0.0f, 240.0f-yy/90.0f,   0.0f, 0.0f,  // Bottom-left
+    0.0f, 240.0f,   0.0f, 1.0f,  // Top-left
+    360.0f, 240.0f,  1.0f, 1.0f   // Top-right
+    };
+
+    glGenVertexArrays(1, &skyVao);
+    glGenBuffers(1, &skyVbo);
+    glBindVertexArray(skyVao);
+    glBindBuffer(GL_ARRAY_BUFFER, skyVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyVertices), skyVertices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
     checkGLStatus();
-
-
-    glBegin(GL_QUADS);
-
-    glColor3f(palette[0xe3*3]/64.0*redfactor,
-              palette[0xe3*3+1]/64.0*greenfactor,
-              palette[0xe3*3+2]/64.0*bluefactor);
-    glVertex3i(0,240,0);
-    glVertex3i(0,240-yy/90,0);
-    glVertex3i(360,240-yy/90,0);
-    glVertex3i(360,240,0);
-    glEnd();
+    
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+    
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     checkGLStatus();
 
     /* Switch to labyrinth view transformations. */
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    loadIdentityMatrix(projection);
+//    glMatrixMode(GL_PROJECTION);
+//    glLoadIdentity();
 
     xmax = neardist * tan(M_PI*0.25);
     xmin = -xmax;
@@ -685,14 +714,21 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     xmax *= aspw; xmin *= aspw;
     ymax *= asph; ymin *= asph;
 
-    glFrustum(xmin, xmax, ymin, ymax, neardist, 98304.0);
+    // glFrustum(xmin, xmax, ymin, ymax, neardist, 98304.0);
+    frustum(xmin, xmax, ymin, ymax, neardist, 98304.0, projection);
+    checkGLStatus();
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    gluLookAt(posxs, posys, poszs*16.0,
-              posxs+sintable[(angs+512)&2047], posys+sintable[angs],
-              poszs*16.0,
-              0.0,0.0,-1.0);
+    // glMatrixMode(GL_MODELVIEW);
+    // glLoadIdentity();
+    loadIdentityMatrix(model);
+    // gluLookAt(posxs, posys, poszs*16.0,
+    //           posxs+sintable[(angs+512)&2047], posys+sintable[angs],
+    //           poszs*16.0,
+    //           0.0,0.0,-1.0);
+    float eye[] = {posxs, posys, poszs * 16.0f};
+    float center[] = {posxs+sintable[(angs+512)&2047], posys+sintable[angs], poszs*16.0f};
+    float up[] = {0.0f, 0.0f, -1.0f};
+    lookAt(eye, center, up, model);
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(1);
@@ -742,8 +778,9 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                 break;
         }
 
-        glEnable(GL_TEXTURE_2D);
-        glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+//        glEnable(GL_TEXTURE_2D);
+        // glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+        checkGLStatus();
         if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
             k=numsplits;
         else
@@ -751,63 +788,168 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                 if (splitTexNum[k]==j) break;
 
         if (k<numsplits) {
+            glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D,splitTexName[k][0]);
-            glBegin(GL_QUADS);
+            glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
+            // glBegin(GL_QUADS);
             if (shadecoffs) {
-                glColor3f(redfactor,greenfactor,bluefactor);
+                // glColor3f(redfactor,greenfactor,bluefactor);
+                glUniform4f(baseColorLoc, redfactor, greenfactor, bluefactor, 1.0);
             }
             else {
-                glColor3f(0.9*redfactor,0.9*greenfactor,0.9*bluefactor);
+                // glColor3f(0.9*redfactor,0.9*greenfactor,0.9*bluefactor);
+                glUniform4f(baseColorLoc, 0.9*redfactor, 0.9*greenfactor, 0.9*bluefactor+0.5, 1.0);
             }
 
-            glTexCoord2f(0.0,1.0/64.0);
-            glVertex3i(x1,y1,0);
-            glTexCoord2f(1.0,1.0/64.0);
-            glVertex3i(x1,y1,1024);
-            glTexCoord2f(1.0,33.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,1024);
-            glTexCoord2f(0.0,33.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,0);
-            glEnd();
+            // glTexCoord2f(0.0,1.0/64.0);
+            // glVertex3i(x1,y1,0);
+            // glTexCoord2f(1.0,1.0/64.0);
+            // glVertex3i(x1,y1,1024);
+            // glTexCoord2f(1.0,33.0/64.0);
+            // glVertex3i((x1+x2)>>1,(y1+y2)>>1,1024);
+            // glTexCoord2f(0.0,33.0/64.0);
+            // glVertex3i((x1+x2)>>1,(y1+y2)>>1,0);
+            // glEnd();
 
+            GLuint thing2Vao, thing2Vbo;
+    
+            float thing2Vertices[] = {
+                // Position                                           // Texcoords
+                x1, y1, 0.0f,                                          0.0f, 1.0/64.0,      // Bottom-left
+                x1, y1, 1024.0f,                                       1.0f, 1.0/64.0,      // Top-left
+                (x1+x2)/2.0f, (y1+y2)/2.0f, 1024.0f,                  1.0f, 33.0/64.0,     // Top-right
+
+                x1, y1, 0.0f,                                          0.0f, 1.0/64.0,      // Bottom-left
+                (x1+x2)/2.0f, (y1+y2)/2.0f, 1024.0f,                  1.0f, 33.0/64.0,     // Top-right
+                (x1+x2)/2.0f, (y1+y2)/2.0f, 0.0f,                      0.0f, 33.0/64.0      // Bottom-right
+            };
+
+            glGenVertexArrays(1, &thing2Vao);
+            glGenBuffers(1, &thing2Vbo);
+            glBindVertexArray(thing2Vao);
+            glBindBuffer(GL_ARRAY_BUFFER, thing2Vbo);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(thing2Vertices), thing2Vertices, GL_STATIC_DRAW);
+
+            // Position attribute
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+            
+            // Texture coordinate attribute
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+            
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            checkGLStatus();
+
+            // glBindTexture(GL_TEXTURE_2D,splitTexName[k][1]);
+            // glBegin(GL_QUADS);
+            // glTexCoord2f(0.0,31.0/64.0);
+            // glVertex3i((x1+x2)>>1,(y1+y2)>>1,0);
+            // glTexCoord2f(1.0,31.0/64.0);
+            // glVertex3i((x1+x2)>>1,(y1+y2)>>1,1024);
+            // glTexCoord2f(1.0,63.0/64.0);
+            // glVertex3i(x2,y2,1024);
+            // glTexCoord2f(0.0,63.0/64.0);
+            // glVertex3i(x2,y2,0);
+            // glEnd();
+
+            GLuint thing3Vao, thing3Vbo;
+    
+            float thing3Vertices[] = {
+                // Position                                           // Texcoords
+                (x1+x2)/2.0f, (y1+y2)/2.0f, 0.0f,                     0.0f, 31.0/64.0,    // Bottom-left
+                (x1+x2)/2.0f, (y1+y2)/2.0f, 1024.0f,                  1.0f, 31.0/64.0,    // Top-left
+                x2, y2, 1024.0f,                                      1.0f, 63.0/64.0,    // Top-right
+
+                x2, y2, 1024.0f,                                      1.0f, 63.0/64.0,    // Top-right
+                x2, y2, 0.0f,                                         0.0f, 63.0/64.0,    // Bottom-right
+                (x1+x2)/2.0f, (y1+y2)/2.0f, 0.0f,                     0.0f, 31.0/64.0     // Bottom-left
+            };
+
+            glGenVertexArrays(1, &thing3Vao);
+            glGenBuffers(1, &thing3Vbo);
+            glBindVertexArray(thing3Vao);
+            glBindBuffer(GL_ARRAY_BUFFER, thing3Vbo);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(thing3Vertices), thing3Vertices, GL_STATIC_DRAW);
+
+            // Position attribute
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+            
+            // Texture coordinate attribute
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+
+            glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D,splitTexName[k][1]);
-            glBegin(GL_QUADS);
-            glTexCoord2f(0.0,31.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,0);
-            glTexCoord2f(1.0,31.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,1024);
-            glTexCoord2f(1.0,63.0/64.0);
-            glVertex3i(x2,y2,1024);
-            glTexCoord2f(0.0,63.0/64.0);
-            glVertex3i(x2,y2,0);
-            glEnd();
+            glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
+            
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            checkGLStatus();
 
         } else {
             if (j == invisible-1)
                 glEnable(GL_BLEND);
             glBindTexture(GL_TEXTURE_2D,texName[j]);
-            glBegin(GL_QUADS);
+            glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
+            // glBegin(GL_QUADS);
             if (j == invisible-1)
-                glColor4f(1.0,1.0,1.0,0.0); /* Must draw invisible walls
+                /* glColor4f(1.0,1.0,1.0,0.0); /* Must draw invisible walls
                                                to make stuff behind invisible;
                                                see board 15. */
+                glUniform4f(baseColorLoc, 1.0, 1.0, 1.0, 0.0);
             else {
                 if (shadecoffs) {
-                    glColor3f(redfactor,greenfactor,bluefactor);
+                    // glColor3f(redfactor,greenfactor,bluefactor);
+                    glUniform4f(baseColorLoc, redfactor,greenfactor,bluefactor, 1.0);
                 }
                 else {
-                    glColor3f(0.9*redfactor,0.9*greenfactor,0.9*bluefactor);
+                    // glColor3f(0.9*redfactor,0.9*greenfactor,0.9*bluefactor);
+                    glUniform4f(baseColorLoc, 0.9*redfactor,0.9*greenfactor,0.9*bluefactor, 1.0);
                 }
             }
-            glTexCoord2f(0.0,walltexcoord[j][0]);
-            glVertex3i(x1,y1,0);
-            glTexCoord2f(1.0,walltexcoord[j][0]);
-            glVertex3i(x1,y1,1024);
-            glTexCoord2f(1.0,walltexcoord[j][1]);
-            glVertex3i(x2,y2,1024);
-            glTexCoord2f(0.0,walltexcoord[j][1]);
-            glVertex3i(x2,y2,0);
-            glEnd();
+
+            GLuint thing4Vao, thing4Vbo;
+    
+            float thing4Vertices[] = {
+                // Position                       // Texcoords
+                x1, y1, 0.0f,                     0.0f, walltexcoord[j][0],  // Bottom-left
+                x1, y1, 1024.0f,                  1.0f, walltexcoord[j][0],  // Top-left
+                x2, y2, 1024.0f,                  1.0f, walltexcoord[j][1],  // Top-right
+
+                x2, y2, 1024.0f,                  1.0f, walltexcoord[j][1],  // Top-right
+                x2, y2, 0.0f,                     0.0f, walltexcoord[j][1],  // Bottom-right
+                x1, y1, 0.0f,                     0.0f, walltexcoord[j][0]   // Bottom-left
+            };
+
+            glGenVertexArrays(1, &thing4Vao);
+            glGenBuffers(1, &thing4Vbo);
+            glBindVertexArray(thing4Vao);
+            glBindBuffer(GL_ARRAY_BUFFER, thing4Vbo);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(thing4Vertices), thing4Vertices, GL_STATIC_DRAW);
+
+            // Position attribute
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+            
+            // Texture coordinate attribute
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+            glEnableVertexAttribArray(1);
+            
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+
+            checkGLStatus();
+            // glTexCoord2f(0.0,walltexcoord[j][0]);
+            // glVertex3i(x1,y1,0);
+            // glTexCoord2f(1.0,walltexcoord[j][0]);
+            // glVertex3i(x1,y1,1024);
+            // glTexCoord2f(1.0,walltexcoord[j][1]);
+            // glVertex3i(x2,y2,1024);
+            // glTexCoord2f(0.0,walltexcoord[j][1]);
+            // glVertex3i(x2,y2,0);
+            // glEnd();
             if (j == invisible-1)
                 glDisable(GL_BLEND);
         }
@@ -1384,7 +1526,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         sortbnum[temp] = sortbnum[sortcnt];
     }
     glDepthMask(1);
-    glDisable(GL_LIGHTING);
+//    glDisable(GL_LIGHTING);
 
     if (bossmonster) {
         mixing=1;
@@ -1530,26 +1672,66 @@ void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
 }
 
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume) {
-    glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texName[walnume-1]);
+    glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
     glEnable(GL_DEPTH_TEST);
 
-    glDisable(GL_LIGHTING);
+    // glDisable(GL_LIGHTING);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
+    // glBegin(GL_QUADS);
+    // glColor3f(redfactor,greenfactor,bluefactor);
 
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x-512,y-512,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x-512,y+512,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x+512,y+512,1024);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x+512,y-512,1024);
-    glEnd();
+    // glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
+    // glVertex3i(x-512,y-512,1024);
+    // glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
+    // glVertex3i(x-512,y+512,1024);
+    // glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
+    // glVertex3i(x+512,y+512,1024);
+    // glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
+    // glVertex3i(x+512,y-512,1024);
+    // glEnd();
+
+    float spriteVertices[] = {
+        // Position                        // Texcoords
+        x-512, y-512, 1024.0f,              0.0f, walltexcoord[walnume-1][0],  // Top-left
+        x-512, y+512, 1024.0f,              1.0f, walltexcoord[walnume-1][0],  // Bottom-left
+        x+512, y+512, 1024.0f,              1.0f, walltexcoord[walnume-1][1],  // Bottom-right
+
+        x-512, y-512, 1024.0f,              0.0f, walltexcoord[walnume-1][0],  // Top-left
+        x+512, y+512, 1024.0f,              1.0f, walltexcoord[walnume-1][1],  // Bottom-right
+        x+512, y-512, 1024.0f,              0.0f, walltexcoord[walnume-1][1]   // Top-right
+    };
+
+    GLuint spriteVao, spriteVbo;
+
+    glGenVertexArrays(1, &spriteVao);
+    glGenBuffers(1, &spriteVbo);
+    glBindVertexArray(spriteVao);
+    glBindBuffer(GL_ARRAY_BUFFER, spriteVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(spriteVertices), spriteVertices, GL_STATIC_DRAW);
+
+    checkGLStatus();
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    checkGLStatus();
+
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+
+    glUniform4f(glGetUniformLocation(shaderProgram, "baseColor"), redfactor, greenfactor, bluefactor, 1.0f);
+    glUniform1i(glGetUniformLocation(shaderProgram, "useTexture"), GL_TRUE);
+
     glDisable(GL_BLEND);
+    checkGLStatus();
 }
 
 /* Draw a sprite at (x,y) in the labyrinth, twisted ang round its Z axis
@@ -1572,36 +1754,77 @@ void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
 
     glEnable(GL_DEPTH_TEST);
 
-    glDisable(GL_LIGHTING);
+    // glDisable(GL_LIGHTING);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    glPushMatrix();
-    glTranslatef((x1+x2)/2.0,(y1+y2)/2.0,512);
-    glRotatef(ang/2048.0*360.0,sintable[(playerang+512)&2047],
-              sintable[playerang],0.0);
+    float spriteVertices[] = {
+        // Position                        // Texcoords
+        x1, y1, 0.0f,                       0.0f, walltexcoord[walnume-1][0],
+        x1, y1, 1024.0f,                    1.0f, walltexcoord[walnume-1][0],
+        x2, y2, 1024.0f,                    1.0f, walltexcoord[walnume-1][1],
 
-    glTranslatef(-(x1+x2)/2.0,-(y1+y2)/2.0,-512);
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,0);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,1024);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,0);
-    glEnd();
+        x1, y1, 0.0f,                       0.0f, walltexcoord[walnume-1][0],
+        x2, y2, 1024.0f,                    1.0f, walltexcoord[walnume-1][1],
+        x2, y2, 0.0f,                       0.0f, walltexcoord[walnume-1][1],
+    };
+
+    GLuint spriteVao, spriteVbo;
+
+    glGenVertexArrays(1, &spriteVao);
+    glGenBuffers(1, &spriteVbo);
+    glBindVertexArray(spriteVao);
+    glBindBuffer(GL_ARRAY_BUFFER, spriteVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(spriteVertices), spriteVertices, GL_STATIC_DRAW);
+
     checkGLStatus();
-    glPopMatrix();
+
+    // Position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    checkGLStatus();
+
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // glPushMatrix();
+    // glTranslatef((x1+x2)/2.0,(y1+y2)/2.0,512);
+    // glRotatef(ang/2048.0*360.0,sintable[(playerang+512)&2047],
+    //           sintable[playerang],0.0);
+
+    // glTranslatef(-(x1+x2)/2.0,-(y1+y2)/2.0,-512);
+    // glEnable(GL_TEXTURE_2D);
+    // glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
+    glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
+    glUniform4f(glGetUniformLocation(shaderProgram, "baseColor"), redfactor, greenfactor, bluefactor, 1.0f);
+    glUniform1i(glGetUniformLocation(shaderProgram, "useTexture"), GL_TRUE);
+    loadIdentityMatrix(model);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, model);
+    translateMatrix(model, (x1+x2)/2.0, (y1+y2)/2.0, 512.0);
+    rotateMatrix(model, ang/2048.0*360.0, sintable[(playerang+512)&2047], sintable[playerang], 0.0);
+    translateMatrix(model, -(x1+x2)/2.0, -(y1+y2)/2.0, -512.0);
+    // glBegin(GL_QUADS);
+    // glColor3f(redfactor,greenfactor,bluefactor);
+    // glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
+    // glVertex3i(x1,y1,0);
+    // glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
+    // glVertex3i(x1,y1,1024);
+    // glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
+    // glVertex3i(x2,y2,1024);
+    // glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
+    // glVertex3i(x2,y2,0);
+    // glEnd();
+    // checkGLStatus();
+    // glPopMatrix();
+
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 
     glDisable(GL_BLEND);
-
 }
 
 /* Draw wall number walnume-1, topleft at (x,y), magnified siz>>8 times
@@ -1679,7 +1902,7 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     loadIdentityMatrix(model);
     translateMatrix(model, -32.0f, -32.0f, 0.0f);
     scaleMatrix(model, siz / 256.0f, siz / 256.0f, 1.0);
-    rotateMatrix(model, ang / 2048.0f * 360.0f);
+    rotateMatrix(model, ang / 2048.0f * 360.0f, 0.0f, 0.0f, 1.0f);
     translateMatrix(model, x, 240.0f - y, 0.0f);
     
     glUseProgram(shaderProgram);
@@ -1691,11 +1914,10 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
     GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
-    glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+    glUniform4f(baseColorLoc, redfactor, greenfactor, bluefactor, 1.0);
     glUniform1i(useTextureLoc, GL_TRUE);
     
     glBindTexture(GL_TEXTURE_2D, 0);
-    
     glActiveTexture(GL_TEXTURE1);
     
     if (walnume==gameover)
@@ -1799,25 +2021,55 @@ void doordraw(K_UINT16 x,K_UINT16 y,K_INT16 walnume,K_UINT16 posxs,
             }
         }
     }
-    glEnable(GL_TEXTURE_2D);
+//    glEnable(GL_TEXTURE_2D);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+//    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
     glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,0);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,1024);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,0);
-    glEnd();
+    checkGLStatus();
+    GLuint doorVao, doorVbo;
+    
+    float doorVertices[] = {
+        // Position                                           // Texcoords
+        x1, y1, 0.0f,                                          0.0f, walltexcoord[walnume-1][0],  // Bottom-left
+        x1, y1, 1024.0f,                                       1.0f, walltexcoord[walnume-1][0],  // Top-left
+        x2, y2, 1024.0f,                                       1.0f, walltexcoord[walnume-1][1],  // Top-right
+
+        x2, y2, 1024.0f,                                       1.0f, walltexcoord[walnume-1][1],  // Top-right
+        x2, y2, 0.0f,                                          0.0f, walltexcoord[walnume-1][1],  // Bottom-right
+        x1, y1, 0.0f,                                          0.0f, walltexcoord[walnume-1][0]   // Bottom-left
+    };
+
+    glGenVertexArrays(1, &doorVao);
+    glGenBuffers(1, &doorVbo);
+    glBindVertexArray(doorVao);
+    glBindBuffer(GL_ARRAY_BUFFER, doorVbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(doorVertices), doorVertices, GL_STATIC_DRAW);
+
+    // Position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    
+    // Texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glUniform4f(glGetUniformLocation(shaderProgram, "baseColor"), redfactor, greenfactor, bluefactor, 1.0);
+    checkGLStatus();
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    // glBegin(GL_QUADS);
+    // glColor3f(redfactor,greenfactor,bluefactor);
+    // glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
+    // glVertex3i(x1,y1,0);
+    // glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
+    // glVertex3i(x1,y1,1024);
+    // glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
+    // glVertex3i(x2,y2,1024);
+    // glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
+    // glVertex3i(x2,y2,0);
+    // glEnd();
     glDisable(GL_BLEND);
     checkGLStatus();
-
 }
 
 /* Draw an xsiz wide, ysiz high part of texture walnume-1 (from texel

@@ -467,20 +467,30 @@ void scaleMatrix(float *matrix, float x, float y, float z) {
     memcpy(matrix, result, 16 * sizeof(float));
 }
 
-void rotateMatrix(float *matrix, float angle) {
+void rotateMatrix(float *matrix, float angle, float x, float y, float z) {
     float rad = angle * (M_PI / 180.0f);
+    float c = cosf(rad);
+    float s = sinf(rad);
+
+    // Normalize the vector
+    float magnitude = sqrtf(x*x + y*y + z*z);
+    if (magnitude == 0) return;  // Avoid division by zero
+    x /= magnitude;
+    y /= magnitude;
+    z /= magnitude;
 
     float rotateMatrix[16] = {
-        cosf(rad), -sinf(rad), 0.0f, 0.0f,
-        sinf(rad), cosf(rad), 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
+        x*x*(1-c)+c,      x*y*(1-c)-z*s,  x*z*(1-c)+y*s,  0.0f,
+        x*y*(1-c)+z*s,    y*y*(1-c)+c,    y*z*(1-c)-x*s,  0.0f,
+        x*z*(1-c)-y*s,    y*z*(1-c)+x*s,  z*z*(1-c)+c,    0.0f,
+        0.0f,             0.0f,           0.0f,           1.0f
     };
 
     float result[16];
     multiplyMatrix(result, matrix, rotateMatrix);
     memcpy(matrix, result, 16 * sizeof(float));
 }
+
 
 void orthoMatrix(float *matrix, float left, float right, float bottom, float top, float near, float far) {
     loadIdentityMatrix(matrix);
@@ -513,6 +523,86 @@ void multiplyMatrix(float result[4][4], float a[4][4], float b[4][4]) {
                 }
             }
         }
+}
+
+void frustum(float left, float right, float bottom, float top, float nearVal, float farVal, float result[16]) {
+    float twoNear = 2.0f * nearVal;
+    float rightMinusLeft = right - left;
+    float topMinusBottom = top - bottom;
+    float farMinusNear = farVal - nearVal;
+
+    result[0]  = twoNear / rightMinusLeft;
+    result[1]  = 0.0f;
+    result[2]  = (right + left) / rightMinusLeft;
+    result[3]  = 0.0f;
+
+    result[4]  = 0.0f;
+    result[5]  = twoNear / topMinusBottom;
+    result[6]  = (top + bottom) / topMinusBottom;
+    result[7]  = 0.0f;
+
+    result[8]  = 0.0f;
+    result[9]  = 0.0f;
+    result[10] = -(farVal + nearVal) / farMinusNear;
+    result[11] = -twoNear * farVal / farMinusNear;
+
+    result[12] = 0.0f;
+    result[13] = 0.0f;
+    result[14] = -1.0f;
+    result[15] = 0.0f;
+}
+
+void normalize(float v[3]) {
+    float r = sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+    if (r == 0.0) return;
+
+    v[0] /= r;
+    v[1] /= r;
+    v[2] /= r;
+}
+
+void cross(float a[3], float b[3], float result[3]) {
+    result[0] = a[1]*b[2] - a[2]*b[1];
+    result[1] = a[2]*b[0] - a[0]*b[2];
+    result[2] = a[0]*b[1] - a[1]*b[0];
+}
+
+void lookAt(float eye[3], float center[3], float up[3], float result[16]) {
+    float f[3], s[3], u[3];
+
+    f[0] = center[0] - eye[0];
+    f[1] = center[1] - eye[1];
+    f[2] = center[2] - eye[2];
+    normalize(f);
+
+    cross(f, up, s);
+    normalize(s);
+
+    cross(s, f, u);
+
+    result[0]  = s[0];
+    result[1]  = u[0];
+    result[2]  = -f[0];
+    result[3]  = 0.0f;
+
+    result[4]  = s[1];
+    result[5]  = u[1];
+    result[6]  = -f[1];
+    result[7]  = 0.0f;
+
+    result[8]  = s[2];
+    result[9]  = u[2];
+    result[10] = -f[2];
+    result[11] = 0.0f;
+
+    result[12] = -dot(s, eye);
+    result[13] = -dot(u, eye);
+    result[14] = dot(f, eye);
+    result[15] = 1.0f;
+}
+
+float dot(float a[3], float b[3]) {
+    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
 }
 
 int main(int argc,char **argv)

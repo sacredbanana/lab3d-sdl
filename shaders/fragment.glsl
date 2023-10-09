@@ -2,7 +2,7 @@
 
 uniform sampler1D paletteTexture; // Your palette as a 1D texture
 uniform sampler2D myTexture;
-uniform vec3 baseColor;
+uniform vec4 baseColor;
 uniform bool useTexture;
 
 in vec2 TexCoord; 
@@ -19,13 +19,13 @@ void main()
         vec4 textureColor = texture(myTexture, TexCoord);
 
         color = textureColor;
-        color.rgb *= baseColor;
+        color *= baseColor;
 
         if(color.a < 0.99)
             discard;
         }
     else {
-        color = vec4(baseColor, 1.);
+        color = baseColor;
     }
     
     FragColor = color;

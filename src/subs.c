@@ -4369,7 +4369,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     glDisable(GL_DEPTH_TEST);
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
-    glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 0);
+    glUniform1i(glGetUniformLocation(shaderProgram, "myTexture"), 1);
     // glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     // glMatrixMode(GL_PROJECTION);
     // glLoadIdentity();
@@ -4414,7 +4414,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, model);
-    glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+    glUniform4f(baseColorLoc, redfactor, greenfactor, bluefactor, 1.0);
     glUniform1i(useTextureLoc, GL_TRUE);
 
     checkGLStatus();
@@ -4473,7 +4473,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 //        glUniform1f(glGetUniformLocation(shaderProgram, "ty1"), ty1);
 //        glUniform1f(glGetUniformLocation(shaderProgram, "ty2"), ty2);
         GLint baseColorLoc = glGetUniformLocation(shaderProgram, "baseColor");
-        glUniform3f(baseColorLoc, redfactor, greenfactor, bluefactor);
+        glUniform4f(baseColorLoc, redfactor, greenfactor, bluefactor, 1.0);
 
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
