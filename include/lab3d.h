@@ -424,7 +424,7 @@ EXTERN K_INT16 sorti[512], sortbnum[512];
 EXTERN char wallheader[numwalls + 1], bmpkind[numwalls + 1];
 
 /* A stack of function pointers for drawing the menu */
-EXTERN void (*draw_ptr[4])(void);
+EXTERN void (*draw_ptr[10])(void);
 EXTERN K_UINT16 drawStackTopIndex;
 
 EXTERN struct {

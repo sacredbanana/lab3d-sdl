@@ -351,7 +351,7 @@ void initmemory()
     K_UINT16 l;
     unsigned char *v;
 
-    memset(draw_ptr, NULL, sizeof(draw_ptr));
+    memset(draw_ptr, NULL, sizeof(draw_ptr) / sizeof(void*));
     drawStackTopIndex = -1;
 
     fprintf(stderr,"Allocating memory...\n");
