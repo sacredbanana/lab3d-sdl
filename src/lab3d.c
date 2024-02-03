@@ -1942,7 +1942,8 @@ int main(int argc,char **argv)
                 mousx = mousy = 0;
                 bstatus|=readmouse(&mousx, &mousy);
                 dturnvel += mousx;
-                dfwdvel -= (mousy<<3);
+                if (mouseverticalmovement)
+                    dfwdvel -= (mousy<<3);
             }
 
             if (dturnvel < -36) dturnvel = -36;
