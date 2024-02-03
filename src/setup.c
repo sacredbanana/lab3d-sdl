@@ -193,7 +193,7 @@ void createshortcut(char* errbuf, int errlen) {
 
 static int inputdevice=1, window_width=640, window_height=480, nearest=0;
 static int music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
-static int soundblock=0,timing=0,texturedepth=1,scaling=2;
+static int soundblock=0, timing=0, texturedepth=1, scaling=2;
 static int setup_ingame=0;
 
 static char *keynames[ACTION_LAST]={
@@ -413,62 +413,73 @@ static char *okmenu[] = { "OK" };
 #endif
 
 
-static char *inputdevicemenu[4] = {
+static char *inputdevicemenu[] = {
     "Keyboard only",
     "Keyboard + mouse",
     "Keyboard + joystick",
     "Keyboard + mouse + joystick"
 };
 
-static char *configureinputmenu[4] = {
+static char *configureinputmenu[] = {
     "Configure Keyboard",
     "Configure Joystick",
     "Configure Controller",
+    "Configure Mouse",
     "Return to setup menu"
 };
 
-static char *inputgroupsmenu[4] = {
+static char *inputgroupsmenu[] = {
     "Movement",
     "Weapons",
     "Actions",
     "Return to input menu"
 };
 
-static char *fullscreenmenu[2] = {
+static char *mouseverticalmovementmenu[] = {
+    "Off",
+    "On"
+};
+
+static char *configuremousemenu[] = {
+    "Vertical mouse movement",
+    "Return to setup menu"
+};
+
+static char *fullscreenmenu[] = {
     "Windowed",
     "Fullscreen"
 };
 
-static char *filtermenu[3] = {
+static char *filtermenu[] = {
     "Anisotropic filtering",
     "Trilinear filtering",
     "No filtering"
 };
 
-static char *musicmenu[4] = {
+static char *musicmenu[] = {
     "No music",
     "Adlib emulation",
     "Adlib random instruments",
     "General MIDI"
 };
 
-static char *soundmenu[2] = {
+static char *soundmenu[] = {
     "No sound",
     "Digital sound effects"
 };
 
-static char *channelmenu[2] = {
+static char *channelmenu[] = {
     "Mono",
     "Stereo"
 };
 
-static char *cheatmenu[3] = {
+static char *cheatmenu[] = {
     "No cheats",
     "LSHIFT-RSHIFT",
     "LSHIFT-LCTRL"
 };
 
-static char *soundblockmenu[10] = {
+static char *soundblockmenu[] = {
     "Default (11.6 ms)",
     "1.5 ms",
     "2.9 ms",
@@ -481,25 +492,25 @@ static char *soundblockmenu[10] = {
     "371.5 ms"
 };
 
-static char *timingmenu[2] = {
+static char *timingmenu[] = {
     "System timer",
     "Sound output"
 };
 
-static char *texturedepthmenu[3] = {
+static char *texturedepthmenu[] = {
     "Driver default",
     "32 bit",
     "16 bit"
 };
 
-static char *scalingtypemenu[4] = {
+static char *scalingtypemenu[] = {
     "Fill screen (4:3 view)",
     "Integer scale (4:3 view)",
     "Fill screen (square pixels)",
     "Integer scale (square pixels)"
 };
 
-static char *stereoscopicmenu[2] = {
+static char *stereoscopicmenu[] = {
     "Off",
     "On"
 };
@@ -982,13 +993,31 @@ void setupsetinput(input_configuration_method* meth) {
                 break;
         }
     }
+}
 
+void setupmouseverticalmovement() {
+    selectionmenu(2, mouseverticalmovementmenu, &mouseverticalmovement, "Mouse vertical movement");
+}
+
+void configuremouse() {
+    int a = 0, quit = 0;
+    while (!quit) {
+        a = selectionmenu(2, configuremousemenu, &a, "Configure mouse");
+        switch (a) {
+        case 0:
+            setupmouseverticalmovement();
+            break;
+        default:
+            quit = 1;
+            break;
+        }
+    }
 }
 
 void setupconfigureinput(void) {
     int a=0, quit=0;
     while (!quit) {
-        a = selectionmenu(4,configureinputmenu,&a, "Configure input devices");
+        a = selectionmenu(5,configureinputmenu,&a, "Configure input devices");
         switch(a) {
             case 0:
                 setupsetinput(&icm_key);
@@ -998,6 +1027,9 @@ void setupconfigureinput(void) {
                 break;
             case 2:
                 setupsetinput(&icm_ctrl);
+                break;
+            case 3:
+                configuremouse();
                 break;
             default:
                 quit=1;
@@ -1542,6 +1574,7 @@ static setting_t music_settings[] = {
 static setting_t input_settings[] = {
     INTSETTING(inputdevice, inputdevice),
     INTSETTING(cheatkeymode, cheat),
+    INTSETTING(mouseverticalmovement, mouseverticalmovement),
     { NULL }
 };
 

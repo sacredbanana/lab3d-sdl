@@ -524,6 +524,7 @@ EXTERN K_INT16 legacyload;
 EXTERN char gameroot[512], filepath[1024], filepathUpper[512];
 EXTERN K_INT16 texturecreationneeded;
 EXTERN K_INT16 stereo;
+EXTERN K_INT16 mouseverticalmovement;
 
 /* SDL timer... */
 
@@ -918,6 +919,8 @@ EXTERN int g_stereo_sep;
 EXTERN int action_key[ACTION_LAST];
 EXTERN int action_joystick[ACTION_LAST];
 EXTERN int action_controller[ACTION_LAST];
+
+EXTERN BOOL verticalMouseInputEnabled;
 
 EXTERN K_UINT32 action_repeat_lock[ACTION_LAST];
 
