@@ -1,5 +1,4 @@
-﻿# CMakeList.txt : CMake project for lab3d-sdl, include source and define
-# project specific logic here.
+﻿# CMakeList.txt : CMake project for lab3d-sdl
 #
 cmake_minimum_required (VERSION 3.16)
 project(lab3d-sdl)
