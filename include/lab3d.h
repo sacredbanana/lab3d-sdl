@@ -920,8 +920,6 @@ EXTERN int action_key[ACTION_LAST];
 EXTERN int action_joystick[ACTION_LAST];
 EXTERN int action_controller[ACTION_LAST];
 
-EXTERN BOOL verticalMouseInputEnabled;
-
 EXTERN K_UINT32 action_repeat_lock[ACTION_LAST];
 
 EXTERN int numkeyspressed;
