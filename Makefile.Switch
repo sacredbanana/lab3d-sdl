@@ -41,7 +41,7 @@ ROMFS		:= 	romfs
 
 APP_TITLE	:= Ken's Labyrinth
 APP_AUTHOR	:= Cameron Armstrong (Nightfox)
-APP_VERSION	:= 4.1.4
+APP_VERSION	:= 4.1.5
 ICON		:= icons/ken_icon_switch.jpg
 
 #---------------------------------------------------------------------------------
