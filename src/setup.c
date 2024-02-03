@@ -13,6 +13,10 @@
 #include "lab3d.h"
 
 static void draw_mainmenu(void);
+static void draw_setupsetinputgroup(void);
+static void draw_key_instruction(void);
+static void draw_joy_instruction(void);
+static void draw_ctrl_instruction(void);
 
 #ifdef WIN32
 #define HAVE_DESKTOP
@@ -718,6 +722,10 @@ typedef struct {
     void (*draw_instructions)(const char* txt);
 } input_configuration_method;
 
+int *currentgroup;
+input_configuration_method *currentmeth;
+const char *currentinst;
+
 static void key_get_action_name(char* txt, int len, int action) {
     strncpy(txt, SDL_GetKeyName(action_key[action]), len);
 }
@@ -840,76 +848,98 @@ static int ctrl_select(SDL_Event* event, int action) {
     return 0;
 }
 
-static void key_instruction(const char* inst) {
-    drawmenu(304,48,menu);
-    strcpy(textbuf,"Press key for action:");
-    textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+0*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-    strcpy(textbuf,inst);
-    textprint((360-(8*strlen(textbuf)))/2,((240-48)/2)+12+1*12,0);
+static void draw_key_instruction() {
+    drawmenu(304, 48, menu);
+    strcpy(textbuf, "Press key for action:");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 48) / 2) + 12 + 0 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    strcpy(textbuf, currentinst);
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 48) / 2) + 12 + 1 * 12, 0);
     finalisemenu();
-    glFlush();
+}
+
+static void key_instruction(const char* inst) {
+    currentinst = inst;
+    draw_ptr[++drawStackTopIndex] = draw_key_instruction;
+}
+
+static void draw_joy_instruction() {
+    drawmenu(304, 72, menu);
+    strcpy(textbuf, "Select button or axis for");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 0 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    strcpy(textbuf, currentinst);
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 1 * 12, 0);
+    strcpy(textbuf, "or press any key to cancel;");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 2 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+
+    strcpy(textbuf, "press BACKSPACE to delete");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 3 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    finalisemenu();
 }
 
 static void joy_instruction(const char* inst) {
-    drawmenu(304,72,menu);
-    strcpy(textbuf,"Select button or axis for");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-    strcpy(textbuf,inst);
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
-    strcpy(textbuf,"or press any key to cancel;");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    currentinst = inst;
+    draw_ptr[++drawStackTopIndex] = draw_joy_instruction;
+}
 
-    strcpy(textbuf,"press BACKSPACE to delete");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+static void draw_ctrl_instruction() {
+    drawmenu(304, 72, menu);
+    strcpy(textbuf, "Select button or stick for");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 0 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    strcpy(textbuf, currentinst);
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 1 * 12, 0);
+    strcpy(textbuf, "or press any key to cancel;");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 2 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+
+    strcpy(textbuf, "press BACKSPACE to delete");
+    textprint((360 - (8 * strlen(textbuf))) / 2, ((240 - 72) / 2) + 12 + 3 * 12, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     finalisemenu();
-    glFlush();
 }
 
 static void ctrl_instruction(const char* inst) {
-    drawmenu(304,72,menu);
-    strcpy(textbuf,"Select button or stick for");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+0*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-    strcpy(textbuf,inst);
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+1*12,0);
-    strcpy(textbuf,"or press any key to cancel;");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+2*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-
-    strcpy(textbuf,"press BACKSPACE to delete");
-    textprint((360-(8*strlen(textbuf)))/2,((240-72)/2)+12+3*12,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-    finalisemenu();
-    glFlush();
+    currentinst = inst;
+    draw_ptr[++drawStackTopIndex] = draw_ctrl_instruction;
 }
 
 input_configuration_method icm_key = { "Configure Keyboard", key_get_action_name, key_select, key_instruction };
 input_configuration_method icm_joy = { "Configure Joystick", joy_get_action_name, joy_select, joy_instruction };
 input_configuration_method icm_ctrl = { "Configure Controller", ctrl_get_action_name, ctrl_select, ctrl_instruction };
 
+static void draw_setupsetinputgroup() {
+    int j;
+    drawmenu(360, 240, menu);
+    for (j = 0; currentgroup[j] != -1; j++) {
+        strcpy(textbuf, keynames[currentgroup[j]]);
+        textprint(31, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+        currentmeth->get_action_name(textbuf, 11, currentgroup[j]);
+        textbuf[11] = 0;
+        textprint(261, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    }
+    strcpy(textbuf, "Return");
+    textprint(31, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+
+    strcpy(textbuf, "Use cursor keys / left stick to select.");
+    textprint(23, 208, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+
+    strcpy(textbuf, "Enter/A btn to change, ESC/B to return.");
+    textprint(23, 220, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+    finalisemenu();
+}
+
 void setupsetinputgroup(int *group, input_configuration_method* meth) {
     int i = 0, j, quitf = 0;
     SDL_Event event;
-    int cnt;
+
+    currentgroup = group;
+    currentmeth = meth;
 
     while(!quitf) {
-        drawmenu(360, 240, menu);
-        cnt = 0;
-        for(j = 0; group[j] != -1; j++) {
-            strcpy(textbuf, keynames[group[j]]);
-            textprint(31, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-            meth->get_action_name(textbuf, 11, group[j]);
-            textbuf[11] = 0;
-            textprint(261, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1  ? 32 : 34);
+        int cnt = 0;
+        draw_ptr[++drawStackTopIndex] = draw_setupsetinputgroup;
+        for (j = 0; group[j] != -1; j++) {
             cnt++;
         }
-        strcpy(textbuf, "Return");
-        textprint(31, 13 + 12 * j, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1  ? 32 : 34);
-
-        strcpy(textbuf,"Use cursor keys / left stick to select.");
-        textprint(23,208,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-
-        strcpy(textbuf,"Enter/A btn to change, ESC/B to return.");
-        textprint(23,220,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
-        finalisemenu();
         i = getselection(-12, -9, i, cnt + 1);
+        drawStackTopIndex--;
         if (i<0) quitf=1;
         else if (i>=cnt) quitf=1;
         else {
@@ -927,6 +957,7 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
                 }
                 SDL_Delay(10);
             }
+            drawStackTopIndex--;
         }
     }
     draw_mainmenu();
