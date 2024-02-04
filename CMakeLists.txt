@@ -1,7 +1,6 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl
 #
 cmake_minimum_required (VERSION 3.16)
-project(lab3d-sdl)
 
 set (LAB3D_VERSION_MAJOR 4)
 set (LAB3D_VERSION_MINOR 1)
@@ -21,7 +20,7 @@ set(ICONS_DIR ${CMAKE_SOURCE_DIR}/icons)
 set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
 
 if (APPLE)
-  set(CMAKE_OSX_ARCHITECTURES arm64 x86_64)
+  set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS deployment version")
   set(CMAKE_C_COMPILER clang)
   set(CMAKE_FIND_FRAMEWORK LAST)
@@ -37,6 +36,8 @@ if (APPLE)
   set(APP_ICON_MACOSX ${ICONS_DIR}/ken.icns)
   set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif ()
+
+project(lab3d-sdl)
 
 configure_file (
   "${CMAKE_SOURCE_DIR}/buildconfig.h.in"

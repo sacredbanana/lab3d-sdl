@@ -73,8 +73,14 @@ sudo apt install libsdl2-2.0-0 libsdl2-image-2.0-0
 
 Before the game will run you will need to install SDL2 and SDL2_Image runtime binaries on your system.
 
-- Install [Homebrew](https://brew.sh/) if you haven't already
-- Run the following command:
+- Install ["Macports"](https://www.macports.org/install.php) or ["Homebrew](https://brew.sh/) if you haven't already. 
+- If you plan to build a universal macOS app (meaning the same binary can be run on both Apple Silicon and Intel Macs) then you **MUST** get the universal version of the SDL2 libraries and this is only available on Macports. Homebrew doesn't support universal packages.
+
+- If you're using Macports, run the following command:
+```
+sudo port install libsdl2 libsdl2_image +universal
+```
+- Otherwise run this if you are using Homebrew:
 ```
 brew install sdl2 sdl2_image
 ```
@@ -137,9 +143,16 @@ Run "make -f Makefile.Win32" in the source directory. MinGW 3.1.0 is
 recommended for Windows use.
 
 ## macOS
+If you plan to build a universal macOS app (meaning the same binary can be run on both Apple Silicon and Intel Macs) then you **MUST** get the universal version of the SDL2 libraries and this is only available on Macports. Homebrew doesn't support universal packages.
 
-### Quick easy method to build for your own machine
-In the project root run the following commands:
+- Install ["Macports"](https://www.macports.org/install.php) if you haven't already.
+
+- Run the following command:
+```
+sudo port install libsdl2 libsdl2_image +universal
+```
+
+- In the project root run the following commands:
 ```
 mkdir build
 cd build
