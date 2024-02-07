@@ -28,9 +28,9 @@ RUN mkdir build && cd build && \
     cmake $(xx-clang --print-cmake-defines) .. && \
     make
 
-RUN cd /work && mkdir dist && cp build/ken dist && cp build/ken.bmp dist && cp build/ksmmidi.txt dist && cp -r build/gamedata dist
-RUN tar -czf kens-labyrinth-$(xx-info os)-$(xx-info arch)$(xx-info variant).tar.gz dist/* && mv *.tar.gz dist/
+RUN cd /work && mkdir ken && cp build/ken ken && cp build/ken.bmp ken && cp build/ksmmidi.txt ken && cp -r build/gamedata ken
+RUN tar -czf kens-labyrinth-$(xx-info os)-$(xx-info arch)$(xx-info variant).tar.gz ken/* && mv *.tar.gz ken/
 
 FROM scratch AS ken
-COPY --from=builder /work/dist /
+COPY --from=builder /work/ken /
 ENTRYPOINT [ "/" ]
