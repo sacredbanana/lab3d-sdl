@@ -7,7 +7,7 @@ docker run --rm \
     -v ${PWD}:/work \
     -e USER=$( id -u ) -e GROUP=$( id -g ) \
     -w /work \
-    -it devkitpro/devkita64 make clean -f Makefile.Switch && make -f Makefile.Switch
+    -it devkitpro/devkita64 /bin/bash -c "make clean -f Makefile.Switch && make -f Makefile.Switch"
 
 mkdir -p dist/ken
 rm -dr dist/switch || true
