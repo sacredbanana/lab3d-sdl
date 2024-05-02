@@ -461,6 +461,9 @@ int main(int argc,char **argv)
 
     clockspd=0;
 
+    soundmutex = SDL_CreateMutex();
+    timermutex = SDL_CreateMutex();
+
     /* Initialisation... */
 
     /* Initialise SDL; */

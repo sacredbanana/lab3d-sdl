@@ -6647,6 +6647,9 @@ void quit() {
     SDL_UnlockMutex(timermutex); /* Just in case we have it... */
     SDL_UnlockMutex(soundmutex); /* Just in case we have it... */
 
+    SDL_DestroyMutex(timermutex);
+    SDL_DestroyMutex(soundmutex);
+
     musicoff();
 
     if (speechstatus >= 2) {

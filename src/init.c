@@ -43,7 +43,6 @@ void initialize()
     slotpos[0] = 0;
     slotpos[1] = 0;
     slotpos[2] = 0;
-    clockspeed = 0;
     skilevel = 0;
 
     initgraphics();
@@ -351,7 +350,7 @@ void initmemory()
     K_UINT16 l;
     unsigned char *v;
 
-    memset(draw_ptr, NULL, sizeof(draw_ptr) / sizeof(void*));
+    memset(draw_ptr, 0, sizeof(draw_ptr) / sizeof(void*));
     drawStackTopIndex = -1;
 
     fprintf(stderr,"Allocating memory...\n");
@@ -411,9 +410,6 @@ void initaudio()
 
     speed = 240;
     musicstatus=0;
-
-    soundmutex = SDL_CreateMutex();
-    timermutex = SDL_CreateMutex();
     
     mute = 0;
 
