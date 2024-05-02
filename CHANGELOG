@@ -1,6 +1,8 @@
 4.1.6: 2024-05-02
 * Fix crash starting up Ken's Labyrinth 1.x
-* Joycon controls work again in the latest firmware
+* Vertical mouse movement can be swiitched off for Ken's Labyrinth 1.x
+* Joycon controls work again in the latest Switch firmware
+* macOS version now saves settings
 
 4.1.5: 2023-02-03
 * Fix the broken input configuration menu

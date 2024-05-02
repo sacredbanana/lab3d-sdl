@@ -894,6 +894,9 @@ void oldmain(void)
             }
             if (moustat == 0)
                 bstatus|=readmouse(&mousx,&mousy);
+                
+                 if (!mouseverticalmovement)
+                    mousy = 0;
 
                 if (!getkeydefstat(ACTION_STRAFE) && getkeydefstat(ACTION_LEFT) && (angvel > -40))
                     angvel -= 14;
