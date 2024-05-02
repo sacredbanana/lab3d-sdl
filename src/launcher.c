@@ -35,7 +35,67 @@ static void draw_gamelaunchermenu(void) {
     finalisemenu();
 }
 
-void whatsnew1() {
+void whatsnew416() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.1.6 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Fix crash starting up Ken's Labyrinth");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "1.x.");
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "Joycon controls work again in the");
+    textprint(30, 88, 96);
+
+    strcpy(textbuf, "latest Switch firmware.");
+    textprint(30, 98, 96);
+
+    strcpy(textbuf, "Vertical mouse movement can be");
+    textprint(30, 118, 96);
+
+    strcpy(textbuf, "switched off for Ken's Labyrinth 1.x.");
+    textprint(30, 128, 96);
+
+    strcpy(textbuf, "macOS version now saves settings.");
+    textprint(30, 148, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
+void whatsnew415() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.1.5 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Fix the broken input configuration");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "menu.");
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "New setting for enabling/disabling");
+    textprint(30, 88, 96);
+
+    strcpy(textbuf, "vertical movement with the mouse.");
+    textprint(30, 98, 96);
+
+    strcpy(textbuf, "Disabled by default.");
+    textprint(30, 108, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
+void whatsnew414() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -53,7 +113,7 @@ void whatsnew1() {
     pressakey();
 }
 
-void whatsnew2() {
+void whatsnew413() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -80,7 +140,7 @@ void whatsnew2() {
     pressakey();
 }
 
-void whatsnew3() {
+void whatsnew412() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -137,7 +197,7 @@ void whatsnew3() {
     pressakey();
 }
 
-void whatsnew4() {
+void whatsnew411() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -173,7 +233,7 @@ void whatsnew4() {
     pressakey();
 }
 
-void whatsnew5() {
+void whatsnew410() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -212,7 +272,7 @@ void whatsnew5() {
     pressakey();
 }
 
-void whatsnew6() {
+void whatsnew401() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -257,7 +317,7 @@ void whatsnew6() {
     pressakey();
 }
 
-void whatsnew7() {
+void whatsnew400() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -299,7 +359,7 @@ void whatsnew7() {
     pressakey();
 }
 
-void whatsnew8() {
+void whatsnewkenslabyrinth2() {
     drawmenu(320, 172, menu);
 
     strcpy(textbuf,
@@ -377,14 +437,16 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
-                    whatsnew1();
-                    whatsnew2();
-                    whatsnew3();
-                    whatsnew4();
-                    whatsnew5();
-                    whatsnew6();
-                    whatsnew7();
-                    whatsnew8();
+                    whatsnew416();
+                    whatsnew415();
+                    whatsnew414();
+                    whatsnew413();
+                    whatsnew412();
+                    whatsnew411();
+                    whatsnew410();
+                    whatsnew401();
+                    whatsnew400();
+                    whatsnewkenslabyrinth2();
                     break;
                 case 5:
                     setupmenu(0);

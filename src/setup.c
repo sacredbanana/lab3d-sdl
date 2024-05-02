@@ -1304,6 +1304,8 @@ void load_default_settings(void) {
     channels=2; musicvolume=64; soundvolume=64; gammalevel=1.0; stereo=0;
     i=0;
 
+    mouseverticalmovement = 0;
+
 #ifdef WIN32
     fullscr = 0;
 #endif
@@ -1599,14 +1601,25 @@ void loadsettings(void) {
     char buf[256];
     char *key, *val;
     int curline = 0;
-    const char* filename = "settings.ini";
+    #ifdef __APPLE__
+    const char filePath[256] = {0};
+    CFURLRef appUrlRef = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("kenfiles"), NULL, NULL);
+    CFStringRef filePathRef = CFURLCopyPath(appUrlRef);
+    const char* resourcePath = CFStringGetCStringPtr(filePathRef, kCFStringEncodingUTF8);
+    snprintf(filePath, sizeof(filePath), "%s/settings.ini", resourcePath);
+    input = fopen(filePath, "r");
+    
+    // Release references
+    CFRelease(filePathRef);
+    CFRelease(appUrlRef);
+    #else
+    input = fopen("settings.ini", "r");
+    #endif
 
     setting_section_t* cursection = NULL;
     setting_t* cursetting = NULL;
 
     load_default_settings();
-
-    input = fopen(filename, "r");
 
     if (input == NULL) {
         #ifdef __SWITCH__
@@ -1675,7 +1688,20 @@ void loadsettings(void) {
 }
 
 void savesettings(void) {
+    #ifdef __APPLE__
+    const char filePath[256] = {0};
+    CFURLRef appUrlRef = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("kenfiles"), NULL, NULL);
+    CFStringRef filePathRef = CFURLCopyPath(appUrlRef);
+    const char* resourcePath = CFStringGetCStringPtr(filePathRef, kCFStringEncodingUTF8);
+    snprintf(filePath, sizeof(filePath), "%s/settings.ini", resourcePath);
+    FILE *output = fopen(filePath, "w");
+    
+    // Release references
+    CFRelease(filePathRef);
+    CFRelease(appUrlRef);
+    #else
     FILE *output = fopen("settings.ini", "w");
+    #endif
 
     setting_section_t* cursection = sections;
     setting_t* cursetting = NULL;

@@ -3044,7 +3044,7 @@ void updateclock(void) {
     now=SDL_GetTicks();
 
     while(((lastTick+(4+(tickFrac==0)))<=now)||(lastTick>now)) {
-        if (!soundtimer) clockspeed++;
+        if (!soundtimer) clockspeed = clockspeed < 32767 ? clockspeed + 1 : clockspeed;
         if (musicsource != MUSIC_SOURCE_ADLIB && musicsource != MUSIC_SOURCE_ADLIB_RANDOM) ksmhandler();
         lastTick+=4+(tickFrac==0);
         tickFrac++;
