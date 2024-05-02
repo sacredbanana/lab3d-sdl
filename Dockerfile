@@ -1,36 +1,44 @@
+# Base image with cross-building support
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 
-FROM --platform=$BUILDPLATFORM ubuntu:latest AS builder
-# copy xx scripts to your build stage
+# Builder stage with Ubuntu and required tools. Anything newer than Mantic (23.10) gets conflicting signed-by GPG issues.
+FROM --platform=$BUILDPLATFORM ubuntu:mantic AS builder
+
+# Copy xx scripts to the build stage
 COPY --from=xx / /
 
+# Prepare apt and install basic tools
 RUN apt-get update && apt-get install -y clang lld cmake
 
-# export TARGETPLATFORM (or other TARGET*)
+# Export TARGETPLATFORM and other necessary ARGs
 ARG TARGETPLATFORM
-# you can now call xx-* commands
 
+# Set up environment for cross-building
 WORKDIR /work
 
-RUN xx-apt-get install -y gcc libstdc++-11-dev libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev
+# Update and install dependencies with architecture considerations
+RUN xx-apt-get install -y libstdc++-11-dev libglu1-mesa libglu1-mesa-dev libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev
 
-COPY external external
-COPY gamedata gamedata
-COPY icons icons
-COPY include include
-COPY romfs romfs
-COPY src src
-COPY buildconfig.h.in .
-COPY CMakeLists.txt .
-COPY ksmmidi.txt .
+# Copy the source files
+COPY . .
 
-RUN mkdir build && cd build && \
+# Configure and build the project
+RUN cd build && \
     cmake $(xx-clang --print-cmake-defines) .. && \
     make
 
-RUN cd /work && mkdir ken && cp build/ken ken && cp build/ken.bmp ken && cp build/ksmmidi.txt ken && cp -r build/gamedata ken
-RUN tar -czf kens-labyrinth-$(xx-info os)-$(xx-info arch)$(xx-info variant).tar.gz ken/* && mv *.tar.gz ken/
+# Prepare the final stage
+RUN cd /work && mkdir ken && \
+    cp build/ken ken/ && \
+    cp build/ken.bmp ken/ && \
+    cp build/ksmmidi.txt ken/ && \
+    cp -r build/gamedata ken/
 
+# Package the application
+RUN tar -czf kens-labyrinth-$(xx-info os)-$(xx-info arch)$(xx-info variant).tar.gz -C ken . && \
+    mv *.tar.gz ken/
+
+# Minimal final image
 FROM scratch AS ken
 COPY --from=builder /work/ken /
-ENTRYPOINT [ "/" ]
+ENTRYPOINT ["/"]

@@ -9,7 +9,7 @@
 #define MUSIC_SOURCES 3
 #endif
 #endif
-
+#include <ctype.h>
 #include "lab3d.h"
 
 static void draw_mainmenu(void);
