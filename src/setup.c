@@ -633,6 +633,7 @@ int getnumber(void) {
     for(i=0;i<256;i++)
         keystatus[i] = 0;
     if (ch==27) return -1;
+    buf[j] = 0;
     return strtol(buf,NULL,10);
 }
 
