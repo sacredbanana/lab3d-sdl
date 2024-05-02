@@ -7,7 +7,6 @@
 #include "SDL_main.h"
 
 static demo_vardef_t demovars[] = {
-
     DEMO_VAR(boardnum),
     DEMO_VAR(scorecount),
     DEMO_VAR(scoreclock),
