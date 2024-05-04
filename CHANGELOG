@@ -1,3 +1,7 @@
+4.1.7: 2024-05-04
+* Update to latest SDL2 for Windows
+* Ensure the display size setting reads the correct value
+
 4.1.6: 2024-05-02
 * Fix crash starting up Ken's Labyrinth 1.x
 * Vertical mouse movement can be swiitched off for Ken's Labyrinth 1.x
