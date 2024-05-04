@@ -16,8 +16,8 @@ cp -r gamedata dist/ken/
 cd dist
 zip -r ken/ken.zip ken/
 mv ken switch
-rm Kens-Labyrinth.nro
-rm Kens-Labyrinth.nacp
-rm Kens-Labyrinth.nso
-rm Kens-Labyrinth.pfs0
-rm Kens-Labyrinth.elf
+rm -f Kens-Labyrinth.nro
+rm -f Kens-Labyrinth.nacp
+rm -f Kens-Labyrinth.nso
+rm -f Kens-Labyrinth.pfs0
+rm -f Kens-Labyrinth.elf
