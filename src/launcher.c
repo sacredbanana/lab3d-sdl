@@ -35,6 +35,27 @@ static void draw_gamelaunchermenu(void) {
     finalisemenu();
 }
 
+void whatsnew417() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.1.7 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Update to latest SDL2 for Windows.");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "Ensure the display size setting reads");
+    textprint(30, 78, 96);
+
+    strcpy(textbuf, "the correct value.");
+    textprint(30, 88, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
 void whatsnew416() {
     drawmenu(320, 172, menu);
 
@@ -437,6 +458,7 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
+                    whatsnew417();
                     whatsnew416();
                     whatsnew415();
                     whatsnew414();
