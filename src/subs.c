@@ -670,7 +670,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     K_INT16 numfiles;
     K_UINT16 leng;
     K_INT32 sndfiloffs;
-    K_INT32 blocksize = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)?SOUNDBLOCKSIZE44KHZ:SOUNDBLOCKSIZE11KHZ;
+    K_INT32 blocksize = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) ? SOUNDBLOCKSIZE44KHZ : SOUNDBLOCKSIZE11KHZ;
 
     if (!ui) {
         psounds[psoundnum & 15] = filenum;
@@ -909,7 +909,7 @@ void DumpSound(unsigned char *sound, K_UINT16 length, K_UINT32 playpoint, int pa
 
     // Convert the sound effects from 44.1KHz to the current sample rate
     SDL_AudioCVT cvt;
-    SDL_BuildAudioCVT(&cvt, AUDIO_U8, 1, 44100, AUDIO_U8, 1, samplerate);
+    SDL_BuildAudioCVT(&cvt, AUDIO_U8, 1, musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM ? 44100 : 11025, AUDIO_U8, 1, samplerate);
     cvt.len = length;
     cvt.buf = (Uint8 *) SDL_malloc(cvt.len * cvt.len_mult);
     memcpy(cvt.buf, sound, length);
@@ -2819,7 +2819,7 @@ K_INT16 loadmusic(char *filename)
         {
             /* Open KSM->MIDI instrument translation table... */
             sprintf(filepath, "%sksmmidi.txt", gameroot);
-            file=fopen(filepath, "rt");
+            file = fopen("ksmmidi.txt", "rt");
             if (file==NULL) {
                 fprintf(stderr, "ksmmidi.txt not found; music disabled.\n");
                 musicsource = MUSIC_SOURCE_NONE;

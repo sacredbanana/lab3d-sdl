@@ -688,6 +688,12 @@ void resetaudio()
     configure();
     free(SoundFile);
     free(SoundBuffer);
+    #ifdef WIN32
+    // Close sequencer device if it's already open
+    if (sequencerdevice != 0)
+        midiOutClose(sequencerdevice);
+    sequencerdevice = 0;
+    #endif
     initaudio();
     loadmusic(lastPlayedMusicFile);
     musicon();
