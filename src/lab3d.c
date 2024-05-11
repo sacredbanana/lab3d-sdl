@@ -579,8 +579,8 @@ int main(int argc,char **argv)
     initgameversion();
     inittablesandsettings();
     initvideo();
-    initaudio();
     initmemory();
+    initaudio();
 
     if (!legacyload) {
         loadmusic("BEGIN");
@@ -590,7 +590,7 @@ int main(int argc,char **argv)
 
     if (!legacyload) {
         gamelaunchermenu();
-        initgameversion();
+        musicoff();
         #if !defined(__SWITCH__)
         SDL_DestroyWindow(mainwindow);
         SDL_GL_DeleteContext(maincontext);
