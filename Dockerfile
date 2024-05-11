@@ -23,7 +23,7 @@ RUN xx-apt-get install -y libstdc++-11-dev libglu1-mesa libglu1-mesa-dev libsdl2
 COPY . .
 
 # Configure and build the project
-RUN cd build && \
+RUN cd build && rm -rf * && \
     cmake $(xx-clang --print-cmake-defines) .. && \
     make
 

@@ -35,6 +35,21 @@ static void draw_gamelaunchermenu(void) {
     finalisemenu();
 }
 
+void whatsnew418() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.1.8 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Fix MIDI music (Windows and Linux).");
+    textprint(30, 58, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
 void whatsnew417() {
     drawmenu(320, 172, menu);
 
@@ -458,6 +473,7 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
+                    whatsnew418();
                     whatsnew417();
                     whatsnew416();
                     whatsnew415();
