@@ -1,3 +1,6 @@
+4.1.8: 2024-05-11
+* Fix MIDI music (Windows and Linux)
+
 4.1.7: 2024-05-04
 * Update to latest SDL2 for Windows
 * Ensure the display size setting reads the correct value
