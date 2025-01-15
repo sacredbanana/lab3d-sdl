@@ -76,6 +76,7 @@ jobs:
         make
         sudo make install
         make distclean
+        sudo /opt/local/bin/port selfupdate
         sudo /opt/local/bin/port install libsdl2 libsdl2_image +universal
 
     - name: Configure CMake
