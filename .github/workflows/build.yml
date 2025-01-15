@@ -63,11 +63,20 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt update
-        sudo apt install -y libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev
+        sudo apt install -y libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev libgl1-mesa-dev
 
     - name: Install dependencies on macOS
       if: runner.os == 'macOS'
       run: |
+        mkdir -p /opt/mports
+        cd /opt/mports
+        git clone https://github.com/macports/macports-base.git
+        cd macports-base
+        cd /opt/mports/macports-base
+        ./configure --enable-readline
+        make
+        sudo make install
+        make distclean
         sudo port install libsdl2 libsdl2_image +universal
 
     - name: Configure CMake
