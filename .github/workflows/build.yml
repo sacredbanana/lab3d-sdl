@@ -40,22 +40,22 @@ jobs:
       id: cache-dependencies
       uses: actions/cache@v4
       with:
-        path: /opt/local
+        path: macports-cache
         key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
 
     - name: Install dependencies
       if: steps.cache-dependencies.outputs.cache-hit != 'true'
       run: |
-        mkdir -p mports
-        cd mports
+        mkdir -p macports-cache
+        cd macports-cache
         git clone https://github.com/macports/macports-base.git
         cd macports-base
-        ./configure --enable-readline
+        ./configure --prefix=${{ github.workspace }}/macports-cache --enable-readline
         make
-        sudo make install
+        make install
         make distclean
-        sudo /opt/local/bin/port selfupdate
-        sudo /opt/local/bin/port install libsdl2 libsdl2_image +universal
+        ${{ github.workspace }}/macports-cache/bin/port selfupdate
+        ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image +universal
 
     - name: Build
       run: |
