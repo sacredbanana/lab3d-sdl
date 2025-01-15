@@ -191,10 +191,10 @@ void createshortcut(char* errbuf, int errlen) {
 }
 #endif
 
-static int inputdevice=1, window_width=640, window_height=480, nearest=0;
-static int music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
-static int soundblock=0, timing=0, texturedepth=1, scaling=2;
-static int setup_ingame=0;
+static K_INT16 inputdevice=1, window_width=640, window_height=480, nearest=0;
+static K_INT16 music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
+static K_INT16 soundblock=0, timing=0, texturedepth=1, scaling=2;
+static K_INT16 setup_ingame=0;
 
 static char *keynames[ACTION_LAST]={
     "Move FORWARD",
@@ -519,7 +519,7 @@ static void makeupper(char* txt) {
     while (*txt) { *txt = toupper(*txt); txt++; }
 }
 
-int selectionmenu(int alts,char *titles[], int *value, const char* menutitle) {
+int selectionmenu(int alts,char *titles[], K_INT16 *value, const char* menutitle) {
     selectionMenuStruct.alts = alts;
     selectionMenuStruct.titles = titles;
     selectionMenuStruct.value = value;
@@ -976,7 +976,7 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
 }
 
 void setupsetinput(input_configuration_method* meth) {
-    int a=0, quit=0;
+    K_INT16 a=0, quit=0;
     while (!quit) {
         a = selectionmenu(4,inputgroupsmenu,&a, meth->title);
         switch(a) {
@@ -1001,7 +1001,7 @@ void setupmouseverticalmovement() {
 }
 
 void configuremouse() {
-    int a = 0, quit = 0;
+    K_INT16 a = 0, quit = 0;
     while (!quit) {
         a = selectionmenu(2, configuremousemenu, &a, "Configure mouse");
         switch (a) {
@@ -1016,7 +1016,7 @@ void configuremouse() {
 }
 
 void setupconfigureinput(void) {
-    int a=0, quit=0;
+    K_INT16 a=0, quit=0;
     while (!quit) {
         a = selectionmenu(5,configureinputmenu,&a, "Configure input devices");
         switch(a) {

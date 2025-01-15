@@ -430,7 +430,7 @@ EXTERN K_UINT16 drawStackTopIndex;
 EXTERN struct {
     int alts;
     char** titles;
-    int* value;
+    K_INT16* value;
     const char* menutitle;
 } selectionMenuStruct;
 
