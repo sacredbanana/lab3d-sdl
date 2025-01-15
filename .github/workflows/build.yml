@@ -41,7 +41,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: macports-cache
-        key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-dependencies-1
+# key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
 
     - name: Install dependencies
       if: steps.cache-dependencies.outputs.cache-hit != 'true'
@@ -61,7 +62,7 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
+        # cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
         make
 
   build_windows:
