@@ -17,7 +17,7 @@ ARG TARGETPLATFORM
 WORKDIR /work
 
 # Update and install dependencies with architecture considerations
-RUN xx-apt-get install -y libstdc++-11-dev libglu1-mesa libglu1-mesa-dev libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev libxss-dev libx11-dev libxext-dev
+RUN xx-apt-get install -y libstdc++-11-dev libglu1-mesa libglu1-mesa-dev libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev
 
 # Copy the source files
 COPY . .
