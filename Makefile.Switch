@@ -31,10 +31,11 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 
 TARGET		:=	Kens-Labyrinth
+PACKAGE		:=	ken
 BUILD		:=	build
-DIST		:=	dist
+DIST		:=	dist/switch
 SOURCES		:=	src
-DATA		:=	data
+DATA		:=	gamedata
 INCLUDES	:=	include
 EXEFS_SRC	:=	exefs_src
 ROMFS		:= 	romfs
@@ -87,15 +88,13 @@ export OUTPUT	:=	$(CURDIR)/$(DIST)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
-			$(foreach sf,$(SOURCEFILES_C),$(CURDIR)/$(dir $(sf))) \
-			$(foreach dir,$(DATA),$(CURDIR)/$(dir))
+			$(foreach sf,$(SOURCEFILES_C),$(CURDIR)/$(dir $(sf)))
 
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))  $(foreach f,$(SOURCEFILES_C),$(notdir $(f)))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
-BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 #---------------------------------------------------------------------------------
 # we use the C++ linker for this project because it uses a C++ EGL library
@@ -145,7 +144,7 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: $(BUILD) clean all
+.PHONY: $(BUILD) clean package all
 
 #---------------------------------------------------------------------------------
 all: $(BUILD)
@@ -162,6 +161,13 @@ clean:
 
 
 #---------------------------------------------------------------------------------
+package: all
+	@echo Packaging binary and data files...
+	@[ -d $(DIST)/$(PACKAGE) ] || mkdir -p $(DIST)/$(PACKAGE)
+	@cp $(OUTPUT).nro $(DIST)/$(PACKAGE)/$(TARGET).nro
+	@cp -r $(DATA) $(DIST)/$(PACKAGE)/
+	@cd $(DIST) && zip -r $(TARGET).zip $(PACKAGE)
+	@echo Done.
 else
 .PHONY:	all
 
