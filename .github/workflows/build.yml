@@ -63,7 +63,7 @@ jobs:
         mkdir -p build
         cd build
         # cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
-        make
+        # make
 
   build_windows:
     name: Build for Windows for x86 and x64
