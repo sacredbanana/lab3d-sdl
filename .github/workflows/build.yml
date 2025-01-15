@@ -68,11 +68,10 @@ jobs:
     - name: Install dependencies on macOS
       if: runner.os == 'macOS'
       run: |
-        mkdir -p /opt/mports
-        cd /opt/mports
+        mkdir -p mports
+        cd mports
         git clone https://github.com/macports/macports-base.git
         cd macports-base
-        cd /opt/mports/macports-base
         ./configure --enable-readline
         make
         sudo make install
