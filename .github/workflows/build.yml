@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Build
-      run: build-linux.sh
+      run: ./build-linux.sh
 
   build_nintendo_switch:
     name: Build for Nintendo Switch
@@ -27,7 +27,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Build
-      run: build-switch.sh
+      run: ./build-switch.sh
 
   build_macos:
     name: Build for macOS for Intel and Apple Silicon
