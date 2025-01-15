@@ -36,7 +36,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Cache Dependencies
+      id: cache-dependencies
+      uses: actions/cache@v4
+      with:
+        path: /opt/local
+        key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
+
     - name: Install dependencies
+      if: steps.cache-dependencies.outputs.cache-hit != 'true'
       run: |
         mkdir -p mports
         cd mports
