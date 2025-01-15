@@ -52,10 +52,10 @@ jobs:
         cd macports-base
         ./configure --prefix=${{ github.workspace }}/macports-cache --enable-readline
         make
-        make install
+        sudo make install
         make distclean
-        ${{ github.workspace }}/macports-cache/bin/port selfupdate
-        ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image +universal
+        sudo ${{ github.workspace }}/macports-cache/bin/port selfupdate
+        sudo ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image +universal
 
     - name: Build
       run: |

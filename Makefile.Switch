@@ -33,7 +33,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 TARGET		:=	Kens-Labyrinth
 PACKAGE		:=	ken
 BUILD		:=	build
-DIST		:=	dist/switch
+DIST		:=	dist
+DIST_SUBDIR	:=	switch
 SOURCES		:=	src
 DATA		:=	gamedata
 INCLUDES	:=	include
@@ -84,7 +85,7 @@ INCLUDES	:= $(INCLUDES) $(INC_GLAD)
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(CURDIR)/$(DIST)/$(TARGET)
+export OUTPUT	:=	$(CURDIR)/$(DIST)/$(DIST_SUBDIR)/$(TARGET)
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
@@ -133,7 +134,7 @@ ifeq ($(strip $(NO_ICON)),)
 endif
 
 ifeq ($(strip $(NO_NACP)),)
-	export NROFLAGS += --nacp=$(CURDIR)/$(DIST)/$(TARGET).nacp
+	export NROFLAGS += --nacp=$(CURDIR)/$(DIST)/$(DIST_SUBDIR)/$(TARGET).nacp
 endif
 
 ifneq ($(APP_TITLEID),)
@@ -151,21 +152,22 @@ all: $(BUILD)
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
-	@[ -d $(DIST) ] || mkdir $(DIST)
+	@[ -d $(DIST) ] || mkdir -p $(DIST)
+	@[ -d $(DIST)/$(DIST_SUBDIR) ] || mkdir -p $(DIST)/$(DIST_SUBDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile.Switch
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(DIST) || true
+	@rm -fr $(BUILD) $(DIST)/$(DIST_SUBDIR)
 
 #---------------------------------------------------------------------------------
 package: all
 	@echo Packaging binary and data files...
-	@[ -d $(DIST)/$(PACKAGE) ] || mkdir -p $(DIST)/$(PACKAGE)
-	@cp $(OUTPUT).nro $(DIST)/$(PACKAGE)/$(TARGET).nro
-	@cp -r $(DATA) $(DIST)/$(PACKAGE)/
-	@cd $(DIST) && zip -r $(TARGET).zip $(PACKAGE)
+	@[ -d $(DIST)/$(DIST_SUBDIR)/$(PACKAGE) ] || mkdir -p $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)
+	@cp $(OUTPUT).nro $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/$(TARGET).nro
+	@cp -r $(DATA) $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/
+	@cd $(DIST)/$(DIST_SUBDIR) && zip -r $(TARGET).zip $(PACKAGE)
 	@echo Done.
 else
 .PHONY:	all
