@@ -2,7 +2,7 @@
 FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
 
 # Builder stage with Ubuntu and required tools. Anything newer than Mantic (23.10) gets conflicting signed-by GPG issues.
-FROM --platform=$BUILDPLATFORM ubuntu:mantic AS builder
+FROM --platform=$BUILDPLATFORM ubuntu:25.04 AS builder
 
 # Copy xx scripts to the build stage
 COPY --from=xx / /
@@ -17,7 +17,7 @@ ARG TARGETPLATFORM
 WORKDIR /work
 
 # Update and install dependencies with architecture considerations
-RUN xx-apt-get install -y libstdc++-11-dev libglu1-mesa libglu1-mesa-dev libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev
+RUN xx-apt-get install -y libstdc++-11-dev libglu1-mesa libglu1-mesa-dev libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev libxss-dev libx11-dev libxext-dev
 
 # Copy the source files
 COPY . .

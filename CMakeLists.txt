@@ -21,7 +21,7 @@ set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on i
 
 if (APPLE)
   set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS deployment version")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "12.4" CACHE STRING "Minimum macOS deployment version")
   set(CMAKE_C_COMPILER clang)
   set(CMAKE_FIND_FRAMEWORK LAST)
   set(MACOSX_BUNDLE_GUI_IDENTIFIER ${BUNDLE_IDENTIFIER})
@@ -31,7 +31,7 @@ if (APPLE)
   set(MACOSX_SHORT_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_LONG_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_BUNDLE_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
-  set(MACOSX_INFO_STRING "Copyright © 2024. All rights reserved.")
+  set(MACOSX_INFO_STRING "Copyright © 2025. All rights reserved.")
   set(MACOSX_BUNDLE_ICON_FILE ken.icns)
   set(APP_ICON_MACOSX ${ICONS_DIR}/ken.icns)
   set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
@@ -160,12 +160,14 @@ if (WIN32)
   target_link_libraries(${KEN_EXE_NAME} ${WINMM})
   set_target_properties(${KEN_EXE_NAME} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:library")
 elseif (UNIX AND NOT APPLE)
+  find_package(SDL2 REQUIRED)
+  find_package(SDL2_image REQUIRED)
   target_link_libraries(${KEN_EXE_NAME} GL)
   target_link_libraries(${KEN_EXE_NAME} GLU)
   target_link_libraries(${KEN_EXE_NAME} m)
   target_link_libraries(${KEN_EXE_NAME} z)
-  target_link_libraries(${KEN_EXE_NAME} SDL2)
-  target_link_libraries(${KEN_EXE_NAME} SDL2_image)
+  target_link_libraries(${KEN_EXE_NAME} SDL2::SDL2-static)
+  target_link_libraries(${KEN_EXE_NAME} SDL2_image::SDL2_image-static)
   target_compile_options(${KEN_EXE_NAME} PUBLIC -O3 -Wall)
   if (KEN_USE_OSS)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
@@ -173,20 +175,31 @@ elseif (UNIX AND NOT APPLE)
 elseif (APPLE)
   find_package(OpenGL REQUIRED)
   find_package(SDL2 REQUIRED)
-  find_library(SDL2 SDL2)
+  find_package(SDL2_image REQUIRED)
   find_library(MLIB m)
-  find_library(SDL2_image SDL2_image)
   find_library(CoreFoundation CoreFoundation)
   find_package(ZLIB REQUIRED)
   target_include_directories(${KEN_EXE_NAME} PUBLIC /opt/X11/include)
-  target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} ${SDL2} ${SDL2_image} ${MLIB} ${ZLIB_LIBRARIES} ${CoreFoundation})
-  set_target_properties(${KEN_EXE_NAME} PROPERTIES MACOSX_BUNDLE TRUE RESOURCE ${CMAKE_SOURCE_DIR}/gamedata)
+  target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} SDL2::SDL2-static SDL2_image::SDL2_image-static ${MLIB} ${ZLIB_LIBRARIES} ${CoreFoundation})
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
   XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR ${PROJECT_BINARY_DIR})
   set_target_properties(${KEN_EXE_NAME} PROPERTIES
-    PRODUCT_BUNDLE_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth"
-)
+  PRODUCT_BUNDLE_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth")
+  # Path to your certificate (replace with your certificate name)
+  set(CERTIFICATE_FILE "~/developerID_application.cer")
+  set(CODE_SIGN_IDENTITY "Developer ID Application: Cameron Armstrong (2W56SCHJ6N)")
+
+  # Path to the app bundle
+  set(APP_BUNDLE "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app")
+
+  # Add a custom post-build step to sign the app
+  add_custom_command(TARGET ${KEN_EXE_NAME}
+    MAIN_DEPENDENCY ${KEN_EXE_NAME}
+    # COMMAND security import /Users/cameron/Downloads/developerID_application.cer -T /usr/bin/codesign
+    # COMMAND codesign --force --sign D5C120EF9D7755D46B5D5F41E932B7ADEAAF5568 --timestamp --deep "${APP_BUNDLE}"
+    COMMENT "Signing the app with the certificate"
+  )
 endif ()
 
 if (MSVC)
