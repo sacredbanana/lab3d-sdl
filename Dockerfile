@@ -28,11 +28,8 @@ RUN cd build && rm -rf * && \
     make
 
 # Prepare the final stage
-RUN cd /work && mkdir ken && \
-    cp build/ken ken/ && \
-    cp build/ken.bmp ken/ && \
-    cp build/ksmmidi.txt ken/ && \
-    cp -r build/gamedata ken/
+RUN cd /work && \
+    mv dist/linux ken
 
 # Package the application
 RUN tar -czf kens-labyrinth-$(xx-info os)-$(xx-info arch)$(xx-info variant).tar.gz -C ken . && \
