@@ -165,9 +165,9 @@ clean:
 package: all
 	@echo Packaging binary and data files...
 	@[ -d $(DIST)/$(DIST_SUBDIR)/$(PACKAGE) ] || mkdir -p $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)
-	@cp $(OUTPUT).nro $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/$(TARGET).nro
+	@mv $(OUTPUT).nro $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/$(TARGET).nro
 	@cp -r $(DATA) $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/
-	@cd $(DIST)/$(DIST_SUBDIR) && zip -r $(TARGET)-Nintendo-Switch.zip $(PACKAGE)
+	@rm $(DIST)/$(DIST_SUBDIR)/$(TARGET).*
 	@echo Done.
 else
 .PHONY:	all

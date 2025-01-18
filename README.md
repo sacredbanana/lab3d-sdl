@@ -181,7 +181,7 @@ The app `Kens-Labyrinth` will be copied to the build folder. You may move this t
 Install the prerequisites with the following command:
 ```
 sudo apt update
-sudo apt install libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev cmake build-essential
+sudo apt install libsdl2-2.0-0 libsdl2-image-2.0-0 libsdl2-image-dev libglu1-mesa-dev cmake build-essential
 ```
 
 In the project root run the following commands:

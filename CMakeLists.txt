@@ -17,6 +17,15 @@ set(MAIN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 set(EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external)
 set(ICONS_DIR ${CMAKE_SOURCE_DIR}/icons)
 
+if (WIN32)
+  set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/windows)
+elseif (UNIX AND NOT APPLE)
+  set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/linux)
+elseif (APPLE)
+  set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/macOS)
+endif ()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${DIST_DIR})
+
 set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
 
 if (APPLE)
@@ -98,7 +107,7 @@ if (APPLE)
     ${RESOURCE_FILES}
     PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources/kenfiles
-)
+  )
   set_source_files_properties(
       ${GAME_DATA1_0}
       PROPERTIES
@@ -174,6 +183,7 @@ elseif (UNIX AND NOT APPLE)
   if (KEN_USE_OSS)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
   endif ()
+  # set_target_properties(${KEN_EXE_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist/linux")
 elseif (APPLE)
   find_package(OpenGL REQUIRED)
   find_package(SDL2 REQUIRED)
@@ -186,11 +196,9 @@ elseif (APPLE)
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
   XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/macOS")
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIST_DIR}")
   set_target_properties(${KEN_EXE_NAME} PROPERTIES
   BUNDLE TRUE
   MACOSX_BUNDLE TRUE
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist/macOS"
 )
 
   # Path to the app bundle
@@ -218,7 +226,7 @@ if (MSVC)
 endif ()
 
 if (NOT APPLE) 
-  file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${PROJECT_BINARY_DIR})
-  file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${PROJECT_BINARY_DIR})
-  file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${PROJECT_BINARY_DIR})
+  file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${DIST_DIR})
+  file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${DIST_DIR})
+  file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${DIST_DIR})
 endif ()

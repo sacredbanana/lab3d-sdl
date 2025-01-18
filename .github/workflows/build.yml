@@ -1,5 +1,4 @@
-# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
-# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+# Builds the game for multiple platforms and uploads the artifacts
 name: Build on multiple platforms
 
 on:
@@ -19,6 +18,36 @@ jobs:
     - name: Build
       run: ./build-linux.sh
 
+    - name: Upload Linux 386 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Linux-386
+        path: dist/linux_386/kens-labyrinth-linux-386.tar.gz
+
+    - name: Upload Linux AMD64 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Linux-AMD64
+        path: dist/linux_amd64/kens-labyrinth-linux-amd64.tar.gz
+
+    - name: Upload Linux ARMv7 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Linux-ARMv7
+        path: dist/linux_arm_v7/kens-labyrinth-linux-armv7.tar.gz
+
+    - name: Upload Linux ARM64 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Linux-ARM64
+        path: dist/linux_arm64/kens-labyrinth-linux-arm64.tar.gz
+    
+    - name: Upload Linux PPC64LE artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Linux-PPC64LE
+        path: dist/linux_ppc64le/kens-labyrinth-linux-ppc64le.tar.gz
+
   build_nintendo_switch:
     name: Build for Nintendo Switch
     runs-on: ubuntu-latest
@@ -32,8 +61,8 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: switch
-        path: dist/switch/Kens-Labyrinth.nro
+        name: Kens-Labyrinth-Nintendo-Switch
+        path: dist/switch/ken
 
   build_macos:
     name: Build for macOS for Intel and Apple Silicon
@@ -78,7 +107,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: macos
+        name: Kens-Labyrinth-macOS-Universal
         path: dist/macos/Kens-Labyrinth-macOS-Universal.dmg
 
   build_windows:
