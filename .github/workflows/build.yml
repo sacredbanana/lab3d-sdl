@@ -131,7 +131,7 @@ jobs:
         cmake -A ARM64 ..
         cmake --build . --config Release
         cd ..
-        rd -s -q build
+        rmdir -force -recurse build
         
     - name: Upload Windows ARM64 artifact
       uses: actions/upload-artifact@v4
@@ -147,7 +147,7 @@ jobs:
         cmake -A Win32 ..
         cmake --build . --config Release
         cd ..
-        rd -s -q build
+        rmdir -force -recurse build
 
     - name: Upload Windows x86 artifact
       uses: actions/upload-artifact@v4
@@ -163,7 +163,7 @@ jobs:
         cmake -A x64 ..
         cmake --build . --config Release
         cd ..
-        rd -s -q build
+        rmdir -force -recurse build
 
     - name: Upload Windows x64 artifact
       uses: actions/upload-artifact@v4
