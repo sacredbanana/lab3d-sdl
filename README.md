@@ -131,7 +131,28 @@ Unrecognised options are ignored.
 
 ## Windows
 
-Install Visual Studio 2017 or 2019 with Visual-C++ and CMake support.
+Install Visual Studio with Visual-C++ and CMake support.
+
+Open a terminal and in the project root run these commands:
+
+For building for Intel processors:
+```
+mkdir build
+cmake ..
+cmake --build . --config Release
+```
+
+For building for ARM64:
+```
+mkdir build
+cmake -A ARM64 ..
+cmake --build . --config Release
+```
+
+The built game can be found in dist/windows.
+
+Alternatively you can use Visual Studio Code to build the game:
+
 Close the initial splash screen by clicking the "Continue without code" option.
 Click File -> Open -> CMake. Choose the CMakeLists.txt file. The project will then
 open and you'll be able to select from the top menu the flavour of build. From there

@@ -111,17 +111,62 @@ jobs:
         path: dist/macos/Kens-Labyrinth-macOS-Universal.dmg
 
   build_windows:
-    name: Build for Windows for x86 and x64
+    name: Build for Windows for ARM64, x86 and x64
     runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build
+    - name: Build for ARM64
       run: |
-        mkdir build
+        mkdir -f build
         cd build
-        cmake -G "Visual Studio 16 2019" -A Win32 ..
+        cmake -A ARM64 ..
         cmake --build . --config Release
-        cmake -G "Visual Studio 16 2019" -A x64 ..
+        cd ../dist
+        mv windows windows_ARM64
+        cd windows_ARM64
+        zip -r Kens-Labyrinth-Windows-ARM64.zip .
+        cd ..
+        
+    - name: Upload Windows ARM64 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Windows-ARM64
+        path: dist/windows/windows_arm64/Kens-Labyrinth-Windows-ARM64.zip
+
+    - name: Build for x86
+      run: |
+        mkdir -f build
+        cd build
+        cmake -A Win32 ..
         cmake --build . --config Release
+        cd ../dist
+        mv windows windows_x86
+        cd windows_x86
+        zip -r Kens-Labyrinth-Windows-x86.zip .
+        cd ..
+
+    - name: Upload Windows x86 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Windows-x86
+        path: dist/windows/windows_x86/Kens-Labyrinth-Windows-x86.zip
+
+    - name: Build for x64
+      run: |
+        mkdir -f build
+        cd build
+        cmake -A x64 ..
+        cmake --build . --config Release
+        cd ../dist
+        mv windows windows_x64
+        cd windows_x64
+        zip -r Kens-Labyrinth-Windows-x64.zip .
+        cd ..
+
+    - name: Upload Windows x64 artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-Windows-x64
+        path: dist/windows/windows_x64/Kens-Labyrinth-Windows-x64.zip

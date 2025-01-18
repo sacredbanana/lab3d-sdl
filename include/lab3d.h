@@ -7,12 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#if !defined(KEN_64BIT)
-#define INT_TYPE int
-#else
-#define INT_TYPE int64_t
-#endif
-
 #ifndef WIN32
 #ifdef _WIN32
 #define WIN32

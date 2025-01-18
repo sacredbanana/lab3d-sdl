@@ -774,7 +774,10 @@ void preparesound(void *dasnd, long numbytestoprocess)
     {
         i = min(prepcnt, (minicnt/speed+4)&~3);
         adlibgetsample(dasnd, i);
-        dasnd = (void *)(((INT_TYPE)dasnd)+i);
+        if (sizeof(void*) == 4)
+            dasnd = (void *)(((int32_t)dasnd)+i);
+        else
+            dasnd = (void *)(((int64_t)dasnd)+i);
         prepcnt -= i;
 
         minicnt -= speed*i;
