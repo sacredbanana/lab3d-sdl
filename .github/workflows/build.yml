@@ -96,7 +96,7 @@ jobs:
     - name: Build
       run: |
         echo ${{ secrets.DEVELOPER_CERTIFICATE }} | base64 --decode > developer_cert.cer
-        security import developer_cert.cer -k ~/Library/Keychains/login.keychain-db -T /usr/bin/codesign
+        security import developer_cert.cer -T /usr/bin/codesign
         mkdir -p build
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
