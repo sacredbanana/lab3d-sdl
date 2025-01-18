@@ -23,30 +23,35 @@ jobs:
       with:
         name: Kens-Labyrinth-Linux-386
         path: dist/linux_386/kens-labyrinth-linux-386.tar.gz
+        if-no-files-found: error
 
     - name: Upload Linux AMD64 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Linux-AMD64
         path: dist/linux_amd64/kens-labyrinth-linux-amd64.tar.gz
+        if-no-files-found: error
 
     - name: Upload Linux ARMv7 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Linux-ARMv7
         path: dist/linux_arm_v7/kens-labyrinth-linux-armv7.tar.gz
+        if-no-files-found: error
 
     - name: Upload Linux ARM64 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Linux-ARM64
         path: dist/linux_arm64/kens-labyrinth-linux-arm64.tar.gz
+        if-no-files-found: error
     
     - name: Upload Linux PPC64LE artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Linux-PPC64LE
         path: dist/linux_ppc64le/kens-labyrinth-linux-ppc64le.tar.gz
+        if-no-files-found: error
 
   build_nintendo_switch:
     name: Build for Nintendo Switch
@@ -63,6 +68,7 @@ jobs:
       with:
         name: Kens-Labyrinth-Nintendo-Switch
         path: dist/switch/ken
+        if-no-files-found: error
 
   build_macos:
     name: Build for macOS for Intel and Apple Silicon
@@ -109,6 +115,7 @@ jobs:
       with:
         name: Kens-Labyrinth-macOS-Universal
         path: dist/macos/Kens-Labyrinth-macOS-Universal.dmg
+        if-no-files-found: error
 
   build_windows:
     name: Build for Windows for ARM64, x86 and x64
@@ -124,13 +131,14 @@ jobs:
         cmake -A ARM64 ..
         cmake --build . --config Release
         cd ..
-        rd /s /q build
+        rd -s -q build
         
     - name: Upload Windows ARM64 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Windows-ARM64
         path: dist/windows/
+        if-no-files-found: error
 
     - name: Build for x86
       run: |
@@ -139,13 +147,14 @@ jobs:
         cmake -A Win32 ..
         cmake --build . --config Release
         cd ..
-        rd /s /q build
+        rd -s -q build
 
     - name: Upload Windows x86 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Windows-x86
         path: dist/windows/
+        if-no-files-found: error
 
     - name: Build for x64
       run: |
@@ -154,10 +163,11 @@ jobs:
         cmake -A x64 ..
         cmake --build . --config Release
         cd ..
-        rd /s /q build
+        rd -s -q build
 
     - name: Upload Windows x64 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Windows-x64
         path: dist/windows/
+        if-no-files-found: error
