@@ -35,6 +35,24 @@ static void draw_gamelaunchermenu(void) {
     finalisemenu();
 }
 
+void whatsnew420() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.2.0 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Added support for ARM64 based");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "systems for Windows");
+    textprint(30, 78, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
 void whatsnew418() {
     drawmenu(320, 172, menu);
 
@@ -473,6 +491,7 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
+                    whatsnew420();
                     whatsnew418();
                     whatsnew417();
                     whatsnew416();

@@ -2,9 +2,7 @@
 #
 cmake_minimum_required (VERSION 3.16)
 
-set (LAB3D_VERSION_MAJOR 4)
-set (LAB3D_VERSION_MINOR 1)
-set (LAB3D_VERSION_PATCH 8)
+include("${CMAKE_SOURCE_DIR}/version.cmake")
 
 if (APPLE OR WIN32)
     set(KEN_EXE_NAME "Kens-Labyrinth")
