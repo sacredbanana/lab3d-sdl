@@ -41,8 +41,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: macports-cache
-        key: ${{ runner.os }}-dependencies-1
-# key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
+        key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
 
     - name: Install dependencies
       if: steps.cache-dependencies.outputs.cache-hit != 'true'
@@ -56,14 +55,17 @@ jobs:
         sudo make install
         make distclean
         sudo ${{ github.workspace }}/macports-cache/bin/port selfupdate
+        sudo echo "macosx_deployment_target 12.4" >> ${{ github.workspace }}/macports-cache/etc/macports/macports.conf
         sudo ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image +universal
 
     - name: Build
       run: |
+        echo ${{ secrets.DEVELOPER_CERTIFICATE }} | base64 --decode > developer_cert.cer
+        security import developer_cert.cer -k ~/Library/Keychains/login.keychain-db -T /usr/bin/codesign
         mkdir -p build
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
-        make
+        cmake -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
+        cmake --build . --config Release
 
   build_windows:
     name: Build for Windows for x86 and x64

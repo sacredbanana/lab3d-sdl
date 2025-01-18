@@ -149,6 +149,7 @@ If you plan to build a universal macOS app (meaning the same binary can be run o
 
 - Run the following command:
 ```
+sudo echo "macosx_deployment_target 12.4" >> /opt/local/etc/macports/macports.conf
 sudo port install libsdl2 libsdl2_image +universal
 ```
 
@@ -156,11 +157,24 @@ sudo port install libsdl2 libsdl2_image +universal
 ```
 mkdir build
 cd build
+```
+
+Now choose a build method:
+
+- Simple build
+```
 cmake ..
 make
 ```
 
+- Build via Xcode (recommended if you want to properly customise the build for code signing etc):
+```
+cmake -G Xcode ..
+```
+Then open the project in Xcode and build it.
+
 The app `Kens-Labyrinth` will be copied to the build folder. You may move this to your Applications folder.
+
 
 ## Linux/UNIX
 

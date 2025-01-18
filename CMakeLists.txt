@@ -24,15 +24,17 @@ if (APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "12.4" CACHE STRING "Minimum macOS deployment version")
   set(CMAKE_C_COMPILER clang)
   set(CMAKE_FIND_FRAMEWORK LAST)
-  set(MACOSX_BUNDLE_GUI_IDENTIFIER ${BUNDLE_IDENTIFIER})
-  set(MACOSX_BUNDLE_IDENTIFIER ${BUNDLE_IDENTIFIER})
-  set(MACOSX_BUNDLE_BUNDLE_NAME ${KEN_EXE_NAME})
+  set(MACOSX_BUNDLE_GUI_IDENTIFIER "net.minotaurcreative.${KEN_EXE_NAME}")
+  set(MACOSX_BUNDLE_NAME ${KEN_EXE_NAME})
   set(MACOSX_INFO_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_SHORT_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_LONG_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_BUNDLE_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_INFO_STRING "Copyright © 2025. All rights reserved.")
   set(MACOSX_BUNDLE_ICON_FILE ken.icns)
+  set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "2W56SCHJ6N" CACHE STRING "Apple Developer Team ID")
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application" CACHE STRING "Apple Developer Code Sign Identity")
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual")
   set(APP_ICON_MACOSX ${ICONS_DIR}/ken.icns)
   set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif ()
@@ -183,23 +185,16 @@ elseif (APPLE)
   target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} SDL2::SDL2-static SDL2_image::SDL2_image-static ${MLIB} ${ZLIB_LIBRARIES} ${CoreFoundation})
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
-  XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR ${PROJECT_BINARY_DIR})
+  XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/macOS")
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${DIST_DIR}")
   set_target_properties(${KEN_EXE_NAME} PROPERTIES
-  PRODUCT_BUNDLE_IDENTIFIER "net.minotaurcreative.Kens-Labyrinth")
-  # Path to your certificate (replace with your certificate name)
-  set(CERTIFICATE_FILE "~/developerID_application.cer")
-  set(CODE_SIGN_IDENTITY "Developer ID Application: Cameron Armstrong (2W56SCHJ6N)")
+  BUNDLE TRUE
+  MACOSX_BUNDLE TRUE
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/dist/macOS"
+)
 
   # Path to the app bundle
   set(APP_BUNDLE "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app")
-
-  # Add a custom post-build step to sign the app
-  add_custom_command(TARGET ${KEN_EXE_NAME}
-    MAIN_DEPENDENCY ${KEN_EXE_NAME}
-    # COMMAND security import /Users/cameron/Downloads/developerID_application.cer -T /usr/bin/codesign
-    # COMMAND codesign --force --sign D5C120EF9D7755D46B5D5F41E932B7ADEAAF5568 --timestamp --deep "${APP_BUNDLE}"
-    COMMENT "Signing the app with the certificate"
-  )
 endif ()
 
 if (MSVC)
