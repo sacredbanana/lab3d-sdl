@@ -125,15 +125,13 @@ jobs:
         cmake --build . --config Release
         cd ../dist
         mv windows windows_ARM64
-        cd windows_ARM64
-        zip -r Kens-Labyrinth-Windows-ARM64.zip .
         cd ..
         
     - name: Upload Windows ARM64 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Windows-ARM64
-        path: dist/windows/windows_arm64/Kens-Labyrinth-Windows-ARM64.zip
+        path: dist/windows/windows_arm64/
 
     - name: Build for x86
       run: |
@@ -143,15 +141,13 @@ jobs:
         cmake --build . --config Release
         cd ../dist
         mv windows windows_x86
-        cd windows_x86
-        zip -r Kens-Labyrinth-Windows-x86.zip .
         cd ..
 
     - name: Upload Windows x86 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Windows-x86
-        path: dist/windows/windows_x86/Kens-Labyrinth-Windows-x86.zip
+        path: dist/windows/windows_x86/
 
     - name: Build for x64
       run: |
@@ -161,12 +157,10 @@ jobs:
         cmake --build . --config Release
         cd ../dist
         mv windows windows_x64
-        cd windows_x64
-        zip -r Kens-Labyrinth-Windows-x64.zip .
         cd ..
 
     - name: Upload Windows x64 artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-Windows-x64
-        path: dist/windows/windows_x64/Kens-Labyrinth-Windows-x64.zip
+        path: dist/windows/windows_x64/
