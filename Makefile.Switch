@@ -167,7 +167,7 @@ package: all
 	@[ -d $(DIST)/$(DIST_SUBDIR)/$(PACKAGE) ] || mkdir -p $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)
 	@cp $(OUTPUT).nro $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/$(TARGET).nro
 	@cp -r $(DATA) $(DIST)/$(DIST_SUBDIR)/$(PACKAGE)/
-	@cd $(DIST)/$(DIST_SUBDIR) && zip -r $(TARGET).zip $(PACKAGE)
+	@cd $(DIST)/$(DIST_SUBDIR) && zip -r $(TARGET)-Nintendo-Switch.zip $(PACKAGE)
 	@echo Done.
 else
 .PHONY:	all

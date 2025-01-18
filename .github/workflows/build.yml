@@ -29,6 +29,12 @@ jobs:
     - name: Build
       run: ./build-switch.sh
 
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: switch
+        path: dist/switch/Kens-Labyrinth.nro
+
   build_macos:
     name: Build for macOS for Intel and Apple Silicon
     runs-on: macos-latest
@@ -55,7 +61,7 @@ jobs:
         sudo make install
         make distclean
         sudo ${{ github.workspace }}/macports-cache/bin/port selfupdate
-        sudo echo "macosx_deployment_target 12.4" >> ${{ github.workspace }}/macports-cache/etc/macports/macports.conf
+        echo "macosx_deployment_target 12.4" | sudo tee -a ${{ github.workspace }}/macports-cache/etc/macports/macports.conf > /dev/null
         sudo ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image +universal
 
     - name: Build
@@ -65,7 +71,15 @@ jobs:
         mkdir -p build
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
-        cmake --build . --config Release
+        cmake --build .
+        brew install create-dmg
+        create-dmg ../dist/macos/Kens-Labyrinth-macOS-Universal.dmg ../dist/macos/
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos
+        path: dist/macos/Kens-Labyrinth-macOS-Universal.dmg
 
   build_windows:
     name: Build for Windows for x86 and x64
