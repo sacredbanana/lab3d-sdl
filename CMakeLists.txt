@@ -1,6 +1,6 @@
 ﻿# CMakeList.txt : CMake project for lab3d-sdl
 #
-cmake_minimum_required (VERSION 3.16)
+cmake_minimum_required (VERSION 3.26)
 
 include("${CMAKE_SOURCE_DIR}/version.cmake")
 
@@ -178,21 +178,126 @@ elseif (UNIX AND NOT APPLE)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
   endif ()
 elseif (APPLE)
+  include_directories( ${ZLIB_INCLUDE_DIRS} )
   find_package(OpenGL REQUIRED)
-  find_package(SDL2 REQUIRED)
-  find_package(SDL2_image REQUIRED)
   find_library(MLIB m)
+  find_library(ZLIB libz.1.dylib)
+  find_library(ZLIBSTD libzstd.1.dylib)
+  find_library(LZMA liblzma.5.dylib)
+  find_library(SDL2 libSDL2-2.0.0.dylib)
+  find_library(SDL2_IMAGE libSDL2_image-2.0.0.dylib)
+  find_library(TIFF libtiff.6.dylib)
+  find_library(LERC libLerc.4.dylib)
+  find_library(JPEG libjpeg.8.dylib)
+  find_library(DEFLATE libdeflate.0.dylib)
+  find_library(WEBPDEMUX libwebpdemux.2.dylib)
+  find_library(WEBP libwebp.7.dylib)
+  find_library(SHARPYUV libsharpyuv.0.dylib)
   find_library(CoreFoundation CoreFoundation)
-  find_package(ZLIB REQUIRED)
   target_include_directories(${KEN_EXE_NAME} PUBLIC /opt/X11/include)
-  target_link_libraries(${KEN_EXE_NAME} ${OPENGL_LIBRARIES} SDL2::SDL2-static SDL2_image::SDL2_image-static ${MLIB} ${ZLIB_LIBRARIES} ${CoreFoundation})
+  target_link_libraries(${KEN_EXE_NAME} PRIVATE ${SDL2} ${OPENGL_LIBRARIES} ${TIFF} ${LERC} ${ZLIBSTD} ${LZMA} ${JPEG} ${DEFLATE} ${WEBPDEMUX} ${WEBP} ${SHARPYUV} ${SDL2_IMAGE} ${MLIB} ${CoreFoundation} ${ZLIB})  
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
+  message(STATUS "CMAKE_INSTALL_PREFIX: ${ZLIB_LIBRARIES}")
+  set_property(TARGET ${KEN_EXE_NAME} PROPERTY XCODE_EMBED_FRAMEWORKS 
+    ${SDL2}
+    ${SDL2_IMAGE}
+    ${ZLIB}
+    ${TIFF}
+    ${ZLIBSTD}
+    ${LZMA}
+    ${LERC}
+    ${JPEG}
+    ${DEFLATE}
+    ${WEBPDEMUX}
+    ${WEBP}
+    ${SHARPYUV}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${SDL2}
+        @executable_path/../Frameworks/libSDL2-2.0.0.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+ )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${SDL2_IMAGE}
+        @executable_path/../Frameworks/libSDL2_image-2.0.0.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${ZLIB}
+        @executable_path/../Frameworks/libz.1.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${TIFF}
+        @executable_path/../Frameworks/libtiff.6.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${ZLIBSTD}
+        @executable_path/../Frameworks/libzstd.1.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${LZMA}
+        @executable_path/../Frameworks/liblzma.5.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${LERC}
+        @executable_path/../Frameworks/libLerc.4.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${JPEG}
+        @executable_path/../Frameworks/libjpeg.8.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${DEFLATE}
+        @executable_path/../Frameworks/libdeflate.0.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${WEBPDEMUX}
+        @executable_path/../Frameworks/libwebpdemux.2.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${WEBP}
+        @executable_path/../Frameworks/libwebp.7.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND install_name_tool
+        -change ${SHARPYUV}
+        @executable_path/../Frameworks/libsharpyuv.0.dylib
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+  )
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
-  XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/macOS")
-  set_target_properties(${KEN_EXE_NAME} PROPERTIES
-  BUNDLE TRUE
-  MACOSX_BUNDLE TRUE
-)
+    XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH[variant=Debug] YES
+    XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/../Frameworks"
+    XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/macOS"
+    XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
+    XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=Release] "--options=runtime --timestamp"
+    XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=RelWithDebInfo] "--options=runtime --timestamp"
+    XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=Release] NO
+		XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=RelWithDebInfo] NO
+    XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY YES
+    XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY YES
+    BUNDLE TRUE
+    MACOSX_BUNDLE TRUE
+  )
 endif ()
 
 if (MSVC)
@@ -224,4 +329,4 @@ if (NOT APPLE)
   file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${DIST_DIR})
   file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${DIST_DIR})
   file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${DIST_DIR})
-endif ()
+endif () 
