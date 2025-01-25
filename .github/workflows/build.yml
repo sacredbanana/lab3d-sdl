@@ -122,14 +122,7 @@ jobs:
         sudo ${{ github.workspace }}/macports-cache/bin/port selfupdate
         sudo ${{ github.workspace }}/macports-cache/bin/port install cmake
         echo "macosx_deployment_target 12.4" | sudo tee -a ${{ github.workspace }}/macports-cache/etc/macports/macports.conf > /dev/null
-        sudo ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image libpng webp jpeg tiff +universal
-        # The latest zlib version is not compatible with the game so we need to install an older version
-        cd ..
-        git clone --single-branch https://github.com/macports/macports-ports.git
-        cd macports-ports
-        git checkout a9dc453e0037f30ceccdab1c649e168e66738531
-        cd archivers/zlib
-        sudo ${{ github.workspace }}/macports-cache/bin/port install +universal
+        sudo ${{ github.workspace }}/macports-cache/bin/port install libsdl2 libsdl2_image libpng webp jpeg tiff zlib +universal
 
     - name: Build
       run: |

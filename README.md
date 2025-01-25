@@ -12,7 +12,7 @@ FreeBSD 4.7, Raspberry Pi OS and Nintendo Switch.
 
 Improvements over the original Ken's Labyrinth:
 
-- Runs natively on 32-bit/64-bit Windows, Unix or Nintendo Switch.
+- Runs natively on 32-bit/64-bit Intel/ARM Windows, macOS, Unix or Nintendo Switch.
 - Supports big-endian CPUs.
 - Uses OpenGL to provide hardware accelerated, anti-aliased graphics with
   trilinear interpolation in true colour (where available).
@@ -60,7 +60,7 @@ Makefiles require GNU Make (or compatible) and sh (or compatible, e.g. bash). Cm
 
 ## Linux
 
-Before the game will run you will need to install SDL2 and SDL2_Image runtime binaries on your system.
+Before the game will run you will need to install the SDL2, SDL2_Image and GLU shared libraries on your system.
 
 Run the following commands:
 
@@ -71,19 +71,7 @@ sudo apt install libsdl2-2.0-0 libsdl2-image-2.0-0 libglu1-mesa
 
 ## macOS
 
-Before the game will run you will need to install SDL2 and SDL2_Image runtime binaries on your system.
-
-- Install ["Macports"](https://www.macports.org/install.php) or ["Homebrew](https://brew.sh/) if you haven't already. 
-- If you plan to build a universal macOS app (meaning the same binary can be run on both Apple Silicon and Intel Macs) then you **MUST** get the universal version of the SDL2 libraries and this is only available on Macports. Homebrew doesn't support universal packages.
-
-- If you're using Macports, run the following command:
-```
-sudo port install libsdl2 libsdl2_image +universal
-```
-- Otherwise run this if you are using Homebrew:
-```
-brew install sdl2 sdl2_image
-```
+All required libraries and data are bundled in the app. Open the .dmg file, drag the app to the Applications folder, then launch it.
 
 ## Nintendo Switch
 
@@ -164,14 +152,14 @@ Run "make -f Makefile.Win32" in the source directory. MinGW 3.1.0 is
 recommended for Windows use.
 
 ## macOS
-If you plan to build a universal macOS app (meaning the same binary can be run on both Apple Silicon and Intel Macs) then you **MUST** get the universal version of the SDL2 libraries and this is only available on Macports. Homebrew doesn't support universal packages.
+If you plan to build a universal macOS app (meaning the same binary can be run on both Apple Silicon and Intel Macs) then you **MUST** get the universal version of the libraries and this is only available on Macports. Homebrew doesn't support universal packages.
 
 - Install ["Macports"](https://www.macports.org/install.php) if you haven't already.
 
 - Run the following command:
 ```
 sudo echo "macosx_deployment_target 12.4" >> /opt/local/etc/macports/macports.conf
-sudo port install libsdl2 libsdl2_image +universal
+sudo port install libsdl2 libsdl2_image libpng webp jpeg tiff zlib +universal
 ```
 
 - In the project root run the following commands:
@@ -185,16 +173,17 @@ Now choose a build method:
 - Simple build
 ```
 cmake ..
-make
+cmake --build . --config Release
 ```
 
 - Build via Xcode (recommended if you want to properly customise the build for code signing etc):
 ```
 cmake -G Xcode ..
+cmake --build . --config Release
 ```
 Then open the project in Xcode and build it.
 
-The app `Kens-Labyrinth` will be copied to the build folder. You may move this to your Applications folder.
+The app `Kens-Labyrinth` will be copied to dist/macOS. You may move this to your Applications folder.
 
 
 ## Linux/UNIX
@@ -210,10 +199,10 @@ In the project root run the following commands:
 mkdir build
 cd build
 cmake ..
-make
+cmake --build . --config Release
 ```
 
-The executable `ken` and its dependencies will be copied to the build folder.
+The executable `ken` and its dependencies will be copied dist/linux.
 
 ## Unix with OSS support (Legacy)
 
