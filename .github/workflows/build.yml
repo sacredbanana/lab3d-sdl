@@ -133,16 +133,40 @@ jobs:
       run: |
         mkdir -p build
         cd build
-        cmake -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache ..
+        cmake -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
         cmake --build .
         brew install create-dmg
-        create-dmg ../dist/macos/Kens-Labyrinth-macOS-Universal.dmg ../dist/macos/
+        create-dmg ../dist/macOS/Kens-Labyrinth-macOS-Universal.dmg ../dist/macOS/
+        cd ..
+
+    - name: Notarize
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        TEAM_ID: ${{ secrets.TEAM_ID }}
+        NOTARYTOOL_PASSWORD: ${{ secrets.NOTARYTOOL_PASSWORD }}
+      run: |
+        echo "Notarizing the app"
+        xcrun notarytool submit dist/macOS/Kens-Labyrinth-macOS-Universal.dmg --apple-id $APPLE_ID --team-id $TEAM_ID --password $NOTARYTOOL_PASSWORD --wait > notarization.log
+        echo "Notarization log:"
+        cat notarization.log
+        if grep -q "status: Accepted" notarization.log; then
+          echo "\033[32mNotarization successful"
+          echo "Stapling the ticket to the app"
+          xcrun stapler staple dist/macOS/Kens-Labyrinth-macOS-Universal.dmg
+        else
+          echo "\033[31mNotarization failed"
+          ID=$(grep "id:" notarization.log | sed 's/.*: //' | head -n 1)
+          echo "Notarization log:"
+          xcrun notarytool log ${ID} --apple-id $APPLE_ID --team-id $TEAM_ID --password $NOTARYTOOL_PASSWORD notarization_log.json
+          cat notarization_log.json
+          exit 1
+        fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-macOS-Universal
-        path: dist/macos/Kens-Labyrinth-macOS-Universal.dmg
+        path: dist/macOS/Kens-Labyrinth-macOS-Universal.dmg
         if-no-files-found: error
 
   build_windows:

@@ -136,7 +136,6 @@ else ()
 endif()
 
 set_target_properties(${KEN_EXE_NAME} PROPERTIES LINKER_LANGUAGE C)
-target_compile_definitions(${KEN_EXE_NAME} PUBLIC KEN_64BIT)
 if (ENABLE_HIRES_TEXTURES)
   target_compile_definitions(${KEN_EXE_NAME} PUBLIC ENABLE_HIRES_TEXTURES)
 endif ()
