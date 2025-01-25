@@ -126,6 +126,7 @@ jobs:
 
     - name: Build
       run: |
+        export PATH=${{ github.workspace }}/macports-cache/bin:$PATH
         mkdir -p build
         cd build
         cmake -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=${{ github.workspace }}/macports-cache -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
