@@ -159,7 +159,7 @@ If you plan to build a universal macOS app (meaning the same binary can be run o
 - Run the following command:
 ```
 sudo echo "macosx_deployment_target 12.4" >> /opt/local/etc/macports/macports.conf
-sudo port install libsdl2 libsdl2_image libpng webp jpeg tiff zlib +universal
+sudo port install libsdl2 +universal libsdl2_image +universal libpng +universal webp +universal jpeg +universal tiff +universal zlib +universal
 ```
 
 - In the project root run the following commands:
