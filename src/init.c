@@ -686,8 +686,14 @@ void resetaudio()
     SDL_CloseAudioDevice(audiodevice);
     musicoff();
     configure();
-    free(SoundFile);
-    free(SoundBuffer);
+    if (SoundFile) {
+        free(SoundFile);
+        SoundFile = NULL;
+    }
+    if (SoundBuffer) {
+        free(SoundBuffer);
+        SoundBuffer = NULL;
+    }
     #ifdef WIN32
     // Close sequencer device if it's already open
     if (sequencerdevice != 0)
