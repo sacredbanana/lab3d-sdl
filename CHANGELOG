@@ -2,6 +2,8 @@
 * Added support for ARM64 based systems on Windows
 * Nintendo Switch version rebuilt with latest devkitPro
 * Fix crash when enabling sound if the game was started without sound
+* macOS version now bundles all required libraries so the user doesn't need to install them anymore
+* macOS version now fully codesigned and notarized by Apple so macOS will no longer block the game from launching with a security error about an unknown developer of it being unable to berify it is free from malware
 
 4.1.8: 2024-05-11
 * Fix MIDI music (Windows and Linux)

@@ -46,7 +46,19 @@ void whatsnew420() {
     textprint(30, 58, 96);
 
     strcpy(textbuf, "systems for Windows");
-    textprint(30, 78, 96);
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "Fix crash when enabling sound if the");
+    textprint(30, 88, 96);
+
+    strcpy(textbuf, "game was started without sound");
+    textprint(30, 98, 96);
+
+    strcpy(textbuf, "macOS version bundled with all the");
+    textprint(30, 118, 96);
+
+    strcpy(textbuf, "required libraries and codesigned");
+    textprint(30, 128, 96);
 
     finalisemenu();
     SDL_GL_SwapWindow(mainwindow);
