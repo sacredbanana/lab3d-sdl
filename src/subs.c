@@ -6799,42 +6799,29 @@ void setMesaConfig() {
 // nxlink support
 //-----------------------------------------------------------------------------
 
-static int s_nxlinkSock = -1;
-
-void initNxLink()
-{
-    if (R_FAILED(socketInitializeDefault()))
-        return;
-
-    s_nxlinkSock = nxlinkStdio();
-    if (s_nxlinkSock >= 0)
-        TRACE("printf output now goes to nxlink server");
-    else
-        socketExit();
+void initNxLink() {
+    SocketInitConfig socketConfig;
+    memcpy(&socketConfig, socketGetDefaultInitConfig(), sizeof(SocketInitConfig));
+    socketConfig.sb_efficiency = 8;
+    socketInitialize(&socketConfig);
+    setInitialize();
+    plInitialize(PlServiceType_User);
+    nxlinkStdio();
 }
 
-void deinitNxLink()
-{
-    if (s_nxlinkSock >= 0)
-    {
-        close(s_nxlinkSock);
-        socketExit();
-        s_nxlinkSock = -1;
-    }
+void deinitNxLink() {
+    socketExit();
 }
 
-void userAppInit()
-{
+void userAppInit() {
     initNxLink();
 }
 
-void userAppExit()
-{
+void userAppExit() {
     deinitNxLink();
 }
 
-void getUsername()
-{
+void getUsername() {
     Result rc = 0;
 
     AccountUid userID;
@@ -6886,6 +6873,6 @@ void getUsername()
         }
     }
 
-accountExit();
+    accountExit();
 }
 #endif

@@ -191,10 +191,10 @@ void createshortcut(char* errbuf, int errlen) {
 }
 #endif
 
-static K_INT16 inputdevice=1, window_width=640, window_height=480, nearest=0;
-static K_INT16 music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
-static K_INT16 soundblock=0, timing=0, texturedepth=1, scaling=2;
-static K_INT16 setup_ingame=0;
+static int inputdevice=1, window_width=640, window_height=480, nearest=0;
+static int music=1,sound=1,fullscr=1,cheat=0,channel=1,musicchannel=1;
+static int soundblock=0, timing=0, texturedepth=1, scaling=2;
+static int setup_ingame=0;
 
 static char *keynames[ACTION_LAST]={
     "Move FORWARD",
@@ -519,7 +519,7 @@ static void makeupper(char* txt) {
     while (*txt) { *txt = toupper(*txt); txt++; }
 }
 
-int selectionmenu(int alts,char *titles[], K_INT16 *value, const char* menutitle) {
+int selectionmenu(int alts,char *titles[], int *value, const char* menutitle) {
     selectionMenuStruct.alts = alts;
     selectionMenuStruct.titles = titles;
     selectionMenuStruct.value = value;
@@ -572,7 +572,7 @@ int resolutionmenu(int alts,int start,char titles[][30],int def) {
 int getnumber(void) {
     int ch, uni;
     char buf[10];
-    K_INT16 i,j;
+    int i,j;
 
     for(j=0;j<12;j++)
         textbuf[j] = 8;
@@ -976,7 +976,7 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
 }
 
 void setupsetinput(input_configuration_method* meth) {
-    K_INT16 a=0, quit=0;
+    int a=0, quit=0;
     while (!quit) {
         a = selectionmenu(4,inputgroupsmenu,&a, meth->title);
         switch(a) {
@@ -1001,7 +1001,7 @@ void setupmouseverticalmovement() {
 }
 
 void configuremouse() {
-    K_INT16 a = 0, quit = 0;
+    int a = 0, quit = 0;
     while (!quit) {
         a = selectionmenu(2, configuremousemenu, &a, "Configure mouse");
         switch (a) {
@@ -1016,7 +1016,7 @@ void configuremouse() {
 }
 
 void setupconfigureinput(void) {
-    K_INT16 a=0, quit=0;
+    int a=0, quit=0;
     while (!quit) {
         a = selectionmenu(5,configureinputmenu,&a, "Configure input devices");
         switch(a) {
@@ -1654,6 +1654,7 @@ void loadsettings(void) {
             newformat = 1;
             cursection = sections;
             while (1) {
+                printf("Cursection: %s\n", cursection->name);
                 if (!cursection->name) {
                     fprintf(stderr, "%s:%d: Invalid config section: %s", "settings.ini", curline, key);
                     return;
@@ -1668,6 +1669,7 @@ void loadsettings(void) {
             }
             cursetting = cursection->settings;
             while (1) {
+                printf("Cursetting: %s\n", cursetting->name);
                 if (!cursetting->name) {
                     fprintf(stderr, "%s:%d: Unknown config setting in section %s: %s", "settings.ini", curline, cursection->name, key);
                 }
@@ -1723,8 +1725,8 @@ void savesettings(void) {
 }
 
 void setup(void) {
-    K_INT16 i, j, k, walcounter;
-    K_UINT16 l;
+    int i, j, k, walcounter;
+    unsigned int l;
     unsigned char *v;
     SDL_Surface *icon;
     SDL_Rect displaybounds;

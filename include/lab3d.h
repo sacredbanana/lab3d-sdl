@@ -424,7 +424,7 @@ EXTERN K_UINT16 drawStackTopIndex;
 EXTERN struct {
     int alts;
     char** titles;
-    K_INT16* value;
+    int* value;
     const char* menutitle;
 } selectionMenuStruct;
 
@@ -517,8 +517,8 @@ EXTERN unsigned char gamehead[8][27], gamexist[8];
 EXTERN K_INT16 legacyload;
 EXTERN char gameroot[512], filepath[1024], filepathUpper[512];
 EXTERN K_INT16 texturecreationneeded;
-EXTERN K_INT16 stereo;
-EXTERN K_INT16 mouseverticalmovement;
+EXTERN int stereo;
+EXTERN int mouseverticalmovement;
 
 /* SDL timer... */
 

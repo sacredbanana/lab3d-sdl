@@ -52,7 +52,7 @@ ICON		:= icons/ken_icon_switch.jpg
 
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	-Wall -O2 -ffunction-sections `sdl2-config --cflags` `freetype-config --cflags` \
+CFLAGS	:=	-Wall -O2 -ffunction-sections `$(PREFIX)pkg-config --cflags sdl2 SDL2_image` \
 			$(ARCH) $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -DENABLE_NXLINK -DENABLE_HIRES_TEXTURES
@@ -62,7 +62,8 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS    := `aarch64-none-elf-pkg-config SDL2_image --libs`
+LIBS    := `$(PREFIX)pkg-config --libs sdl2 SDL2_image` -lglad -lglapi -ldrm_nouveau -lnx
+
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
