@@ -120,7 +120,7 @@ jobs:
         sudo make install
         make distclean
         sudo ${{ github.workspace }}/macports-cache/bin/port selfupdate
-        sudo ${{ github.workspace }}/macports-cache/bin/port -d archive cmake
+        sudo ${{ github.workspace }}/macports-cache/bin/port install cmake
         echo "macosx_deployment_target 12.4" | sudo tee -a ${{ github.workspace }}/macports-cache/etc/macports/macports.conf > /dev/null
         # For some reason, the following command fails if you include libsdl2 in the list with "Error: Unable to execute port libsdl2: libiconv does not have a subport 'libsdl2'"
         # It's not a problem because libsdl2 is already a dependency of libsdl2_image so it will be installed anyway
