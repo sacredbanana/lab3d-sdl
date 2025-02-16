@@ -120,7 +120,8 @@ jobs:
         sudo make install
         make distclean
         sudo ${{ github.workspace }}/macports-cache/bin/port selfupdate
-        sudo ${{ github.workspace }}/macports-cache/bin/port install cmake
+        cd ..
+        sudo ${{ github.workspace }}/macports-cache/bin/port -d archive cmake
         echo "macosx_deployment_target 12.4" | sudo tee -a ${{ github.workspace }}/macports-cache/etc/macports/macports.conf > /dev/null
         sudo ${{ github.workspace }}/macports-cache/bin/port install libsdl2 +universal libsdl2_image +universal libpng +universal webp +universal jpeg +universal tiff +universal zlib +universal
 
