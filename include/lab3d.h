@@ -865,7 +865,7 @@ EXTERN SDL_GLContext* maincontext;
 void DumpSound(unsigned char* sound, K_UINT16 leng, K_UINT32 playpoint, int pos);
 void AudioCallback(void* userdata, Uint8* stream, int len);
 void TextureConvert(unsigned char* from, unsigned char* to, K_INT16 type);
-Uint16 getkeypress();
+Uint16 getkeypress(int* key);
 void drawtooverlay(K_UINT16 picx, K_UINT16 picy, int w,
     int h, int x, int y, K_INT16 walnum,
     unsigned char coloff);
