@@ -390,7 +390,7 @@ if (UNIX AND NOT APPLE)
     DESTINATION share/applications
   )
   
-  # Add icon for desktop entry (use higher resolution PNG)
+  # Add icon for desktop entry
   install(FILES "${ICONS_DIR}/ken-128.png"
     DESTINATION share/pixmaps
     RENAME lab3d-sdl.png
