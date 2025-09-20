@@ -169,7 +169,7 @@ jobs:
         export CMAKE_PREFIX_PATH="/opt/local"
         mkdir -p build
         cd build
-        cmake -G Xcode -DCMAKE_PREFIX_PATH=/opt/local -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
+        cmake --debug-find -G Xcode -DCMAKE_PREFIX_PATH=/opt/local -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
         cmake --build . --config Release
         brew install create-dmg
         create-dmg ../dist/macOS/Kens-Labyrinth-macOS-Universal.dmg ../dist/macOS/
