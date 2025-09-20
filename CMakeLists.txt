@@ -396,6 +396,5 @@ if (UNIX AND NOT APPLE)
     RENAME lab3d-sdl.png
   )
   
-  # Include CPack module at the end
   include(CPack)
 endif () 

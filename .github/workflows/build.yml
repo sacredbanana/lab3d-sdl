@@ -139,7 +139,7 @@ jobs:
       id: cache-dependencies
       uses: actions/cache@v4
       with:
-        path: macports-cache
+        path: /opt/local
         key: ${{ runner.os }}-dependencies-${{ hashFiles('**/CMakeLists.txt') }}
 
     - name: Install dependencies
@@ -155,21 +155,20 @@ jobs:
         make
         sudo make install
         make distclean
-        sudo /opt/local/bin/port -v selfupdate
-        sudo /opt/local/bin/port install cmake
+        export PATH=/opt/local/bin:$PATH
+        sudo port -v selfupdate
+        sudo port install cmake
         echo "macosx_deployment_target 12.4" | sudo tee -a /opt/local/etc/macports/macports.conf > /dev/null
         # For some reason, the following command fails if you include libsdl2 in the list with "Error: Unable to execute port libsdl2: libiconv does not have a subport 'libsdl2'"
         # It's not a problem because libsdl2 is already a dependency of libsdl2_image so it will be installed anyway
-        sudo /opt/local/bin/port install libsdl2_image +universal libpng +universal webp +universal jpeg +universal tiff +universal zlib +universal
+        sudo port install libsdl2_image +universal libpng +universal webp +universal jpeg +universal tiff +universal zlib +universal
 
     - name: Build
       run: |
         export PATH=/opt/local/bin:$PATH
-        export PKG_CONFIG_PATH="/opt/local/lib/pkgconfig"
-        export CMAKE_PREFIX_PATH="/opt/local"
         mkdir -p build
         cd build
-        cmake --debug-find -G Xcode -DCMAKE_PREFIX_PATH=/opt/local -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH=ON -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
+        cmake -G Xcode -DCMAKE_PREFIX_PATH=/opt/local -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
         cmake --build . --config Release
         brew install create-dmg
         create-dmg ../dist/macOS/Kens-Labyrinth-macOS-Universal.dmg ../dist/macOS/
