@@ -217,9 +217,19 @@ void initvideo()
 
     SDL_ShowCursor(0);
 
+    // Try to load icon from multiple locations
     icon = SDL_LoadBMP("ken.bmp");
     if (icon == NULL) {
-        fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
+#if defined(__unix__) && !defined(__APPLE__)
+        // Try system installation paths
+        icon = SDL_LoadBMP("/usr/local/share/ken/ken.bmp");
+        if (icon == NULL) {
+            icon = SDL_LoadBMP("/usr/share/ken/ken.bmp");
+        }
+#endif
+        if (icon == NULL) {
+            fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
+        }
     }
 
     fprintf(stderr,"Activating video...\n");
@@ -627,8 +637,32 @@ void initgameversion()
     // Check if the gamedata directory exists
     const char* directory = "gamedata";
     struct stat sb;
+    int found_gamedata = 0;
 
+    // First check local directory
     if (isapple || (stat(directory, &sb) == 0 && S_ISDIR(sb.st_mode))) {
+        found_gamedata = 1;
+    }
+    
+#if defined(__unix__) && !defined(__APPLE__)
+    // If not found locally on Linux, check system installation path
+    if (!found_gamedata) {
+        const char* system_gamedata = "/usr/local/share/ken/gamedata";
+        if (stat(system_gamedata, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+            sprintf(gameroot, "/usr/local/share/ken/");
+            found_gamedata = 1;
+        } else {
+            // Also try /usr/share/ken/gamedata
+            system_gamedata = "/usr/share/ken/gamedata";
+            if (stat(system_gamedata, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+                sprintf(gameroot, "/usr/share/ken/");
+                found_gamedata = 1;
+            }
+        }
+    }
+#endif
+
+    if (found_gamedata) {
         legacyload = 0;
         switch (lab3dversion) {
             case KENS_LABYRINTH_1_0:

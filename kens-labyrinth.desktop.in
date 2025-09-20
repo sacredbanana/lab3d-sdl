@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Ken's Labyrinth (lab3d-sdl)
+Comment=Modern port of the MS-DOS classic 3D Adventure Game
+Exec=ken
+Icon=lab3d-sdl
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=game;3d;adventure;labyrinth;retro;
+StartupNotify=true

@@ -164,14 +164,15 @@ if (WIN32)
   target_link_libraries(${KEN_EXE_NAME} winmm)
   set_target_properties(${KEN_EXE_NAME} PROPERTIES LINK_FLAGS "/NODEFAULTLIB:library")
 elseif (UNIX AND NOT APPLE)
-  find_package(SDL2 REQUIRED)
-  find_package(SDL2_image REQUIRED)
   target_link_libraries(${KEN_EXE_NAME} GL)
   target_link_libraries(${KEN_EXE_NAME} GLU)
   target_link_libraries(${KEN_EXE_NAME} m)
   target_link_libraries(${KEN_EXE_NAME} z)
-  target_link_libraries(${KEN_EXE_NAME} SDL2::SDL2-static)
-  target_link_libraries(${KEN_EXE_NAME} SDL2_image::SDL2_image-static)
+  find_library(SDL2 libSDL2.so)
+  find_library(SDL2_IMAGE libSDL2_image.so)
+  target_link_libraries(${KEN_EXE_NAME} ${SDL2})
+  target_link_libraries(${KEN_EXE_NAME} ${SDL2_IMAGE})
+  target_include_directories(${KEN_EXE_NAME} PRIVATE ${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
   target_compile_options(${KEN_EXE_NAME} PUBLIC -O3 -Wall)
   if (KEN_USE_OSS)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
@@ -328,4 +329,79 @@ if (NOT APPLE)
   file(COPY ${CMAKE_SOURCE_DIR}/gamedata DESTINATION ${DIST_DIR})
   file(COPY ${ICONS_DIR}/ken.bmp DESTINATION ${DIST_DIR})
   file(COPY ${CMAKE_SOURCE_DIR}/ksmmidi.txt DESTINATION ${DIST_DIR})
+endif ()
+
+# Linux installation configuration
+if (UNIX AND NOT APPLE)
+  # Install the executable
+  install(TARGETS ${KEN_EXE_NAME}
+    RUNTIME DESTINATION bin
+  )
+  
+  # Install game data files
+  install(DIRECTORY ${CMAKE_SOURCE_DIR}/gamedata/
+    DESTINATION share/ken/gamedata
+    FILES_MATCHING 
+    PATTERN "*"
+  )
+  
+  # Install additional files
+  install(FILES 
+    ${ICONS_DIR}/ken.bmp
+    ${CMAKE_SOURCE_DIR}/ksmmidi.txt
+    DESTINATION share/ken
+  )
+  
+  # Install settings file as example
+  install(FILES ${CMAKE_SOURCE_DIR}/settings.ini
+    DESTINATION share/ken
+    RENAME settings.ini.example
+  )
+endif ()
+
+# CPack configuration for creating .deb packages
+if (UNIX AND NOT APPLE)
+  # Basic package information
+  set(CPACK_PACKAGE_NAME "lab3d-sdl")
+  set(CPACK_PACKAGE_VENDOR "Minotaur Creative")
+  set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Ken's Labyrinth - Classic 3D Adventure Game")
+  set(CPACK_PACKAGE_DESCRIPTION "Ken's Labyrinth is a classic first-person 3D adventure game originally created by Ken Silverman. This is a modern SDL2 port that runs on current systems.")
+  set(CPACK_PACKAGE_VERSION_MAJOR ${LAB3D_VERSION_MAJOR})
+  set(CPACK_PACKAGE_VERSION_MINOR ${LAB3D_VERSION_MINOR})
+  set(CPACK_PACKAGE_VERSION_PATCH ${LAB3D_VERSION_PATCH})
+  set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+  set(CPACK_PACKAGE_CONTACT "cameronscottarmstrong@gmail.com")
+  set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/sacredbanana/lab3d-sdl")
+  
+  # Debian-specific settings
+  set(CPACK_GENERATOR "DEB")
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Cameron Armstrong <cameronscottarmstrong@gmail.com>")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "games")
+  set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "libsdl2-2.0-0, libsdl2-image-2.0-0, libgl1-mesa-glx, libglu1-mesa")
+  set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "")
+  set(CPACK_DEBIAN_PACKAGE_SUGGESTS "")
+  set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+  
+  # Package file naming
+  set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${CPACK_PACKAGE_VERSION}_${CMAKE_SYSTEM_PROCESSOR}")
+  
+  # Add desktop entry
+  configure_file(
+    "${CMAKE_SOURCE_DIR}/kens-labyrinth.desktop.in"
+    "${CMAKE_BINARY_DIR}/kens-labyrinth.desktop"
+    @ONLY
+  )
+  install(FILES "${CMAKE_BINARY_DIR}/kens-labyrinth.desktop"
+    DESTINATION share/applications
+  )
+  
+  # Add icon for desktop entry (use higher resolution PNG)
+  install(FILES "${ICONS_DIR}/ken-128.png"
+    DESTINATION share/pixmaps
+    RENAME lab3d-sdl.png
+  )
+  
+  # Include CPack module at the end
+  include(CPack)
 endif () 

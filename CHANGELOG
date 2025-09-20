@@ -1,3 +1,7 @@
+4.2.1: 2025-09-20
+* Linux installation now done in the proper way via "make install"
+* Make now also produces a .deb file
+
 4.2.0: 2025-02-16
 * Added support for ARM64 based systems on Windows
 * Nintendo Switch version rebuilt with latest devkitPro

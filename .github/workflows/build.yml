@@ -53,6 +53,59 @@ jobs:
         path: dist/linux_ppc64le/kens-labyrinth-linux-ppc64le.tar.gz
         if-no-files-found: error
 
+  build_linux_deb:
+    name: Build Debian packages for Linux
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up QEMU for cross-compilation
+      if: matrix.arch == 'arm64'
+      uses: docker/setup-qemu-action@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libsdl2-dev libsdl2-image-dev libgl1-mesa-dev libglu1-mesa-dev imagemagick
+
+    - name: Set up cross-compilation for ARM64
+      if: matrix.arch == 'arm64'
+      run: |
+        sudo dpkg --add-architecture arm64
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu pkg-config-aarch64-linux-gnu
+        echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+        echo "CXX=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+        sudo apt-get install -y libsdl2-dev:arm64 libsdl2-image-dev:arm64 libgl1-mesa-dev:arm64 libglu1-mesa-dev:arm64
+
+    - name: Build and create .deb package
+      run: |
+        mkdir -p build
+        cd build
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
+          cmake -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+                -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+                -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+                -DPKG_CONFIG_EXECUTABLE=/usr/bin/aarch64-linux-gnu-pkg-config ..
+        else
+          cmake ..
+        fi
+        make -j$(nproc)
+        cpack -G DEB
+        ls -la *.deb
+
+    - name: Upload .deb package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: lab3d-sdl-deb-${{ matrix.arch }}
+        path: build/*.deb
+        if-no-files-found: error
+
   build_nintendo_switch:
     name: Build for Nintendo Switch
     runs-on: ubuntu-latest

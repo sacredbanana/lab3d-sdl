@@ -35,6 +35,27 @@ static void draw_gamelaunchermenu(void) {
     finalisemenu();
 }
 
+void whatsnew421() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.2.1 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Added support for Linux installation");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "via 'make install'");
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "Make now also produces a .deb file");
+    textprint(30, 88, 96);
+
+    finalisemenu();
+    SDL_GL_SwapWindow(mainwindow);
+    pressakey();
+}
+
 void whatsnew420() {
     drawmenu(320, 172, menu);
 
@@ -503,6 +524,7 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
+                    whatsnew421();
                     whatsnew420();
                     whatsnew418();
                     whatsnew417();

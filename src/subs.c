@@ -2822,7 +2822,19 @@ K_INT16 loadmusic(char *filename)
         {
             /* Open KSM->MIDI instrument translation table... */
             sprintf(filepath, "%sksmmidi.txt", gameroot);
-            file = fopen("ksmmidi.txt", "rt");
+            file = fopen(filepath, "rt");
+            if (file == NULL) {
+                file = fopen("ksmmidi.txt", "rt");
+            }
+#if defined(__unix__) && !defined(__APPLE__)
+            // Try system installation paths if not found
+            if (file == NULL) {
+                file = fopen("/usr/local/share/ken/ksmmidi.txt", "rt");
+                if (file == NULL) {
+                    file = fopen("/usr/share/ken/ksmmidi.txt", "rt");
+                }
+            }
+#endif
             if (file==NULL) {
                 fprintf(stderr, "ksmmidi.txt not found; music disabled.\n");
                 musicsource = MUSIC_SOURCE_NONE;

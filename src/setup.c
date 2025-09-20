@@ -1614,7 +1614,28 @@ void loadsettings(void) {
     CFRelease(filePathRef);
     CFRelease(appUrlRef);
     #else
+    // Try local settings.ini first
     input = fopen("settings.ini", "r");
+    
+    #if defined(__unix__) && !defined(__APPLE__)
+    // If not found locally on Linux, try user's home directory
+    if (input == NULL) {
+        const char* home = getenv("HOME");
+        if (home) {
+            char home_settings[512];
+            snprintf(home_settings, sizeof(home_settings), "%s/.config/ken/settings.ini", home);
+            input = fopen(home_settings, "r");
+        }
+    }
+    
+    // If still not found, try system installation paths
+    if (input == NULL) {
+        input = fopen("/usr/local/share/ken/settings.ini.example", "r");
+        if (input == NULL) {
+            input = fopen("/usr/share/ken/settings.ini.example", "r");
+        }
+    }
+    #endif
     #endif
 
     setting_section_t* cursection = NULL;
@@ -1762,9 +1783,19 @@ void setup(void) {
         screenwidth=360; screenheight=240;
     }
 
+    // Try to load icon from multiple locations
     icon = SDL_LoadBMP("ken.bmp");
     if (icon == NULL) {
-        fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
+#if defined(__unix__) && !defined(__APPLE__)
+        // Try system installation paths
+        icon = SDL_LoadBMP("/usr/local/share/ken/ken.bmp");
+        if (icon == NULL) {
+            icon = SDL_LoadBMP("/usr/share/ken/ken.bmp");
+        }
+#endif
+        if (icon == NULL) {
+            fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
+        }
     }
 
     if (mainwindow != NULL)
