@@ -173,8 +173,6 @@ jobs:
         make
         sudo make install
         make distclean
-        sudo chown -R $USER ports
-        sudo chmod -R +rwx ports
         sudo /opt/local/bin/port -v selfupdate
         sudo /opt/local/bin/port install cmake
         echo "macosx_deployment_target 12.4" | sudo tee -a /opt/local/etc/macports/macports.conf > /dev/null
