@@ -351,12 +351,6 @@ if (UNIX AND NOT APPLE)
     ${CMAKE_SOURCE_DIR}/ksmmidi.txt
     DESTINATION share/ken
   )
-  
-  # Install settings file as example
-  install(FILES ${CMAKE_SOURCE_DIR}/settings.ini
-    DESTINATION share/ken
-    RENAME settings.ini.example
-  )
 endif ()
 
 # CPack configuration for creating .deb packages
