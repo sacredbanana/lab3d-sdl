@@ -165,6 +165,8 @@ jobs:
     - name: Build
       run: |
         export PATH=/opt/local/bin:$PATH
+        export PKG_CONFIG_PATH="/opt/local/lib/pkgconfig"
+        export CMAKE_PREFIX_PATH="/opt/local"
         mkdir -p build
         cd build
         cmake -G Xcode -DCMAKE_PREFIX_PATH=/opt/local -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY="Developer ID Application" ..
