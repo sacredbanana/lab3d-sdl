@@ -172,7 +172,7 @@ jobs:
         make
         sudo make install
         make distclean
-        sudo chown -R $USER:$USER ports
+        sudo chown -R $USER ports
         sudo chmod -R +rwx ports
         sudo ${{ github.workspace }}/macports-cache/bin/port -v selfupdate
         sudo ${{ github.workspace }}/macports-cache/bin/port install cmake
