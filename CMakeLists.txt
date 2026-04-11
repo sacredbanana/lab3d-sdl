@@ -41,7 +41,7 @@ if (APPLE)
   set(MACOSX_SHORT_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_LONG_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
   set(MACOSX_BUNDLE_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
-  set(MACOSX_INFO_STRING "Copyright © 2025. All rights reserved.")
+  set(MACOSX_INFO_STRING "Copyright © 2026. All rights reserved.")
   set(MACOSX_BUNDLE_ICON_FILE ken.icns)
   set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "2W56SCHJ6N" CACHE STRING "Apple Developer Team ID")
   set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application" CACHE STRING "Apple Developer Code Sign Identity")
@@ -179,7 +179,7 @@ elseif (UNIX AND NOT APPLE)
   endif ()
 elseif (APPLE)
   include_directories( ${ZLIB_INCLUDE_DIRS} )
-  find_package(OpenGL REQUIRED)
+  find_library(OPENGL_FRAMEWORK OpenGL REQUIRED)
   find_library(MLIB m)
   find_library(ZLIB libz.1.dylib)
   find_library(ZLIBSTD libzstd.1.dylib)
@@ -195,10 +195,13 @@ elseif (APPLE)
   find_library(SHARPYUV libsharpyuv.0.dylib)
   find_library(CoreFoundation CoreFoundation)
   target_include_directories(${KEN_EXE_NAME} PUBLIC /opt/X11/include)
-  target_link_libraries(${KEN_EXE_NAME} PRIVATE ${SDL2} ${OPENGL_LIBRARIES} ${TIFF} ${LERC} ${ZLIBSTD} ${LZMA} ${JPEG} ${DEFLATE} ${WEBPDEMUX} ${WEBP} ${SHARPYUV} ${SDL2_IMAGE} ${MLIB} ${CoreFoundation} ${ZLIB})  
+  target_link_libraries(${KEN_EXE_NAME} PRIVATE ${SDL2} ${OPENGL_FRAMEWORK} ${TIFF} ${LERC} ${ZLIBSTD} ${LZMA} ${JPEG} ${DEFLATE} ${WEBPDEMUX} ${WEBP} ${SHARPYUV} ${SDL2_IMAGE} ${MLIB} ${CoreFoundation} ${ZLIB})
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
   message(STATUS "CMAKE_INSTALL_PREFIX: ${ZLIB_LIBRARIES}")
-  set_property(TARGET ${KEN_EXE_NAME} PROPERTY XCODE_EMBED_FRAMEWORKS 
+  set(MACOS_FRAMEWORKS_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/Frameworks")
+  set(MACOS_APP_BINARY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}")
+  set(MACOS_CODESIGN_IDENTITY "$ENV{CODE_SIGN_IDENTITY}")
+  set(MACOS_BUNDLED_DYLIBS
     ${SDL2}
     ${SDL2_IMAGE}
     ${ZLIB}
@@ -212,6 +215,8 @@ elseif (APPLE)
     ${WEBP}
     ${SHARPYUV}
   )
+
+  set_property(TARGET ${KEN_EXE_NAME} PROPERTY XCODE_EMBED_FRAMEWORKS ${MACOS_BUNDLED_DYLIBS})
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${SDL2}
@@ -284,15 +289,63 @@ elseif (APPLE)
         @executable_path/../Frameworks/libsharpyuv.0.dylib
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
   )
+  add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${MACOS_FRAMEWORKS_DIR}
+  )
+  foreach (MACOS_BUNDLED_DYLIB ${MACOS_BUNDLED_DYLIBS})
+    get_filename_component(MACOS_BUNDLED_DYLIB_NAME "${MACOS_BUNDLED_DYLIB}" NAME)
+    add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+          "${MACOS_BUNDLED_DYLIB}"
+          "${MACOS_FRAMEWORKS_DIR}/${MACOS_BUNDLED_DYLIB_NAME}"
+      COMMAND install_name_tool
+          -id "@executable_path/../Frameworks/${MACOS_BUNDLED_DYLIB_NAME}"
+          "${MACOS_FRAMEWORKS_DIR}/${MACOS_BUNDLED_DYLIB_NAME}"
+    )
+    foreach (MACOS_BUNDLED_DEP ${MACOS_BUNDLED_DYLIBS})
+      if (NOT MACOS_BUNDLED_DEP STREQUAL MACOS_BUNDLED_DYLIB)
+        get_filename_component(MACOS_BUNDLED_DEP_NAME "${MACOS_BUNDLED_DEP}" NAME)
+        add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+          COMMAND install_name_tool
+              -change "${MACOS_BUNDLED_DEP}"
+              "@loader_path/${MACOS_BUNDLED_DEP_NAME}"
+              "${MACOS_FRAMEWORKS_DIR}/${MACOS_BUNDLED_DYLIB_NAME}"
+        )
+      endif ()
+    endforeach ()
+    if (MACOS_CODESIGN_IDENTITY)
+      add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+        COMMAND codesign
+            --force
+            --timestamp
+            --options runtime
+            --sign "${MACOS_CODESIGN_IDENTITY}"
+            "${MACOS_FRAMEWORKS_DIR}/${MACOS_BUNDLED_DYLIB_NAME}"
+      )
+    endif ()
+  endforeach ()
+  if (MACOS_CODESIGN_IDENTITY)
+    add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
+      COMMAND codesign
+          --force
+          --timestamp
+          --options runtime
+          --deep
+          --sign "${MACOS_CODESIGN_IDENTITY}"
+          "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app"
+    )
+  endif ()
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
     XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH[variant=Debug] YES
     XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/../Frameworks"
     XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/macOS"
     XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
+    XCODE_ATTRIBUTE_ENABLE_LIBRARY_VALIDATION NO
     XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=Release] "--options=runtime --timestamp"
     XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=RelWithDebInfo] "--options=runtime --timestamp"
     XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=Release] NO
 		XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=RelWithDebInfo] NO
+    XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ""
     XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY YES
     XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY YES
     BUNDLE TRUE
