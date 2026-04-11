@@ -172,13 +172,13 @@ Now choose a build method:
 
 - Simple build
 ```
-cmake ..
+cmake -DCMAKE_PREFIX_PATH=/opt/local ..
 cmake --build . --config Release
 ```
 
 - Build via Xcode (recommended if you want to properly customise the build for code signing etc):
 ```
-cmake -G Xcode ..
+cmake -G Xcode -DCMAKE_PREFIX_PATH=/opt/local ..
 cmake --build . --config Release
 ```
 Then open the project in Xcode and build it.
