@@ -27,7 +27,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${DIST_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${DIST_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${DIST_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${DIST_DIR})
-
 set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
 
 if (APPLE)
@@ -35,19 +34,50 @@ if (APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "12.4" CACHE STRING "Minimum macOS deployment version")
   set(CMAKE_C_COMPILER clang)
   set(CMAKE_FIND_FRAMEWORK LAST)
-  set(MACOSX_BUNDLE_GUI_IDENTIFIER "net.minotaurcreative.${KEN_EXE_NAME}")
-  set(MACOSX_BUNDLE_NAME ${KEN_EXE_NAME})
-  set(MACOSX_INFO_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
-  set(MACOSX_SHORT_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
-  set(MACOSX_LONG_VERSION_STRING "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
-  set(MACOSX_BUNDLE_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
-  set(MACOSX_INFO_STRING "Copyright © 2026. All rights reserved.")
-  set(MACOSX_BUNDLE_ICON_FILE ken.icns)
+  if (CMAKE_GENERATOR STREQUAL "Xcode")
+    set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "Xcode configuration types" FORCE)
+  endif ()
+  set(MACOS_DISTRIBUTION "developer-id" CACHE STRING "macOS distribution mode")
+  set_property(CACHE MACOS_DISTRIBUTION PROPERTY STRINGS "developer-id" "app-store")
+  if (MACOS_DISTRIBUTION STREQUAL "app-store")
+    set(MACOS_DEFAULT_CODE_SIGN_IDENTITY "Apple Distribution")
+    set(MACOS_DEFAULT_CODE_SIGN_STYLE "Manual")
+    set(MACOS_ENABLE_HARDENED_RUNTIME NO)
+    set(MACOS_OTHER_CODE_SIGN_FLAGS "")
+    set(MACOS_CODE_SIGN_ENTITLEMENTS "${CMAKE_SOURCE_DIR}/macos/AppStore.entitlements")
+    set(MACOS_CODESIGN_EXTRA_ARGS --timestamp)
+  else ()
+    set(MACOS_DEFAULT_CODE_SIGN_IDENTITY "Developer ID Application")
+    set(MACOS_DEFAULT_CODE_SIGN_STYLE "Manual")
+    set(MACOS_ENABLE_HARDENED_RUNTIME YES)
+    set(MACOS_OTHER_CODE_SIGN_FLAGS "--options=runtime --timestamp")
+    set(MACOS_CODE_SIGN_ENTITLEMENTS "")
+    set(MACOS_CODESIGN_EXTRA_ARGS --timestamp --options runtime)
+  endif ()
+  set(MACOS_APP_BUNDLE_IDENTIFIER "net.minotaurcreative.${KEN_EXE_NAME}")
+  set(MACOS_APP_NAME "${KEN_EXE_NAME}")
+  set(MACOS_APP_EXECUTABLE "${KEN_EXE_NAME}")
+  set(MACOS_APP_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
+  set(MACOS_APP_INFO_STRING "Copyright 2026. All rights reserved.")
+  set(MACOS_APP_ICON_FILE "ken.icns")
+  set(MACOS_APP_CATEGORY "public.app-category.games")
+  set(MACOSX_BUNDLE_GUI_IDENTIFIER "${MACOS_APP_BUNDLE_IDENTIFIER}")
+  set(MACOSX_BUNDLE_NAME "${MACOS_APP_NAME}")
+  set(MACOSX_INFO_STRING "${MACOS_APP_INFO_STRING}")
+  set(MACOSX_SHORT_VERSION_STRING "${MACOS_APP_VERSION}")
+  set(MACOSX_LONG_VERSION_STRING "${MACOS_APP_VERSION}")
+  set(MACOSX_BUNDLE_VERSION "${MACOS_APP_VERSION}")
+  set(MACOSX_BUNDLE_ICON_FILE "${MACOS_APP_ICON_FILE}")
   set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "2W56SCHJ6N" CACHE STRING "Apple Developer Team ID")
-  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application" CACHE STRING "Apple Developer Code Sign Identity")
-  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual")
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${MACOS_DEFAULT_CODE_SIGN_IDENTITY}" CACHE STRING "Apple Developer Code Sign Identity" FORCE)
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${MACOS_DEFAULT_CODE_SIGN_STYLE}" CACHE STRING "Apple Developer Code Sign Style" FORCE)
   set(APP_ICON_MACOSX ${ICONS_DIR}/ken.icns)
   set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+  configure_file(
+    "${CMAKE_SOURCE_DIR}/macos/Info.plist.in"
+    "${CMAKE_BINARY_DIR}/macos/Info.plist"
+    @ONLY
+  )
 endif ()
 
 project(lab3d-sdl)
@@ -136,6 +166,18 @@ else ()
 endif()
 
 set_target_properties(${KEN_EXE_NAME} PROPERTIES LINKER_LANGUAGE C)
+if (APPLE)
+  set_target_properties(${KEN_EXE_NAME} PROPERTIES
+    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/macos/Info.plist"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "${MACOSX_BUNDLE_GUI_IDENTIFIER}"
+    MACOSX_BUNDLE_BUNDLE_NAME "${MACOSX_BUNDLE_NAME}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${MACOSX_BUNDLE_VERSION}"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${MACOSX_SHORT_VERSION_STRING}"
+    MACOSX_BUNDLE_LONG_VERSION_STRING "${MACOSX_LONG_VERSION_STRING}"
+    MACOSX_BUNDLE_INFO_STRING "${MACOSX_INFO_STRING}"
+    MACOSX_BUNDLE_COPYRIGHT "Copyright 2026. All rights reserved."
+  )
+endif ()
 if (ENABLE_HIRES_TEXTURES)
   target_compile_definitions(${KEN_EXE_NAME} PUBLIC ENABLE_HIRES_TEXTURES)
 endif ()
@@ -220,9 +262,13 @@ elseif (APPLE)
   target_link_libraries(${KEN_EXE_NAME} PRIVATE ${SDL2} ${OPENGL_FRAMEWORK} ${TIFF} ${LERC} ${ZLIBSTD} ${LZMA} ${JPEG} ${DEFLATE} ${WEBPDEMUX} ${WEBP} ${SHARPYUV} ${SDL2_IMAGE} ${MLIB} ${CoreFoundation} ${ZLIB})
   set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/${KEN_EXE_NAME}.app/Contents")
   message(STATUS "CMAKE_INSTALL_PREFIX: ${ZLIB_LIBRARIES}")
-  set(MACOS_FRAMEWORKS_DIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/Frameworks")
-  set(MACOS_APP_BINARY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}")
+  set(MACOS_FRAMEWORKS_DIR "$<TARGET_FILE_DIR:${KEN_EXE_NAME}>/../Frameworks")
+  set(MACOS_APP_BINARY "$<TARGET_FILE:${KEN_EXE_NAME}>")
+  set(MACOS_APP_BUNDLE "$<TARGET_BUNDLE_DIR:${KEN_EXE_NAME}>")
   set(MACOS_CODESIGN_IDENTITY "$ENV{CODE_SIGN_IDENTITY}")
+  if (NOT MACOS_CODESIGN_IDENTITY AND CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE STREQUAL "Automatic")
+    set(MACOS_CODESIGN_IDENTITY "$EXPANDED_CODE_SIGN_IDENTITY")
+  endif ()
   if (NOT MACOS_CODESIGN_IDENTITY AND CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY)
     set(MACOS_CODESIGN_IDENTITY "${CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY}")
   endif ()
@@ -246,76 +292,81 @@ elseif (APPLE)
     COMMAND install_name_tool
         -change ${SDL2}
         @executable_path/../Frameworks/libSDL2-2.0.0.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
  )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${SDL2_IMAGE}
         @executable_path/../Frameworks/libSDL2_image-2.0.0.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${ZLIB}
         @executable_path/../Frameworks/libz.1.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${TIFF}
         @executable_path/../Frameworks/libtiff.6.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${ZLIBSTD}
         @executable_path/../Frameworks/libzstd.1.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${LZMA}
         @executable_path/../Frameworks/liblzma.5.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${LERC}
         @executable_path/../Frameworks/libLerc.4.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${JPEG}
         @executable_path/../Frameworks/libjpeg.8.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${DEFLATE}
         @executable_path/../Frameworks/libdeflate.0.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${WEBPDEMUX}
         @executable_path/../Frameworks/libwebpdemux.2.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${WEBP}
         @executable_path/../Frameworks/libwebp.7.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND install_name_tool
         -change ${SHARPYUV}
         @executable_path/../Frameworks/libsharpyuv.0.dylib
-        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app/Contents/MacOS/${KEN_EXE_NAME}
+        "${MACOS_APP_BINARY}"
   )
   add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${MACOS_FRAMEWORKS_DIR}
+  )
+  add_custom_command(TARGET ${KEN_EXE_NAME} PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_BINARY_DIR}/build"
+    COMMAND xattr -w com.apple.xcode.CreatedByBuildSystem true "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}"
+    COMMAND xattr -w com.apple.xcode.CreatedByBuildSystem true "${PROJECT_BINARY_DIR}/build"
   )
   foreach (MACOS_BUNDLED_DYLIB ${MACOS_BUNDLED_DYLIBS})
     get_filename_component(MACOS_BUNDLED_DYLIB_NAME "${MACOS_BUNDLED_DYLIB}" NAME)
@@ -338,44 +389,59 @@ elseif (APPLE)
         )
       endif ()
     endforeach ()
-    if (MACOS_CODESIGN_IDENTITY)
+    if (MACOS_CODESIGN_IDENTITY AND NOT CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE STREQUAL "Automatic")
       add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
         COMMAND codesign
             --force
-            --timestamp
-            --options runtime
+            ${MACOS_CODESIGN_EXTRA_ARGS}
             --sign "${MACOS_CODESIGN_IDENTITY}"
             "${MACOS_FRAMEWORKS_DIR}/${MACOS_BUNDLED_DYLIB_NAME}"
       )
     endif ()
   endforeach ()
-  if (MACOS_CODESIGN_IDENTITY)
+  if (MACOS_CODESIGN_IDENTITY AND NOT CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE STREQUAL "Automatic")
     add_custom_command(TARGET ${KEN_EXE_NAME} POST_BUILD
       COMMAND codesign
           --force
-          --timestamp
-          --options runtime
+          ${MACOS_CODESIGN_EXTRA_ARGS}
           --deep
           --sign "${MACOS_CODESIGN_IDENTITY}"
-          "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${KEN_EXE_NAME}.app"
+          "${MACOS_APP_BUNDLE}"
     )
   endif ()
   set_target_properties(${KEN_EXE_NAME} PROPERTIES 
     XCODE_ATTRIBUTE_ONLY_ACTIVE_ARCH[variant=Debug] YES
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${MACOSX_BUNDLE_GUI_IDENTIFIER}"
     XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/../Frameworks"
     XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/macOS"
-    XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
+    XCODE_ATTRIBUTE_INSTALL_PATH "/Applications"
+    XCODE_ATTRIBUTE_SKIP_INSTALL NO
     XCODE_ATTRIBUTE_ENABLE_LIBRARY_VALIDATION NO
-    XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=Release] "--options=runtime --timestamp"
-    XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=RelWithDebInfo] "--options=runtime --timestamp"
-    XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=Release] NO
-		XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=RelWithDebInfo] NO
-    XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS ""
     XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY YES
     XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY YES
     BUNDLE TRUE
     MACOSX_BUNDLE TRUE
   )
+  if (MACOS_DISTRIBUTION STREQUAL "app-store")
+    set_target_properties(${KEN_EXE_NAME} PROPERTIES
+      XCODE_ATTRIBUTE_CODE_SIGN_STYLE Manual
+      XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Distribution"
+      XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM}"
+      XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS NO
+      XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${MACOS_CODE_SIGN_ENTITLEMENTS}"
+      XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME NO
+      XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS ""
+    )
+  else ()
+    set_target_properties(${KEN_EXE_NAME} PROPERTIES
+      XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME ${MACOS_ENABLE_HARDENED_RUNTIME}
+      XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=Release] "${MACOS_OTHER_CODE_SIGN_FLAGS}"
+      XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS[variant=RelWithDebInfo] "${MACOS_OTHER_CODE_SIGN_FLAGS}"
+      XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=Release] NO
+      XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS[variant=RelWithDebInfo] NO
+      XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${MACOS_CODE_SIGN_ENTITLEMENTS}"
+    )
+  endif ()
 endif ()
 
 if (MSVC)

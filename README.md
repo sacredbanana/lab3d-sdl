@@ -177,11 +177,11 @@ cmake --build . --config Release
 ```
 
 - Build via Xcode (recommended if you want to properly customise the build for code signing etc):
-```
-cmake -G Xcode -DCMAKE_PREFIX_PATH=/opt/local ..
-cmake --build . --config Release
-```
-Then open the project in Xcode and build it.
+`cmake -G Xcode -DCMAKE_PREFIX_PATH=/opt/local ..`
+Add `-DMACOS_DISTRIBUTION=app-store` if building for AppStore distribution.
+
+Then open the project in Xcode and build it or just build it with:
+`cmake --build . --config Release`
 
 The app `Kens-Labyrinth` will be copied to dist/macOS. You may move this to your Applications folder.
 
