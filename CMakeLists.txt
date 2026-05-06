@@ -4,6 +4,11 @@ cmake_minimum_required (VERSION 3.26)
 
 include("${CMAKE_SOURCE_DIR}/version.cmake")
 
+set(LAB3D_PLATFORM_IOS FALSE)
+if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+  set(LAB3D_PLATFORM_IOS TRUE)
+endif ()
+
 if (APPLE OR WIN32)
     set(KEN_EXE_NAME "Kens-Labyrinth")
 else ()
@@ -19,6 +24,8 @@ if (WIN32)
   set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/windows)
 elseif (UNIX AND NOT APPLE)
   set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/linux)
+elseif (LAB3D_PLATFORM_IOS)
+  set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/iOS)
 elseif (APPLE)
   set(DIST_DIR ${CMAKE_SOURCE_DIR}/dist/macOS)
 endif ()
@@ -29,7 +36,108 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${DIST_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${DIST_DIR})
 set(ENABLE_HIRES_TEXTURES ON CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode")
 
-if (APPLE)
+function(lab3d_run_required_command)
+  execute_process(
+    COMMAND ${ARGN}
+    RESULT_VARIABLE LAB3D_COMMAND_RESULT
+    OUTPUT_VARIABLE LAB3D_COMMAND_OUTPUT
+    ERROR_VARIABLE LAB3D_COMMAND_ERROR
+  )
+  if (NOT LAB3D_COMMAND_RESULT EQUAL 0)
+    string(REPLACE ";" " " LAB3D_COMMAND_TEXT "${ARGN}")
+    message(FATAL_ERROR
+      "Command failed (${LAB3D_COMMAND_RESULT}): ${LAB3D_COMMAND_TEXT}\n"
+      "${LAB3D_COMMAND_OUTPUT}\n${LAB3D_COMMAND_ERROR}"
+    )
+  endif ()
+endfunction()
+
+if (LAB3D_PLATFORM_IOS)
+  if (NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    message(FATAL_ERROR "The iOS build requires the Xcode CMake generator.")
+  endif ()
+
+  set(CMAKE_OSX_SYSROOT "iphoneos" CACHE STRING "iOS SDK")
+  set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "iOS architectures" FORCE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum iOS deployment version")
+  set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "Xcode configuration types" FORCE)
+
+  set(IOS_APP_BUNDLE_IDENTIFIER "net.minotaurcreative.${KEN_EXE_NAME}" CACHE STRING "iOS app bundle identifier")
+  set(IOS_DEVELOPMENT_TEAM "2W56SCHJ6N" CACHE STRING "Apple Developer Team ID")
+  set(IOS_CODE_SIGN_STYLE "Automatic" CACHE STRING "iOS code signing style")
+  set(IOS_CODE_SIGN_IDENTITY "Apple Development" CACHE STRING "iOS code signing identity")
+  set(IOS_TARGETED_DEVICE_FAMILY "1,2" CACHE STRING "iOS targeted device family")
+  set_property(CACHE IOS_CODE_SIGN_STYLE PROPERTY STRINGS "Automatic" "Manual")
+
+  set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${IOS_DEVELOPMENT_TEAM}" CACHE STRING "Apple Developer Team ID")
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${IOS_CODE_SIGN_STYLE}" CACHE STRING "Apple Developer Code Sign Style" FORCE)
+  set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${IOS_CODE_SIGN_IDENTITY}" CACHE STRING "Apple Developer Code Sign Identity" FORCE)
+  set(CMAKE_XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "${IOS_TARGETED_DEVICE_FAMILY}" CACHE STRING "iOS targeted device family" FORCE)
+
+  set(IOS_SDL2_REPOSITORY "https://github.com/libsdl-org/SDL.git" CACHE STRING "SDL2 Git repository")
+  set(IOS_SDL2_BRANCH "SDL2" CACHE STRING "SDL2 Git branch")
+  set(IOS_SDL2_SOURCE_DIR "${CMAKE_BINARY_DIR}/SDL2-src" CACHE PATH "SDL2 source checkout for iOS")
+  set(IOS_SDL2_PRODUCTS_DIR "${CMAKE_BINARY_DIR}/SDL2" CACHE PATH "SDL2 iOS build output directory")
+  set(IOS_SDL2_CONFIGURATION "Release" CACHE STRING "SDL2 iOS build configuration")
+  set(IOS_SDL2_XCODE_SCHEME "Framework-iOS" CACHE STRING "SDL2 iOS Xcode scheme")
+  set(IOS_SDL2_FRAMEWORK "${IOS_SDL2_PRODUCTS_DIR}/SDL2.framework" CACHE PATH "Built SDL2 iOS framework")
+
+  if (NOT EXISTS "${IOS_SDL2_FRAMEWORK}/SDL2")
+    find_program(GIT_EXECUTABLE git REQUIRED)
+    find_program(XCODEBUILD_EXECUTABLE xcodebuild REQUIRED)
+
+    if (NOT EXISTS "${IOS_SDL2_SOURCE_DIR}/.git")
+      lab3d_run_required_command(
+        "${GIT_EXECUTABLE}" clone
+        --depth 1
+        --branch "${IOS_SDL2_BRANCH}"
+        "${IOS_SDL2_REPOSITORY}"
+        "${IOS_SDL2_SOURCE_DIR}"
+      )
+    else ()
+      lab3d_run_required_command("${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" fetch --depth 1 origin "${IOS_SDL2_BRANCH}")
+      lab3d_run_required_command("${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" checkout "${IOS_SDL2_BRANCH}")
+    endif ()
+
+    lab3d_run_required_command(
+      "${XCODEBUILD_EXECUTABLE}"
+      -project "${IOS_SDL2_SOURCE_DIR}/Xcode/SDL/SDL.xcodeproj"
+      -scheme "${IOS_SDL2_XCODE_SCHEME}"
+      -configuration "${IOS_SDL2_CONFIGURATION}"
+      -sdk "${CMAKE_OSX_SYSROOT}"
+      -destination "generic/platform=iOS"
+      CONFIGURATION_BUILD_DIR=${IOS_SDL2_PRODUCTS_DIR}
+      ONLY_ACTIVE_ARCH=NO
+      SKIP_INSTALL=NO
+      CODE_SIGNING_ALLOWED=NO
+    )
+  endif ()
+
+  if (NOT EXISTS "${IOS_SDL2_FRAMEWORK}/SDL2")
+    message(FATAL_ERROR "SDL2.framework was not found at ${IOS_SDL2_FRAMEWORK}")
+  endif ()
+
+  set(IOS_SDL2_MAIN_SOURCE "${IOS_SDL2_SOURCE_DIR}/src/main/uikit/SDL_uikit_main.c")
+  set(MACOS_APP_BUNDLE_IDENTIFIER "${IOS_APP_BUNDLE_IDENTIFIER}")
+  set(MACOS_APP_NAME "${KEN_EXE_NAME}")
+  set(MACOS_APP_EXECUTABLE "${KEN_EXE_NAME}")
+  set(MACOS_APP_VERSION "${LAB3D_VERSION_MAJOR}.${LAB3D_VERSION_MINOR}.${LAB3D_VERSION_PATCH}")
+  set(MACOS_APP_INFO_STRING "Copyright 2026. All rights reserved.")
+  set(MACOS_APP_ICON_FILE "")
+  set(MACOS_APP_CATEGORY "public.app-category.games")
+  set(MACOSX_BUNDLE_GUI_IDENTIFIER "${MACOS_APP_BUNDLE_IDENTIFIER}")
+  set(MACOSX_BUNDLE_NAME "${MACOS_APP_NAME}")
+  set(MACOSX_INFO_STRING "${MACOS_APP_INFO_STRING}")
+  set(MACOSX_SHORT_VERSION_STRING "${MACOS_APP_VERSION}")
+  set(MACOSX_LONG_VERSION_STRING "${MACOS_APP_VERSION}")
+  set(MACOSX_BUNDLE_VERSION "${MACOS_APP_VERSION}")
+  set(APPLE_INFO_PLIST "${CMAKE_BINARY_DIR}/ios/Info.plist")
+  configure_file(
+    "${CMAKE_SOURCE_DIR}/macos/Info.plist.in"
+    "${APPLE_INFO_PLIST}"
+    @ONLY
+  )
+elseif (APPLE)
   set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "12.4" CACHE STRING "Minimum macOS deployment version")
   set(CMAKE_C_COMPILER clang)
@@ -68,6 +176,7 @@ if (APPLE)
   set(MACOSX_LONG_VERSION_STRING "${MACOS_APP_VERSION}")
   set(MACOSX_BUNDLE_VERSION "${MACOS_APP_VERSION}")
   set(MACOSX_BUNDLE_ICON_FILE "${MACOS_APP_ICON_FILE}")
+  set(APPLE_INFO_PLIST "${CMAKE_BINARY_DIR}/macos/Info.plist")
   set(CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "2W56SCHJ6N" CACHE STRING "Apple Developer Team ID")
   set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${MACOS_DEFAULT_CODE_SIGN_IDENTITY}" CACHE STRING "Apple Developer Code Sign Identity" FORCE)
   set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${MACOS_DEFAULT_CODE_SIGN_STYLE}" CACHE STRING "Apple Developer Code Sign Style" FORCE)
@@ -75,7 +184,7 @@ if (APPLE)
   set_source_files_properties(${APP_ICON_MACOSX} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
   configure_file(
     "${CMAKE_SOURCE_DIR}/macos/Info.plist.in"
-    "${CMAKE_BINARY_DIR}/macos/Info.plist"
+    "${APPLE_INFO_PLIST}"
     @ONLY
   )
 endif ()
@@ -108,6 +217,9 @@ file(GLOB LAB3D_PROJECT_SOURCES
   ${MAIN_SOURCE_DIR}/setup.c
   ${MAIN_SOURCE_DIR}/subs.c
 )
+if (LAB3D_PLATFORM_IOS)
+  list(APPEND LAB3D_PROJECT_SOURCES ${IOS_SDL2_MAIN_SOURCE})
+endif ()
 
 if (UNIX AND (NOT APPLE))
   set(CMAKE_INSTALL_RPATH ${CMAKE_SOURCE_DIR})
@@ -168,7 +280,7 @@ endif()
 set_target_properties(${KEN_EXE_NAME} PROPERTIES LINKER_LANGUAGE C)
 if (APPLE)
   set_target_properties(${KEN_EXE_NAME} PROPERTIES
-    MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/macos/Info.plist"
+    MACOSX_BUNDLE_INFO_PLIST "${APPLE_INFO_PLIST}"
     MACOSX_BUNDLE_GUI_IDENTIFIER "${MACOSX_BUNDLE_GUI_IDENTIFIER}"
     MACOSX_BUNDLE_BUNDLE_NAME "${MACOSX_BUNDLE_NAME}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${MACOSX_BUNDLE_VERSION}"
@@ -219,6 +331,51 @@ elseif (UNIX AND NOT APPLE)
   if (KEN_USE_OSS)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
   endif ()
+elseif (LAB3D_PLATFORM_IOS)
+  find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
+  find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
+  find_library(COREAUDIO_FRAMEWORK CoreAudio REQUIRED)
+  find_library(COREGRAPHICS_FRAMEWORK CoreGraphics REQUIRED)
+  find_library(COREMOTION_FRAMEWORK CoreMotion REQUIRED)
+  find_library(FOUNDATION_FRAMEWORK Foundation REQUIRED)
+  find_library(GAMECONTROLLER_FRAMEWORK GameController REQUIRED)
+  find_library(METAL_FRAMEWORK Metal REQUIRED)
+  find_library(OPENGLES_FRAMEWORK OpenGLES REQUIRED)
+  find_library(QUARTZCORE_FRAMEWORK QuartzCore REQUIRED)
+  find_library(UIKIT_FRAMEWORK UIKit REQUIRED)
+  find_library(MLIB m)
+
+  target_include_directories(${KEN_EXE_NAME} BEFORE PRIVATE "${IOS_SDL2_FRAMEWORK}/Headers")
+  target_link_libraries(${KEN_EXE_NAME} PRIVATE
+    "${IOS_SDL2_FRAMEWORK}"
+    ${AUDIOTOOLBOX_FRAMEWORK}
+    ${AVFOUNDATION_FRAMEWORK}
+    ${COREAUDIO_FRAMEWORK}
+    ${COREGRAPHICS_FRAMEWORK}
+    ${COREMOTION_FRAMEWORK}
+    ${FOUNDATION_FRAMEWORK}
+    ${GAMECONTROLLER_FRAMEWORK}
+    ${METAL_FRAMEWORK}
+    ${OPENGLES_FRAMEWORK}
+    ${QUARTZCORE_FRAMEWORK}
+    ${UIKIT_FRAMEWORK}
+    ${MLIB}
+  )
+
+  set_target_properties(${KEN_EXE_NAME} PROPERTIES
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${IOS_APP_BUNDLE_IDENTIFIER}"
+    XCODE_ATTRIBUTE_CODE_SIGN_STYLE "${IOS_CODE_SIGN_STYLE}"
+    XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "${IOS_CODE_SIGN_IDENTITY}"
+    XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${IOS_DEVELOPMENT_TEAM}"
+    XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "${IOS_TARGETED_DEVICE_FAMILY}"
+    XCODE_ATTRIBUTE_LD_RUNPATH_SEARCH_PATHS "@executable_path/Frameworks"
+    XCODE_ATTRIBUTE_CONFIGURATION_BUILD_DIR "${CMAKE_SOURCE_DIR}/dist/iOS"
+    XCODE_EMBED_FRAMEWORKS "${IOS_SDL2_FRAMEWORK}"
+    XCODE_EMBED_FRAMEWORKS_CODE_SIGN_ON_COPY YES
+    XCODE_EMBED_FRAMEWORKS_REMOVE_HEADERS_ON_COPY YES
+    BUNDLE TRUE
+    MACOSX_BUNDLE TRUE
+  )
 elseif (APPLE)
   set(MACOS_PREFIX_HINTS ${CMAKE_PREFIX_PATH})
   list(APPEND MACOS_PREFIX_HINTS /opt/local)
