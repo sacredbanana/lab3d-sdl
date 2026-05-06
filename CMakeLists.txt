@@ -218,7 +218,10 @@ file(GLOB LAB3D_PROJECT_SOURCES
   ${MAIN_SOURCE_DIR}/subs.c
 )
 if (LAB3D_PLATFORM_IOS)
-  list(APPEND LAB3D_PROJECT_SOURCES ${IOS_SDL2_MAIN_SOURCE})
+  set(LAB3D_PROJECT_SOURCES
+    ${MAIN_SOURCE_DIR}/ios_stub.c
+    ${IOS_SDL2_MAIN_SOURCE}
+  )
 endif ()
 
 if (UNIX AND (NOT APPLE))
@@ -332,6 +335,7 @@ elseif (UNIX AND NOT APPLE)
     target_compile_definitions(${KEN_EXE_NAME} PUBLIC USE_OSS)
   endif ()
 elseif (LAB3D_PLATFORM_IOS)
+  target_compile_definitions(${KEN_EXE_NAME} PUBLIC LAB3D_IOS)
   find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
   find_library(AVFOUNDATION_FRAMEWORK AVFoundation REQUIRED)
   find_library(COREAUDIO_FRAMEWORK CoreAudio REQUIRED)

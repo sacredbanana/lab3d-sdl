@@ -30,10 +30,12 @@
 #include <switch.h>
 #else
 #include <SDL_opengl.h>
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(LAB3D_IOS)
 #include <OpenGL/glu.h>
-#else
+#elif !defined(LAB3D_IOS)
 #include <GL/glu.h>
+#else
+const GLubyte *gluErrorString(GLenum error);
 #endif
 #endif
 

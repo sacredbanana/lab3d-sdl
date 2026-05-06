@@ -1125,7 +1125,7 @@ static void SetAnisotropic(void) {
 
 }
 
-#ifndef __SWITCH__
+#if !defined(__SWITCH__) && !defined(LAB3D_IOS)
 #define USE_GLU_MIPMAPS
 #endif
 

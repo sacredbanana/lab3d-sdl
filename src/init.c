@@ -277,7 +277,7 @@ void initvideo()
     fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
     //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
 
-    #ifndef __SWITCH__
+    #if !defined(__SWITCH__) && !defined(LAB3D_IOS)
     fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
     fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
 
