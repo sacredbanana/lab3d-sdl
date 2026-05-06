@@ -49,6 +49,7 @@ void initialize()
 
     if (!introskip)
     {
+        lab3d_ios_arm_intro_pointer_grace();
         /* Big scrolly picture... */
         i=0;
         j=0;
@@ -605,6 +606,7 @@ void initgraphics()
             moustat = setupmouse();
     if (!introskip)
     {
+        lab3d_ios_arm_intro_pointer_grace();
         SDL_LockMutex(timermutex);
         oclockspeed = clockspeed;
         while ((getkeydefstatlock(ACTION_MENU) == 0) &&

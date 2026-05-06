@@ -233,6 +233,11 @@ if (cur_##type && action_##type[keydef] != ACTION_UNBOUND) {            \
 int getkeypressure(int keydef, int pressval, int runpressval) {
     int low_deadzone = 6000;
     int high_deadzone = 32767 - 700;
+    {
+        int tpress = lab3d_ios_touch_key_pressure(keydef, pressval, runpressval);
+        if (tpress)
+            return tpress;
+    }
     if (action_key[keydef] != ACTION_UNBOUND) {
         if (newkeystatus(action_key[keydef])) {
             if (pressval == runpressval)
@@ -2540,6 +2545,8 @@ void introduction(K_INT16 songnum)
     totalclock = 0;
     leaveintro = introskip;
     pickskiltime = -32768;
+
+    lab3d_ios_arm_intro_pointer_grace();
 
     while (leaveintro == 0)
     {
@@ -5445,6 +5452,10 @@ K_INT16 mainmenu()
 {
     K_INT16 j, k, done = 0;
 
+#ifdef LAB3D_IOS
+    lab3d_ios_touch_set_gameplay_enabled(0);
+#endif
+
     spriteyoffset=0;
 
     picrot(posx, posy, posz, ang);
@@ -6647,6 +6658,11 @@ void ProcessEvent(SDL_Event* event) {
             }
             setnewkeystatus(sk, 0);
             break;
+        case SDL_FINGERDOWN:
+        case SDL_FINGERUP:
+        case SDL_FINGERMOTION:
+            lab3d_ios_touch_process_event(event);
+            break;
         default:
             break;
     }
@@ -6679,7 +6695,19 @@ unsigned char readmouse(int *x, int *y) {
     if (x!=NULL) *x+=5*tx;
     if (y!=NULL) *y+=5*ty;
 
-    return ((bstatus&4)>>1)|(bstatus&1)|(bstatus&2)<<1;
+    if (lab3d_ios_touch_gameplay_enabled()) {
+        int lx, ly;
+        lab3d_ios_touch_consume_look(&lx, &ly);
+        if (x != NULL)
+            *x += lx;
+        if (y != NULL)
+            *y += ly;
+    }
+
+    bstatus = (unsigned char)(((bstatus&4)>>1)|(bstatus&1)|((bstatus&2)<<1));
+    if (!lab3d_ios_touch_gameplay_enabled() && lab3d_ios_intro_pointer_buttons_masked())
+        bstatus = 0;
+    return bstatus;
 }
 
 void quit() {

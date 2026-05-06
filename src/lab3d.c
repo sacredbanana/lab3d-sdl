@@ -488,6 +488,10 @@ int main(int argc,char **argv)
         SDL_Quit();
     }
 
+#ifdef LAB3D_IOS
+    lab3d_ios_touch_init();
+#endif
+
     if (strlen(argv[0])>=5) {
         if (strcmp(argv[0]+strlen(argv[0])-5,"setup")==0)
             setup();
@@ -680,6 +684,10 @@ int main(int argc,char **argv)
 
     while (quitgame == 0)
     {
+#ifdef LAB3D_IOS
+        lab3d_ios_touch_set_gameplay_enabled(
+            death == 4095 && ingame && !menuing && ototclock > 1);
+#endif
         PollInputs();
         if (death < 4095)
         {

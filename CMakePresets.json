@@ -13,6 +13,19 @@
                 "CMAKE_PREFIX_PATH": "/opt/local",
                 "MACOS_DISTRIBUTION": "app-store"
             }
+        },
+        {
+            "name": "iOS",
+            "displayName": "iOS with Xcode generator",
+            "description": "iOS with Xcode generator",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "generator": "Xcode",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_PREFIX_PATH": "/opt/local",
+                "CMAKE_SYSTEM_NAME": "iOS"
+            }
         }
     ]
 }

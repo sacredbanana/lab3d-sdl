@@ -225,6 +225,7 @@ file(GLOB LAB3D_PROJECT_SOURCES
   ${MAIN_SOURCE_DIR}/demo.c
   ${MAIN_SOURCE_DIR}/graphx.c
   ${MAIN_SOURCE_DIR}/init.c
+  ${MAIN_SOURCE_DIR}/ios_touch.c
   ${MAIN_SOURCE_DIR}/lab3d.c
   ${MAIN_SOURCE_DIR}/launcher.c
   ${MAIN_SOURCE_DIR}/oldlab3d.c

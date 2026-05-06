@@ -576,6 +576,15 @@ gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
     GLdouble upz);
 #endif
 
+void lab3d_ios_touch_init(void);
+void lab3d_ios_touch_set_gameplay_enabled(int enabled);
+int lab3d_ios_touch_gameplay_enabled(void);
+void lab3d_ios_touch_process_event(SDL_Event *event);
+int lab3d_ios_touch_key_pressure(int keydef, int pressval, int runpressval);
+void lab3d_ios_touch_consume_look(int *dx, int *dy);
+void lab3d_ios_arm_intro_pointer_grace(void);
+int lab3d_ios_intro_pointer_buttons_masked(void);
+
 /* MIDI stuff... */
 #ifdef WIN32
 EXTERN HMIDIOUT sequencerdevice;
