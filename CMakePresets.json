@@ -1,0 +1,18 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "macOS",
+            "displayName": "macOS with Xcode generator",
+            "description": "macOS with Xcode generator",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "generator": "Xcode",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "CMAKE_PREFIX_PATH": "/opt/local",
+                "MACOS_DISTRIBUTION": "app-store"
+            }
+        }
+    ]
+}
