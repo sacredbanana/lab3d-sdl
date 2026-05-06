@@ -1813,6 +1813,7 @@ void setup(void) {
         SDL_SetWindowIcon(mainwindow, icon);
 
     maincontext = SDL_GL_CreateContext(mainwindow);
+    SDL_GL_SetSwapInterval(1);  // 0 = off, 1 = vsync, -1 = adaptive
 
     if (maincontext == NULL) {
         fatal_error("Could not create GL context.");
