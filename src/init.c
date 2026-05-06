@@ -204,21 +204,33 @@ void initvideo()
 
     int realr,realg,realb,realz,reald = 0;
     SDL_Surface *icon;
+    #ifdef LAB3D_IOS
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    #endif
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
+    #ifndef LAB3D_IOS
     SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
     SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
+    #endif
 
     SDL_ShowCursor(0);
 
     // Try to load icon from multiple locations
+    #ifdef LAB3D_IOS
+    sprintf(filepath, "%s../../ken.bmp", gameroot);
+    icon = SDL_LoadBMP(filepath);
+    #else
     icon = SDL_LoadBMP("ken.bmp");
+    #endif
     if (icon == NULL) {
 #if defined(__unix__) && !defined(__APPLE__)
         // Try system installation paths
@@ -262,6 +274,15 @@ void initvideo()
         fatal_error("Could not create GL context.");
     }
 
+    #ifdef LAB3D_IOS
+    {
+        int drawablew, drawableh;
+        SDL_GL_GetDrawableSize(mainwindow, &drawablew, &drawableh);
+        glViewport(0, 0, drawablew, drawableh);
+        fprintf(stderr,"Drawable size: %dx%d\n", drawablew, drawableh);
+    }
+    #endif
+
     #ifdef __SWITCH__
     gladLoadGL();
     #endif
@@ -297,7 +318,11 @@ void initvideo()
 
     SDL_SetWindowBrightness(mainwindow, gammalevel);
 
+    #ifdef LAB3D_IOS
+    largescreentexture = 0;
+    #else
     largescreentexture = 1;
+    #endif
 
     if (largescreentexture) {
         /* One large 512x512 texture. */

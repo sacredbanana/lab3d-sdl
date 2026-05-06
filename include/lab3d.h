@@ -28,14 +28,15 @@
 #ifdef __SWITCH__
 #include "glad.h"
 #include <switch.h>
+#elif defined(LAB3D_IOS)
+#include <SDL_opengles.h>
+#include "ios_gl_compat.h"
 #else
 #include <SDL_opengl.h>
-#if defined(__APPLE__) && !defined(LAB3D_IOS)
+#if defined(__APPLE__)
 #include <OpenGL/glu.h>
-#elif !defined(LAB3D_IOS)
-#include <GL/glu.h>
 #else
-const GLubyte *gluErrorString(GLenum error);
+#include <GL/glu.h>
 #endif
 #endif
 
@@ -556,6 +557,16 @@ void userAppExit();
 void getUsername();
 
 /* libGLU reimplementation functions */
+void normalize(float v[3]);
+void cross(float v1[3], float v2[3], float result[3]);
+void __gluMakeIdentityf(GLfloat m[16]);
+void GLAPI
+gluLookAt(GLdouble eyex, GLdouble eyey, GLdouble eyez, GLdouble centerx,
+    GLdouble centery, GLdouble centerz, GLdouble upx, GLdouble upy,
+    GLdouble upz);
+#endif
+
+#ifdef LAB3D_IOS
 void normalize(float v[3]);
 void cross(float v1[3], float v2[3], float result[3]);
 void __gluMakeIdentityf(GLfloat m[16]);

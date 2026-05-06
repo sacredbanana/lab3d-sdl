@@ -470,6 +470,12 @@ int main(int argc,char **argv)
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO |
              SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
 
+    #ifdef LAB3D_IOS
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    #endif
+
     #ifdef __SWITCH__
     romfsInit();
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);

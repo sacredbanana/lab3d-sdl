@@ -3,7 +3,9 @@
 #include <math.h>
 #include <ctype.h>
 #include "SDL_endian.h"
+#ifdef ENABLE_HIRES_TEXTURES
 #include "SDL_image.h"
+#endif
 
 /* Various constants that really should be stored in the data files... */
 
@@ -115,7 +117,7 @@ void checkGLStatus()
     GLenum errCode;
 
     while ((errCode=glGetError())!=GL_NO_ERROR) {
-        #ifdef __SWITCH__
+        #if defined(__SWITCH__) || defined(LAB3D_IOS)
         fprintf(stderr, "OpenGL Error: %d\n", errCode);
         #else
         const GLubyte *errString = gluErrorString(errCode);
@@ -1180,7 +1182,9 @@ void ShrinkImageWeight (Uint32* src, Uint32* dest, int sw, int sh, int xs, int y
         }
     }
 }
-#if !defined(min) && !defined(__SWITCH__) 
+#if !defined(min) && defined(LAB3D_IOS)
+#define min(x, y) ((x) < (y) ? (x) : (y))
+#elif !defined(min) && !defined(__SWITCH__)
 #define min(x, y) ({ typeof(x) _x_; typeof(y) _y_; _x_=(x); _y_=(y); _x_ < _y_ ? _x_ : _y_ })
 #endif
 
@@ -1315,6 +1319,7 @@ int checkalpha(Uint32* tex, int w, int cw, int ch) {
     return 0;
 }
 
+#ifdef ENABLE_HIRES_TEXTURES
 imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfilt) {
     imgcache* cur = img_cache;
     while (cur) {
@@ -1363,6 +1368,7 @@ imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfil
     return new;
 
 }
+#endif
 
 int read_ini(FILE* input, char* buf, int buflen, char **keyp, char **valp, int *linep) {
     char *line, *end, *val;
@@ -1726,6 +1732,7 @@ void loadwalls(int replace)
             printf("Shadow: %d\n", shadow[i + 1]);
             printf("\n");
 #endif
+            #ifdef ENABLE_HIRES_TEXTURES
             if (cwparam->texreplace) {
                 imgcache* cache = LoadImageCache(cwparam->texreplace, wrapmode, minfilt, magfilt);
                 texName[i] = cache->texnum;
@@ -1735,6 +1742,7 @@ void loadwalls(int replace)
                 //printf("TexCoords for %d: %d %d /%d %.6f %.6f\n", i, cwparam->tcl, cwparam->tch, cache->w, walltexcoord[i][0], walltexcoord[i][1]);
             }
             else {
+            #endif
                 walltexcoord[i][0] = 0.0;
                 walltexcoord[i][1] = 1.0;
 
@@ -1809,7 +1817,9 @@ void loadwalls(int replace)
                         // printf("\n");
                         // }
                         // printf("\n");
+            #ifdef ENABLE_HIRES_TEXTURES
             }
+            #endif
         }
         close(fil);
     } else {
@@ -4149,12 +4159,28 @@ K_INT16 kgif(K_INT16 filenum)
 
 void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
                                    GLuint tex) {
+#ifdef LAB3D_IOS
+    Uint32* uploadpixels = (Uint32*)malloc((size_t)w * (size_t)h * sizeof(Uint32));
+    if (!uploadpixels) {
+        fatal_error("Could not allocate iOS texture upload buffer.");
+    }
+    for (int row = 0; row < h; row++) {
+        memcpy(
+            uploadpixels + ((size_t)row * (size_t)w),
+            screenbuffer32 + ((size_t)(y + row) * (size_t)screenbufferwidth) + (size_t)x,
+            (size_t)w * sizeof(Uint32)
+        );
+    }
+#endif
+
     glBindTexture(GL_TEXTURE_2D, tex);
     checkGLStatus();
 
+#ifndef LAB3D_IOS
     glPixelStorei(GL_UNPACK_ROW_LENGTH, screenbufferwidth);
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, x);
     glPixelStorei(GL_UNPACK_SKIP_ROWS, y);
+#endif
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     checkGLStatus();
 
@@ -4177,20 +4203,32 @@ void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
         glTexImage2D(GL_TEXTURE_2D, 0, colourformat, w,
                      h, 0, GL_RGBA,
                      GL_UNSIGNED_BYTE,
+#ifdef LAB3D_IOS
+                     uploadpixels);
+#else
                      screenbuffer32);
+#endif
     } else {
         glTexSubImage2D(GL_TEXTURE_2D, 0, dx, dy, w, h,
                         GL_RGBA,
                         GL_UNSIGNED_BYTE,
+#ifdef LAB3D_IOS
+                        uploadpixels);
+#else
                         screenbuffer32);
+#endif
     }
     checkGLStatus();
     if (debugmode)
         fprintf(stderr, "done.\n");
     //glPixelTransferi(GL_MAP_COLOR, GL_FALSE);
+#ifndef LAB3D_IOS
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+#else
+    free(uploadpixels);
+#endif
 }
 
 int ClipToBuffer(int *sx, int *sy, int *w, int *h) {

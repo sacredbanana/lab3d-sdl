@@ -53,6 +53,7 @@ function(lab3d_run_required_command)
 endfunction()
 
 if (LAB3D_PLATFORM_IOS)
+  set(ENABLE_HIRES_TEXTURES OFF CACHE BOOL "Enable hires textures? Do not turn on if building from Xcode" FORCE)
   if (NOT CMAKE_GENERATOR STREQUAL "Xcode")
     message(FATAL_ERROR "The iOS build requires the Xcode CMake generator.")
   endif ()
@@ -86,6 +87,18 @@ if (LAB3D_PLATFORM_IOS)
     find_program(GIT_EXECUTABLE git REQUIRED)
     find_program(XCODEBUILD_EXECUTABLE xcodebuild REQUIRED)
 
+    if (EXISTS "${IOS_SDL2_SOURCE_DIR}/.git")
+      execute_process(
+        COMMAND "${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" remote get-url origin
+        RESULT_VARIABLE IOS_SDL2_REMOTE_RESULT
+        OUTPUT_VARIABLE IOS_SDL2_REMOTE_URL
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+      if (NOT IOS_SDL2_REMOTE_RESULT EQUAL 0 OR NOT IOS_SDL2_REMOTE_URL STREQUAL IOS_SDL2_REPOSITORY)
+        file(REMOVE_RECURSE "${IOS_SDL2_SOURCE_DIR}")
+      endif ()
+    endif ()
+
     if (NOT EXISTS "${IOS_SDL2_SOURCE_DIR}/.git")
       lab3d_run_required_command(
         "${GIT_EXECUTABLE}" clone
@@ -95,8 +108,9 @@ if (LAB3D_PLATFORM_IOS)
         "${IOS_SDL2_SOURCE_DIR}"
       )
     else ()
+      lab3d_run_required_command("${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" remote set-url origin "${IOS_SDL2_REPOSITORY}")
       lab3d_run_required_command("${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" fetch --depth 1 origin "${IOS_SDL2_BRANCH}")
-      lab3d_run_required_command("${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" checkout "${IOS_SDL2_BRANCH}")
+      lab3d_run_required_command("${GIT_EXECUTABLE}" -C "${IOS_SDL2_SOURCE_DIR}" checkout -B "${IOS_SDL2_BRANCH}" FETCH_HEAD)
     endif ()
 
     lab3d_run_required_command(
@@ -218,10 +232,8 @@ file(GLOB LAB3D_PROJECT_SOURCES
   ${MAIN_SOURCE_DIR}/subs.c
 )
 if (LAB3D_PLATFORM_IOS)
-  set(LAB3D_PROJECT_SOURCES
-    ${MAIN_SOURCE_DIR}/ios_stub.c
-    ${IOS_SDL2_MAIN_SOURCE}
-  )
+  list(APPEND LAB3D_PROJECT_SOURCES ${IOS_SDL2_MAIN_SOURCE})
+  list(APPEND LAB3D_PROJECT_SOURCES ${MAIN_SOURCE_DIR}/mesalib.c)
 endif ()
 
 if (UNIX AND (NOT APPLE))
@@ -347,6 +359,7 @@ elseif (LAB3D_PLATFORM_IOS)
   find_library(OPENGLES_FRAMEWORK OpenGLES REQUIRED)
   find_library(QUARTZCORE_FRAMEWORK QuartzCore REQUIRED)
   find_library(UIKIT_FRAMEWORK UIKit REQUIRED)
+  find_library(ZLIB_LIBRARY z REQUIRED)
   find_library(MLIB m)
 
   target_include_directories(${KEN_EXE_NAME} BEFORE PRIVATE "${IOS_SDL2_FRAMEWORK}/Headers")
@@ -363,6 +376,7 @@ elseif (LAB3D_PLATFORM_IOS)
     ${OPENGLES_FRAMEWORK}
     ${QUARTZCORE_FRAMEWORK}
     ${UIKIT_FRAMEWORK}
+    ${ZLIB_LIBRARY}
     ${MLIB}
   )
 
