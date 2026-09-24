@@ -275,8 +275,11 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     int i;
 
     if (statusbar == 1) {
-        /* The 320 pixel status bar, pinned to the bottom of the frame. */
-        blit_overlay(x, y, x, VH - statusbaryvisible, w, h);
+        /* The 320 pixel status bar, pinned to the bottom of what the display
+           actually shows - on a screen too short for the whole view that is
+           above the bottom of the frame, and hanging it off VH would push it
+           out of sight altogether. */
+        blit_overlay(x, y, x, amiga_view_bottom() - statusbaryvisible, w, h);
 
         /* Widen it to the full 360 by repeating the right hand edge, which is
            what the OpenGL path does with its statusbar == 2 passes. */
@@ -288,7 +291,8 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     }
 
     if (statusbar == 2) {
-        blit_overlay(340, statusbaryoffset, x, VH - statusbaryvisible,
+        blit_overlay(340, statusbaryoffset, x,
+                     amiga_view_bottom() - statusbaryvisible,
                      w, statusbaryvisible);
         return;
     }

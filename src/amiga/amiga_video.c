@@ -77,9 +77,15 @@ int   amiga_cfg_askmode = 1;    /* show the screen mode requester at startup */
 
 /* ------------------------------------------------------------ mode picking */
 
+/* Display clip for native screens that reach into the borders; see
+   amiga_fit_overscan(). */
+static struct Rectangle amiga_dclip;
+static int              amiga_useclip;
+
 /* How much of the 360x240 buffer can we show, and where? */
 static void amiga_layout(amiga_videomode *m) {
     int scale = amiga_cfg_scale;
+    int vieww, viewh;
 
     if (scale != 1 && scale != 2) {
         /* Automatic: double up when the mode is big enough to hold the whole
@@ -92,29 +98,22 @@ static void amiga_layout(amiga_videomode *m) {
 
     m->scale = scale;
 
-    if (m->width / scale >= AMIGA_VIEW_W && m->height / scale >= AMIGA_VIEW_H) {
-        /* Everything fits. */
-        m->srcx = 0;
-        m->srcy = 0;
-        m->srcw = AMIGA_VIEW_W;
-        m->srch = AMIGA_VIEW_H;
-    } else {
-        /* Show the 320x200 window the original game used, clipped further if
-           the mode is smaller still. */
-        m->srcx = AMIGA_CROP_X;
-        m->srcy = AMIGA_CROP_Y;
-        m->srcw = AMIGA_CROP_W;
-        m->srch = AMIGA_CROP_H;
+    /*
+     * Fit each axis on its own and centre it on the view.  A screen that is
+     * tall enough but not wide enough then only loses pixels horizontally,
+     * where there is nothing to lose: a 320 pixel wide screen lands on
+     * exactly the x = 20..340 window the original game drew into, and only
+     * the decorative margins either side go.  Doing both axes together (the
+     * old "whole view or the 320x200 window" choice) threw away forty rows
+     * on a 320x240 screen that could have shown all of them.
+     */
+    vieww = m->width  / scale;
+    viewh = m->height / scale;
 
-        if (m->srcw > m->width / scale) {
-            m->srcx += (m->srcw - m->width / scale) / 2;
-            m->srcw = m->width / scale;
-        }
-        if (m->srch > m->height / scale) {
-            m->srcy += (m->srch - m->height / scale) / 2;
-            m->srch = m->height / scale;
-        }
-    }
+    m->srcw = vieww < AMIGA_VIEW_W ? vieww : AMIGA_VIEW_W;
+    m->srch = viewh < AMIGA_VIEW_H ? viewh : AMIGA_VIEW_H;
+    m->srcx = (AMIGA_VIEW_W - m->srcw) / 2;
+    m->srcy = (AMIGA_VIEW_H - m->srch) / 2;
 
     m->destx = (m->width  - m->srcw * scale) / 2;
     m->desty = (m->height - m->srch * scale) / 2;
@@ -125,6 +124,75 @@ static void amiga_layout(amiga_videomode *m) {
     if (m->desty < 0) m->desty = 0;
 }
 
+/*
+ * Grow a native screen into the borders so the whole view fits.
+ *
+ * A display mode is not limited to its nominal size: the hardware will show
+ * a good deal more than that, and how much is in the mode's DimensionInfo.
+ * Both NTSC and PAL lores reach well past 240 rows, so the whole height of
+ * the view fits on either - which matters, because unlike the columns at the
+ * edges the rows are all used.  The launcher puts its title on row 16 and its
+ * footer on row 220, and the status bar sits on the last rows of the frame,
+ * so a plain 200 line screen cuts the top off the title and loses the rest
+ * entirely.
+ *
+ * Asking for the extra rows is only half of it.  Intuition takes the display
+ * clip from the Overscan preferences, which are usually no bigger than the
+ * nominal size, and anything outside that clip is simply not displayed - so a
+ * matching clip, centred in the mode's maximum overscan area, goes in with
+ * the screen.
+ */
+static void amiga_fit_overscan(amiga_videomode *m) {
+    struct DimensionInfo dims;
+    int maxw, maxh, txtw, txth, clipw, cliph, offx, offy;
+
+    amiga_useclip = 0;
+
+    /* RTG screens have no borders to reach into; their size is their size. */
+    if (m->rtg)
+        return;
+
+    if (GetDisplayInfoData(NULL, (UBYTE *)&dims, sizeof(dims),
+                           DTAG_DIMS, m->modeid) <= 0)
+        return;
+
+    maxw = dims.MaxOScan.MaxX - dims.MaxOScan.MinX + 1;
+    maxh = dims.MaxOScan.MaxY - dims.MaxOScan.MinY + 1;
+    txtw = dims.TxtOScan.MaxX - dims.TxtOScan.MinX + 1;
+    txth = dims.TxtOScan.MaxY - dims.TxtOScan.MinY + 1;
+
+    if (maxw <= 0 || maxh <= 0)
+        return;
+
+    /* Only ever grow, and only as far as the view actually needs.  The width
+       target is the 320 pixels the game draws its own picture into rather
+       than the full 360, so we do not spend chip RAM and c2p time on margins
+       that hold nothing. */
+    if (m->width < AMIGA_CROP_W && maxw > m->width)
+        m->width = maxw < AMIGA_CROP_W ? maxw : AMIGA_CROP_W;
+    if (m->height < AMIGA_VIEW_H && maxh > m->height)
+        m->height = maxh < AMIGA_VIEW_H ? maxh : AMIGA_VIEW_H;
+
+    /* Whatever the screen ended up as, it needs a clip of its own as soon as
+       it is bigger than the one Intuition would have picked. */
+    if (txtw > 0 && txth > 0 && m->width <= txtw && m->height <= txth)
+        return;
+
+    clipw = m->width  < maxw ? m->width  : maxw;
+    cliph = m->height < maxh ? m->height : maxh;
+
+    /* 16 pixel granularity on the left edge: that is the step the display
+       hardware fetches in, and an unaligned clip only gets rounded anyway. */
+    offx = ((maxw - clipw) / 2) & ~15;
+    offy =  (maxh - cliph) / 2;
+
+    amiga_dclip.MinX = (WORD)(dims.MaxOScan.MinX + offx);
+    amiga_dclip.MinY = (WORD)(dims.MaxOScan.MinY + offy);
+    amiga_dclip.MaxX = (WORD)(amiga_dclip.MinX + clipw - 1);
+    amiga_dclip.MaxY = (WORD)(amiga_dclip.MinY + cliph - 1);
+    amiga_useclip = 1;
+}
+
 static void amiga_describe(const amiga_videomode *m) {
     fprintf(stderr, "Screen mode 0x%08lx: %dx%d, %d bit%s, %s\n",
             (unsigned long)m->modeid, m->width, m->height, m->depth,
@@ -132,6 +200,10 @@ static void amiga_describe(const amiga_videomode *m) {
     fprintf(stderr, "Showing %dx%d of the %dx%d view at (%d,%d), %dx scale.\n",
             m->srcw, m->srch, AMIGA_VIEW_W, AMIGA_VIEW_H,
             m->destx, m->desty, m->scale);
+    if (amiga_useclip)
+        fprintf(stderr, "Using the borders: display clip (%d,%d)-(%d,%d).\n",
+                amiga_dclip.MinX, amiga_dclip.MinY,
+                amiga_dclip.MaxX, amiga_dclip.MaxY);
     if (!m->rtg)
         fprintf(stderr, "Chip RAM free: %lu bytes (largest block %lu).\n",
                 (unsigned long)AvailMem(MEMF_CHIP),
@@ -154,6 +226,7 @@ static void amiga_probe(amiga_videomode *m) {
         if (m->depth > 8) m->depth = 8;
         if (m->depth < 1) m->depth = 1;
     }
+    amiga_fit_overscan(m);
     amiga_layout(m);
 }
 
@@ -166,14 +239,14 @@ int amiga_select_screenmode(amiga_videomode *out) {
                               ASLSM_TitleText,      (ULONG)"Ken's Labyrinth - select a screen mode",
                               ASLSM_InitialDisplayID, amiga_cfg_modeid != INVALID_ID
                                                       ? amiga_cfg_modeid : 0,
-                              ASLSM_InitialDisplayWidth,  amiga_cfg_width  ? amiga_cfg_width  : AMIGA_CROP_W,
-                              ASLSM_InitialDisplayHeight, amiga_cfg_height ? amiga_cfg_height : AMIGA_CROP_H,
+                              ASLSM_InitialDisplayWidth,  amiga_cfg_width  ? amiga_cfg_width  : AMIGA_VIEW_W,
+                              ASLSM_InitialDisplayHeight, amiga_cfg_height ? amiga_cfg_height : AMIGA_VIEW_H,
                               ASLSM_InitialDisplayDepth,  amiga_cfg_depth  ? amiga_cfg_depth  : 8,
                               ASLSM_DoWidth,        TRUE,
                               ASLSM_DoHeight,       TRUE,
                               ASLSM_DoDepth,        TRUE,
-                              ASLSM_MinWidth,       320,
-                              ASLSM_MinHeight,      200,
+                              ASLSM_MinWidth,       AMIGA_CROP_W,
+                              ASLSM_MinHeight,      AMIGA_CROP_H,
                               ASLSM_MinDepth,       4,
                               ASLSM_MaxDepth,       32,
                               TAG_END);
@@ -305,6 +378,8 @@ int amiga_video_open(void) {
                                   SA_Height,     amiga_mode.height,
                                   SA_Depth,      amiga_mode.depth,
                                   SA_Type,       CUSTOMSCREEN,
+                                  amiga_useclip ? SA_DClip : TAG_IGNORE,
+                                                 (ULONG)&amiga_dclip,
                                   SA_Quiet,      TRUE,
                                   SA_ShowTitle,  FALSE,
                                   SA_Draggable,  FALSE,
@@ -532,6 +607,14 @@ void amiga_build_penmap(void) {
     }
     for (; i < 256; i++)
         pensrc[i] = 0;
+}
+
+/* The last row of the view that reaches the display.  Equal to AMIGA_VIEW_H
+   unless the screen is too short to show the whole thing. */
+int amiga_view_bottom(void) {
+    if (!amiga_screen)
+        return AMIGA_VIEW_H;
+    return amiga_mode.srcy + amiga_mode.srch;
 }
 
 int amiga_num_pens(void) { return numpens; }

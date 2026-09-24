@@ -15,10 +15,10 @@
 #define AMIGA_VIEW_W  360
 #define AMIGA_VIEW_H  240
 
-/* The 320x200 area inside that buffer which the original DOS game used.  On a
-   320x256 native screen we show exactly this. */
-#define AMIGA_CROP_X  20
-#define AMIGA_CROP_Y  20
+/* The 320x200 area inside that buffer which the original DOS game used, at
+   (20,20).  Everything the game has to show fits in the full 240 rows but
+   only in the middle 320 columns, so a screen narrower than the view is
+   cropped to this window while a shorter one is grown into the borders. */
 #define AMIGA_CROP_W  320
 #define AMIGA_CROP_H  200
 
@@ -40,6 +40,11 @@ extern struct Window  *amiga_window;
 
 /* The 8 bit chunky frame the game draws into (AMIGA_VIEW_W stride). */
 extern UBYTE *amiga_chunky;
+
+/* Bottom edge, in view coordinates, of the part of the frame that reaches the
+   display.  The status bar hangs off this rather than off AMIGA_VIEW_H so it
+   stays on screen when the view has to be cropped. */
+int amiga_view_bottom(void);
 
 /* Ask the player for a screen mode; returns 0 if they cancelled. */
 int  amiga_select_screenmode(amiga_videomode *out);
