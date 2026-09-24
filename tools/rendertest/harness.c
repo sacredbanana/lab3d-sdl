@@ -43,9 +43,28 @@ static unsigned char fbA[VW * VH], fbB[VW * VH];
 #define UNSET 7          /* a colour neither side ever writes */
 
 /* The live code under test, lifted out of the real source at build time. */
-#include "generated/current.inc"
+#include "generated/render_soft.inc"
 /* The double precision original it has to agree with. */
 #include "reference.c"
+
+/* ------------------------------------------------------- ray caster state */
+
+enum lab3dversion_t lab3dversion = KENS_LABYRINTH_2_0;
+K_INT16       board[64][64];
+char          bmpkind[numwalls + 1];
+unsigned char tempbuf[4096];
+int           walltol = 32;              /* as init.c sets it */
+K_INT16       waterstat, animate2;
+K_INT16       wallfound[64][64][4];
+K_INT16       wallx[16384], wally[16384];
+char          wallside[16384];
+K_UINT16      walnum[16384];
+K_INT32       wallsfound, rayscast;
+K_INT16       mapfound, gameoverfound;
+K_INT32       hitpointx, hitpointy;
+
+#include "generated/graphx.inc"
+#include "raycast_reference.c"
 
 static void setup_tables(void) {
     int i;
@@ -298,6 +317,366 @@ static int test_wall(int ntrials, unsigned seed) {
                    &r, 0.05, 0.02, "max relative depth error", r.zrelmax);
 }
 
+/* ------------------------------------------------------------- ray caster */
+
+/*
+ * Compares the whole visibility pass: both versions cast the two frustum edge
+ * rays and then recurse, over the same randomly generated board and camera.
+ *
+ * What matters is the set of walls found, not the order they were found in -
+ * the two may subdivide differently at the margin and cast a different number
+ * of rays, which is harmless.  A wall the original found and the rewrite did
+ * not is a hole in the view and is the thing to catch, so that is counted
+ * separately and has to be zero.  tempbuf, which drives the automap, has to
+ * agree too.
+ */
+
+/* A board a ray can actually get lost in: solid border, scattered interior
+   walls, and doors so the texture-picking branches get exercised. */
+static void make_board(void) {
+    int x, y, i;
+
+    for (i = 0; i <= numwalls; i++) bmpkind[i] = 0;
+    bmpkind[1] = 1;                     /* plain wall   */
+    bmpkind[fountain] = 1;
+    bmpkind[78] = 1;                    /* the map tile */
+    bmpkind[gameover] = 1;
+    for (i = door1; i <= door1 + 5; i++) bmpkind[i] = 4;   /* doors pass rays */
+
+    for (x = 0; x < 64; x++)
+        for (y = 0; y < 64; y++) {
+            int edge = (x == 0 || y == 0 || x == 63 || y == 63);
+            double r = rand() / (double)RAND_MAX;
+            if (edge)         board[x][y] = 1;
+            else if (r < 0.18) board[x][y] = 1;
+            else if (r < 0.20) board[x][y] = (K_INT16)(fountain);
+            else if (r < 0.21) board[x][y] = 78;
+            else if (r < 0.22) board[x][y] = (K_INT16)gameover;
+            else if (r < 0.26) board[x][y] = (K_INT16)(door1 + (rand() % 6)
+                                                       + ((rand() & 1) ? 8192 : 0));
+            else               board[x][y] = 0;
+        }
+}
+
+/*
+ * Phase one: single rays, same angle both sides.  This separates a
+ * disagreement inside castray() from a disagreement in how recurseray()
+ * chooses to subdivide, which are very different problems.
+ */
+static int test_castray(int ntrials, unsigned seed) {
+    long rays = 0, sidediff = 0, celldiff = 0, texdiff = 0, onemiss = 0;
+    double hpworst = 0.0, cellworst = 0.0;
+    int trial, k;
+
+    srand(seed);
+    for (trial = 0; trial < ntrials; trial++) {
+        int cx, cy;
+        K_UINT16 px, py;
+
+        make_board();
+        waterstat = (trial & 1) ? 1 : 0;
+        animate2  = (K_INT16)(trial % 3);
+        do { cx = rand() % 64; cy = rand() % 64; }
+        while (bmpkind[board[cx][cy] & 1023] == 1);
+        px = (K_UINT16)((cx << 10) + (rand() & 1023));
+        py = (K_UINT16)((cy << 10) + (rand() & 1023));
+
+        for (k = 0; k < 64; k++) {
+            K_INT32 ai = (K_INT32)(((double)rand() / RAND_MAX) * (double)ANG_FULL);
+            double  ad = ai / (double)ANG_FULL * (M_PI * 2.0);
+            int ra, rb;
+            double dx, dy, d;
+
+            memset(ref_tempbuf, 0, sizeof ref_tempbuf);
+            memset(ref_wallfound, 255, sizeof ref_wallfound);
+            ref_wallsfound = 0;
+            memset(tempbuf, 0, sizeof tempbuf);
+            memset(wallfound, 255, sizeof wallfound);
+            wallsfound = 0;
+
+            ra = ref_castray(px, py, ad);
+            rb = castray(px, py, ai);
+            if (ra < 0 || rb < 0) { if ((ra < 0) != (rb < 0)) onemiss++; continue; }
+            rays++;
+
+            if (ref_wallsfound != wallsfound) { sidediff++; continue; }
+            if (ref_wallsfound == 0) continue;
+
+            dx = ref_hitpointx - hitpointx / (double)FX_ONE;
+            dy = ref_hitpointy - hitpointy / (double)FX_ONE;
+            d = sqrt(dx*dx + dy*dy);
+
+            /* compare the last wall reported, which is the one the ray hit */
+            {
+                int i = ref_wallsfound - 1;
+                if (ref_wallx[i] != wallx[i] || ref_wally[i] != wally[i] ||
+                    ref_wallside[i] != wallside[i]) {
+                    /* Landing on the neighbouring wall only matters if the
+                       ray ended up somewhere else.  Two walls that meet at a
+                       corner the ray passes through give the same hit point
+                       and the same picture. */
+                    celldiff++;
+                    if (d > cellworst) cellworst = d;
+                    continue;
+                }
+                if (ref_walnum[i] != walnum[i]) texdiff++;
+            }
+            if (d > hpworst) hpworst = d;
+        }
+    }
+    printf("castray alone (identical angle both sides)\n");
+    printf("  rays compared %ld\n", rays);
+    printf("  different number of walls reported: %ld (limit 0)\n", sidediff);
+    printf("  ray took a different path: %ld (%.4f%% of rays; limit 0.05%%),\n"
+           "      landing up to %.2f cells away when it did\n",
+           celldiff, rays ? 100.0 * celldiff / rays : 0.0, cellworst);
+    printf("  same wall, different texture: %ld (limit 0)\n", texdiff);
+    printf("  one side found nothing, the other did: %ld (limit 0)\n", onemiss);
+    printf("  worst hit point disagreement: %.6f cells (limit 0.02)\n", hpworst);
+
+    /*
+     * Two things are asserted here and one is only reported.
+     *
+     * Asserted: the two casters agree on which wall, which face and which
+     * texture, and the hit point lands within a fiftieth of a cell.
+     *
+     * Reported: a handful of rays take a different path entirely.  These are
+     * rays that pass within rounding distance of a cell corner, where the two
+     * grid walks are all but tied and the slope's last bit decides which one
+     * steps first; the double version has fifty-odd mantissa bits to break
+     * the tie with and 16.16 has sixteen.  The ray then slips past the corner
+     * and runs on for several cells.  It cannot be asserted away at this
+     * precision, and it is not worth chasing: an extra wall in the list is
+     * drawn and then correctly hidden by the nearer walls in front of it, and
+     * a wall lost this way shows up in the raycast test, which measures how
+     * wide the lost ones would have been on screen.  So the rate is bounded
+     * here and the consequence is measured there.
+     */
+    if (sidediff || texdiff || onemiss || hpworst > 0.02 ||
+        (rays && celldiff > rays / 2000)) {
+        printf("  FAIL\n");
+        return 1;
+    }
+    printf("  ok\n");
+    return 0;
+}
+
+/*
+ * How wide, in pixels of the 360 pixel view, is one wall actually visible?
+ *
+ * The obvious measure - the angle the wall subtends with nothing in front of
+ * it - is badly wrong for the walls that matter here.  A ray caster loses
+ * walls seen edge-on, and a full cell wall viewed from a thousandth of a cell
+ * off its own plane subtends a huge unoccluded angle while being a hundredth
+ * of a pixel wide on screen.  So this sweeps the frustum with the reference
+ * caster and counts the angles that actually reach the wall.
+ *
+ * A wall at least one sample step wide is certain to be sampled, so
+ * (hits + 1) steps is a genuine upper bound on its width.
+ */
+#define SWEEP 50000
+
+static double visible_width(K_UINT16 px, K_UINT16 py,
+                            double angl, double angr, int wx, int wy, int ws) {
+    long i, hits = 0;
+    /* save what the caller is in the middle of */
+    static K_INT16 save_found[64][64][4];
+    static unsigned char save_temp[4096];
+    K_INT32 save_n = ref_wallsfound;
+    memcpy(save_found, ref_wallfound, sizeof save_found);
+    memcpy(save_temp, ref_tempbuf, sizeof save_temp);
+
+    for (i = 0; i <= SWEEP; i++) {
+        double a = angl + (angr - angl) * (i / (double)SWEEP);
+        int k;
+        memset(ref_wallfound, 255, sizeof ref_wallfound);
+        memset(ref_tempbuf, 0, sizeof ref_tempbuf);
+        ref_wallsfound = 0;
+        if (ref_castray(px, py, a) < 0) continue;
+        for (k = 0; k < ref_wallsfound; k++)
+            if (ref_wallx[k] == wx && ref_wally[k] == wy && ref_wallside[k] == ws) {
+                hits++;
+                break;
+            }
+    }
+    memcpy(ref_wallfound, save_found, sizeof save_found);
+    memcpy(ref_tempbuf, save_temp, sizeof save_temp);
+    ref_wallsfound = save_n;
+    return (hits + 1) * (360.0 / SWEEP);
+}
+
+static int test_raycast(int ntrials, unsigned seed) {
+    long missing = 0, extra = 0, texdiff = 0, tempdiff = 0;
+    long refwalls = 0, newwalls = 0, refrays = 0, newrays = 0, cases = 0;
+    double misswidth = 0.0, misssum = 0.0;
+    int control = getenv("CONTROL") != NULL;
+    static K_INT16 ctl_wallx[16384], ctl_wally[16384];
+    static char    ctl_wallside[16384];
+    static K_UINT16 ctl_walnum[16384];
+    static unsigned char ctl_tempbuf[4096];
+    K_INT32 ctl_wallsfound = 0;
+    int trial, i;
+    /* waln for each (x, y, side), -1 for absent */
+    static int seen_ref[64][64][4], seen_new[64][64][4];
+
+    srand(seed);
+
+    for (trial = 0; trial < ntrials; trial++) {
+        K_UINT16 px, py;
+        K_INT16 angs;
+        double aspw = 1.0;
+        int cx, cy, x, y, sdir, bad = 0;
+        double vangw, angl_d, angr_d, angc_d, hpx1, hpy1;
+        K_INT32 vangw_i, angl_i, angr_i, angc_i, ihpx1, ihpy1;
+
+        make_board();
+        waterstat = (trial & 1) ? 1 : 0;
+        animate2  = (K_INT16)(trial % 3);
+
+        do { cx = rand() % 64; cy = rand() % 64; }
+        while (bmpkind[board[cx][cy] & 1023] == 1);
+        px = (K_UINT16)((cx << 10) + (rand() & 1023));
+        py = (K_UINT16)((cy << 10) + (rand() & 1023));
+        angs = (K_INT16)(rand() & 2047);
+
+        /* ---- the original, in doubles ---- */
+        memset(ref_tempbuf, 0, sizeof ref_tempbuf);
+        memset(ref_wallfound, 255, sizeof ref_wallfound);
+        ref_wallsfound = 0; ref_rayscast = 0;
+        vangw  = atan(tan(M_PI * 0.25) * aspw);
+        angc_d = angs / 1024.0 * M_PI;
+        angl_d = angc_d - vangw;
+        angr_d = angc_d + vangw;
+        if (ref_castray(px, py, angr_d) < 0) bad = 1;
+        hpx1 = ref_hitpointx; hpy1 = ref_hitpointy;
+        if (ref_castray(px, py, angl_d) < 0) bad = 1;
+        if ((ref_angcan(angr_d - angl_d) >= M_PI / 2 - 1e-7) ||
+            (ref_distance2(ref_hitpointx, ref_hitpointy, hpx1, hpy1) > 1.0 - 1e-7))
+            ref_recurseray(px, py, angc_d, angl_d, angr_d,
+                           ref_hitpointx, ref_hitpointy, hpx1, hpy1);
+
+        /* Control: run the ORIGINAL a second time with the camera angle
+           nudged by the smallest amount the fixed point version can even
+           represent.  If the double code loses walls against itself under
+           that, then walls appearing and disappearing at the margin is the
+           algorithm's own behaviour and not something the rewrite
+           introduced. */
+        if (control) {
+            double nudge = (M_PI * 2.0) / (double)ANG_FULL;
+            memcpy(ctl_tempbuf, ref_tempbuf, sizeof ctl_tempbuf);
+            memcpy(ctl_wallx, ref_wallx, sizeof(K_INT16) * ref_wallsfound);
+            memcpy(ctl_wally, ref_wally, sizeof(K_INT16) * ref_wallsfound);
+            memcpy(ctl_wallside, ref_wallside, sizeof(char) * ref_wallsfound);
+            memcpy(ctl_walnum, ref_walnum, sizeof(K_UINT16) * ref_wallsfound);
+            ctl_wallsfound = ref_wallsfound;
+
+            memset(ref_tempbuf, 0, sizeof ref_tempbuf);
+            memset(ref_wallfound, 255, sizeof ref_wallfound);
+            ref_wallsfound = 0; ref_rayscast = 0;
+            if (ref_castray(px, py, angr_d + nudge) < 0) bad = 1;
+            hpx1 = ref_hitpointx; hpy1 = ref_hitpointy;
+            if (ref_castray(px, py, angl_d + nudge) < 0) bad = 1;
+            if ((ref_angcan(angr_d - angl_d) >= M_PI / 2 - 1e-7) ||
+                (ref_distance2(ref_hitpointx, ref_hitpointy, hpx1, hpy1) > 1.0 - 1e-7))
+                ref_recurseray(px, py, angc_d + nudge, angl_d + nudge, angr_d + nudge,
+                               ref_hitpointx, ref_hitpointy, hpx1, hpy1);
+            /* the nudged run now plays the part of "the rewrite" */
+        }
+
+        /* ---- the rewrite, in fixed point ---- */
+        memset(tempbuf, 0, sizeof tempbuf);
+        memset(wallfound, 255, sizeof wallfound);
+        wallsfound = 0; rayscast = 0;
+        /* ANG_* come from the lifted block, so this cannot drift from the
+           frustum setup in picrot_view(). */
+        vangw_i = (K_INT32)(atan(tan(M_PI * 0.25) * aspw) / (M_PI * 2.0)
+                            * (double)ANG_FULL + 0.5);
+        angc_i  = (K_INT32)angs << (ANG_BITS - 11);
+        angl_i  = angc_i - vangw_i;
+        angr_i  = angc_i + vangw_i;
+        if (castray(px, py, angr_i) < 0) bad = 1;
+        ihpx1 = hitpointx; ihpy1 = hitpointy;
+        if (castray(px, py, angl_i) < 0) bad = 1;
+        if ((angr_i - angl_i >= ANG_HALFPI - 16) ||
+            hits_apart(hitpointx, hitpointy, ihpx1, ihpy1))
+            recurseray(px, py, angc_i, angl_i, angr_i,
+                       hitpointx, hitpointy, ihpx1, ihpy1);
+
+        /* A ray that escaped the board says the generated level had a hole in
+           it; the comparison would be meaningless, so skip the trial. */
+        if (bad) continue;
+
+        refwalls += ref_wallsfound; newwalls += wallsfound;
+        refrays  += ref_rayscast;   newrays  += rayscast;
+
+        for (x = 0; x < 64; x++)
+            for (y = 0; y < 64; y++)
+                for (sdir = 0; sdir < 4; sdir++)
+                    seen_ref[x][y][sdir] = seen_new[x][y][sdir] = -1;
+        if (control) {
+            for (i = 0; i < ctl_wallsfound; i++)
+                seen_ref[ctl_wallx[i]][ctl_wally[i]][(int)ctl_wallside[i]] = ctl_walnum[i];
+            for (i = 0; i < ref_wallsfound; i++)
+                seen_new[ref_wallx[i]][ref_wally[i]][(int)ref_wallside[i]] = ref_walnum[i];
+            memcpy(tempbuf, ref_tempbuf, sizeof tempbuf);
+            memcpy(ref_tempbuf, ctl_tempbuf, sizeof ctl_tempbuf);
+        } else {
+            for (i = 0; i < ref_wallsfound; i++)
+                seen_ref[ref_wallx[i]][ref_wally[i]][(int)ref_wallside[i]] = ref_walnum[i];
+            for (i = 0; i < wallsfound; i++)
+                seen_new[wallx[i]][wally[i]][(int)wallside[i]] = walnum[i];
+        }
+
+        {
+            long before = missing + extra + texdiff + tempdiff;
+            for (x = 0; x < 64; x++)
+                for (y = 0; y < 64; y++)
+                    for (sdir = 0; sdir < 4; sdir++) {
+                        int a = seen_ref[x][y][sdir], b = seen_new[x][y][sdir];
+                        if (a == b) continue;
+                        if (b < 0) {
+                            double w = visible_width(px, py, angl_d, angr_d,
+                                                     x, y, sdir);
+                            if (w > misswidth) misswidth = w;
+                            misssum += w;
+                            missing++;
+                        }
+                        else if (a < 0) extra++;
+                        else            texdiff++;
+                    }
+            for (i = 0; i < 4096; i++)
+                if (tempbuf[i] != ref_tempbuf[i]) tempdiff++;
+            if (missing + extra + texdiff + tempdiff != before) cases++;
+        }
+    }
+
+    printf(control
+           ? "CONTROL: the original against itself, camera angle nudged by one unit\n"
+           : "ray caster (castray and recurseray, the whole visibility pass)\n");
+    printf("  walls found: original %ld, rewrite %ld   rays cast: %ld vs %ld\n",
+           refwalls, newwalls, refrays, newrays);
+    printf("  walls the rewrite MISSED: %ld; widest was %.3f px of the 360 px view,\n"
+           "      mean %.3f px (limit 0.500)\n",
+           missing, misswidth, missing ? misssum / missing : 0.0);
+    printf("  walls it found that the original did not: %ld (harmless)\n", extra);
+    printf("  walls found by both but with a different texture: %ld (limit 0)\n", texdiff);
+    printf("  automap cells differing: %ld\n", tempdiff);
+    printf("  trials with any difference: %ld of %d\n", cases, ntrials);
+
+    /* A missed wall matters only if it was wide enough to see.  The caster
+       resolves walls by subdividing until two hit points land within a cell
+       of each other, so one a hundredth of a pixel wide - which is what a
+       wall seen edge-on from a thousandth of a cell off its plane comes to -
+       was always going to be found or not by luck. */
+    if (misswidth > 0.5 || texdiff) {
+        printf("  FAIL: %s\n", texdiff ? "walls are mislabelled"
+                                        : "a visible wall was lost");
+        return 1;
+    }
+    printf("  ok\n");
+    return 0;
+}
+
 /* ------------------------------------------------------------------- main */
 
 int main(int argc, char **argv) {
@@ -310,7 +689,9 @@ int main(int argc, char **argv) {
     if (!strcmp(which, "softtri")) return test_softtri(ntrials ? ntrials : 15000, seed);
     if (!strcmp(which, "floor"))   return test_floor  (ntrials ? ntrials : 5000,  seed);
     if (!strcmp(which, "wall"))    return test_wall   (ntrials ? ntrials : 15000, seed);
+    if (!strcmp(which, "castray")) return test_castray(ntrials ? ntrials : 400,   seed);
+    if (!strcmp(which, "raycast")) return test_raycast(ntrials ? ntrials : 300,   seed);
 
-    fprintf(stderr, "usage: %s softtri|floor|wall [trials] [seed]\n", argv[0]);
+    fprintf(stderr, "usage: %s softtri|floor|wall|castray|raycast [trials] [seed]\n", argv[0]);
     return 2;
 }

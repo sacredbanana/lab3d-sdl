@@ -14,12 +14,12 @@ OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 
 mkdir -p "$HERE/generated"
-python3 "$HERE/extract.py" src/amiga/render_soft.c "$HERE/generated/current.inc" || exit 1
+python3 "$HERE/extract.py" . "$HERE/generated" || exit 1
 
 ${CC:-cc} -O2 -Wall -Wextra -Wno-unused-parameter -I"$HERE" \
     -o "$OUT/harness" "$HERE/harness.c" -lm || exit 1
 
-TESTS=${*:-softtri floor wall}
+TESTS=${*:-softtri floor wall castray raycast}
 SEEDS=${SEEDS:-1 7 31337}
 fail=0
 

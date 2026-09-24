@@ -9,9 +9,10 @@
 #   Kens-Labyrinth.040      68040
 #   Kens-Labyrinth.060      68060
 #
-# The game does a fair amount of floating point per frame in the ray caster,
-# so the FPU builds are substantially faster; the plain 020 build exists for
-# unexpanded A1200s and 68EC020 machines.
+# The renderer and the ray caster are fixed point, so the FPU builds no longer
+# pull away from the 020 one the way they used to; what floating point is left
+# runs once a frame rather than once a pixel.  An FPU still helps, but the
+# plain 020 build is a real target, not a fallback.
 #
 #   make -f Makefile.Amiga            build all four
 #   make -f Makefile.Amiga 020        build one
@@ -72,8 +73,9 @@ WARNINGS = -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
 # -fno-strict-aliasing: the game punts between K_INT16* and unsigned char*
 #   all over the place, which strict aliasing would be entitled to break.
 # -fno-math-errno lets gcc inline fsqrt on the FPU builds without changing
-# IEEE semantics; the ray caster leans on exact epsilon comparisons, so the
-# rest of -ffast-math is deliberately left off.
+# IEEE semantics; the rest of -ffast-math is deliberately left off, because
+# what floating point remains is frame setup whose results feed fixed point
+# tables and reordering it would change them.
 BASEFLAGS = -noixemul -fno-strict-aliasing -fno-math-errno \
             -I$(INC_DIR) -I$(INC_DIR)/amiga -D__AMIGA__ -DPLATFORM_AMIGA
 

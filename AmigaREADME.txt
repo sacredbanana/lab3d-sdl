@@ -12,7 +12,7 @@ Requirements
 ------------
 
   * AmigaOS 3.0 or later (V39+).
-  * A 68020 or better.  A 68EC020 works; an FPU helps a great deal.
+  * A 68020 or better.  A 68EC020 with no FPU works.
   * About 3 MB of free RAM.
   * asl.library V38 or later, for the screen mode requester.
   * Optional: CyberGraphX or Picasso96, for RTG screen modes.  Without it the
@@ -29,9 +29,10 @@ Which executable?
   Kens-Labyrinth.040      68040
   Kens-Labyrinth.060      68060
 
-The ray caster does a lot of floating point work per frame, so pick the FPU
-build whenever your machine has one.  Only use the plain .020 build on a
-machine that genuinely has no FPU - it will be noticeably slower.
+The renderer and the ray caster work in fixed point, so the FPU builds are no
+longer the large step up they once were - what floating point is left runs
+once a frame rather than once a pixel.  Pick the build that matches your CPU;
+an FPU build will not run at all on a machine that has no FPU.
 
 Keep the gamedata drawer next to whichever executable you use.
 
