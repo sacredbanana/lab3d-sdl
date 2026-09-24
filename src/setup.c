@@ -11,6 +11,15 @@
 #endif
 #include <ctype.h>
 #include "lab3d.h"
+#ifdef PLATFORM_AMIGA
+#include "amiga/amiga_video.h"
+extern int amiga_cfg_modeid_i;
+extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
+extern int amiga_cfg_scale, amiga_cfg_askmode;
+void amigascreenmodemenu(void);
+void setupamigascaling(void);
+void amiga_lock_mode(unsigned long modeid, int w, int h, int d);
+#endif
 
 static void draw_mainmenu(void);
 static void draw_setupsetinputgroup(void);
@@ -259,45 +268,45 @@ static char* action_enum_names[ACTION_LAST] = {
 };
 
 static int action_key_default[ACTION_LAST]={
-    /* ACTION_FORWARD      */  SDLK_UP,
-    /* ACTION_BACKWARD     */  SDLK_DOWN,
-    /* ACTION_LEFT         */  SDLK_LEFT,
-    /* ACTION_RIGHT        */  SDLK_RIGHT,
-    /* ACTION_MOVELEFT     */  SDLK_COMMA,
-    /* ACTION_MOVERIGHT    */  SDLK_PERIOD,
-    /* ACTION_STRAFE       */  SDLK_RCTRL,
-    /* ACTION_STANDHIGH    */  SDLK_a,
-    /* ACTION_STANDLOW     */  SDLK_z,
-    /* ACTION_RUN          */  SDLK_LSHIFT,
+    /* ACTION_FORWARD      */  PLK_UP,
+    /* ACTION_BACKWARD     */  PLK_DOWN,
+    /* ACTION_LEFT         */  PLK_LEFT,
+    /* ACTION_RIGHT        */  PLK_RIGHT,
+    /* ACTION_MOVELEFT     */  PLK_COMMA,
+    /* ACTION_MOVERIGHT    */  PLK_PERIOD,
+    /* ACTION_STRAFE       */  PLK_RCTRL,
+    /* ACTION_STANDHIGH    */  PLK_a,
+    /* ACTION_STANDLOW     */  PLK_z,
+    /* ACTION_RUN          */  PLK_LSHIFT,
     #ifdef __APPLE__
-    /* ACTION_FIRE         */  SDLK_LGUI,
+    /* ACTION_FIRE         */  PLK_LGUI,
     #else
-    /* ACTION_FIRE         */  SDLK_LCTRL,
+    /* ACTION_FIRE         */  PLK_LCTRL,
     #endif
-    /* ACTION_NEXTWEAPON   */  SDLK_TAB,
-    /* ACTION_FIREBALLS    */  SDLK_F1,
-    /* ACTION_BOUNCY       */  SDLK_F2,
-    /* ACTION_HEAT         */  SDLK_F3,
-    /* ACTION_USE          */  SDLK_SPACE,
-    /* ACTION_CHEAT        */  SDLK_BACKSPACE,
-    /* ACTION_STATUS       */  SDLK_RETURN,
-    /* ACTION_PAUSE        */  SDLK_p,
-    /* ACTION_MUTE         */  SDLK_m,
-    /* ACTION_MENU         */  SDLK_ESCAPE,
-    /* ACTION_MENU_UP1     */  SDLK_UP,
-    /* ACTION_MENU_UP2     */  SDLK_KP_8,
-    /* ACTION_MENU_DOWN1   */  SDLK_DOWN,
-    /* ACTION_MENU_DOWN2   */  SDLK_KP_2,
-    /* ACTION_MENU_LEFT1   */  SDLK_LEFT,
-    /* ACTION_MENU_LEFT2   */  SDLK_KP_2,
-    /* ACTION_MENU_RIGHT1  */  SDLK_RIGHT,
-    /* ACTION_MENU_RIGHT2  */  SDLK_KP_6,
-    /* ACTION_MENU_SELECT1 */  SDLK_RETURN,
-    /* ACTION_MENU_SELECT2 */  SDLK_KP_ENTER,
-    /* ACTION_MENU_SELECT3 */  SDLK_SPACE,
-    /* ACTION_MENU_CANCEL  */  SDLK_ESCAPE,
-    /* ACTION_REWIND       */  SDLK_r,
-    /* ACTION_ADVANCE      */  SDLK_n
+    /* ACTION_NEXTWEAPON   */  PLK_TAB,
+    /* ACTION_FIREBALLS    */  PLK_F1,
+    /* ACTION_BOUNCY       */  PLK_F2,
+    /* ACTION_HEAT         */  PLK_F3,
+    /* ACTION_USE          */  PLK_SPACE,
+    /* ACTION_CHEAT        */  PLK_BACKSPACE,
+    /* ACTION_STATUS       */  PLK_RETURN,
+    /* ACTION_PAUSE        */  PLK_p,
+    /* ACTION_MUTE         */  PLK_m,
+    /* ACTION_MENU         */  PLK_ESCAPE,
+    /* ACTION_MENU_UP1     */  PLK_UP,
+    /* ACTION_MENU_UP2     */  PLK_KP_8,
+    /* ACTION_MENU_DOWN1   */  PLK_DOWN,
+    /* ACTION_MENU_DOWN2   */  PLK_KP_2,
+    /* ACTION_MENU_LEFT1   */  PLK_LEFT,
+    /* ACTION_MENU_LEFT2   */  PLK_KP_2,
+    /* ACTION_MENU_RIGHT1  */  PLK_RIGHT,
+    /* ACTION_MENU_RIGHT2  */  PLK_KP_6,
+    /* ACTION_MENU_SELECT1 */  PLK_RETURN,
+    /* ACTION_MENU_SELECT2 */  PLK_KP_ENTER,
+    /* ACTION_MENU_SELECT3 */  PLK_SPACE,
+    /* ACTION_MENU_CANCEL  */  PLK_ESCAPE,
+    /* ACTION_REWIND       */  PLK_r,
+    /* ACTION_ADVANCE      */  PLK_n
 };
 
 static int action_joystick_default[ACTION_LAST]={
@@ -339,41 +348,41 @@ static int action_joystick_default[ACTION_LAST]={
 };
 
 static int action_controller_default[ACTION_LAST]={
-    /* ACTION_FORWARD      */  SDL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS | JOY_FLAG_NEG,
-    /* ACTION_BACKWARD     */  SDL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS,
-    /* ACTION_LEFT         */  SDL_CONTROLLER_AXIS_RIGHTX | JOY_FLAG_AXIS | JOY_FLAG_NEG,
-    /* ACTION_RIGHT        */  SDL_CONTROLLER_AXIS_RIGHTX | JOY_FLAG_AXIS,
-    /* ACTION_MOVELEFT     */  SDL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS | JOY_FLAG_NEG,
-    /* ACTION_MOVERIGHT    */  SDL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS,
+    /* ACTION_FORWARD      */  PL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS | JOY_FLAG_NEG,
+    /* ACTION_BACKWARD     */  PL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS,
+    /* ACTION_LEFT         */  PL_CONTROLLER_AXIS_RIGHTX | JOY_FLAG_AXIS | JOY_FLAG_NEG,
+    /* ACTION_RIGHT        */  PL_CONTROLLER_AXIS_RIGHTX | JOY_FLAG_AXIS,
+    /* ACTION_MOVELEFT     */  PL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS | JOY_FLAG_NEG,
+    /* ACTION_MOVERIGHT    */  PL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS,
     /* ACTION_STRAFE       */  ACTION_UNBOUND,
-    /* ACTION_STANDHIGH    */  SDL_CONTROLLER_BUTTON_DPAD_UP,
-    /* ACTION_STANDLOW     */  SDL_CONTROLLER_BUTTON_DPAD_DOWN,
+    /* ACTION_STANDHIGH    */  PL_CONTROLLER_BUTTON_DPAD_UP,
+    /* ACTION_STANDLOW     */  PL_CONTROLLER_BUTTON_DPAD_DOWN,
     /* ACTION_RUN          */  ACTION_UNBOUND,
-    /* ACTION_FIRE         */  SDL_CONTROLLER_AXIS_TRIGGERRIGHT | JOY_FLAG_AXIS,
-    /* ACTION_NEXTWEAPON   */  SDL_CONTROLLER_BUTTON_X,
+    /* ACTION_FIRE         */  PL_CONTROLLER_AXIS_TRIGGERRIGHT | JOY_FLAG_AXIS,
+    /* ACTION_NEXTWEAPON   */  PL_CONTROLLER_BUTTON_X,
     /* ACTION_FIREBALLS    */  ACTION_UNBOUND,
     /* ACTION_BOUNCY       */  ACTION_UNBOUND,
     /* ACTION_HEAT         */  ACTION_UNBOUND,
-    /* ACTION_USE          */  SDL_CONTROLLER_BUTTON_A,
+    /* ACTION_USE          */  PL_CONTROLLER_BUTTON_A,
     /* ACTION_CHEAT        */  ACTION_UNBOUND,
-    /* ACTION_STATUS       */  SDL_CONTROLLER_BUTTON_Y,
+    /* ACTION_STATUS       */  PL_CONTROLLER_BUTTON_Y,
     /* ACTION_PAUSE        */  ACTION_UNBOUND,
     /* ACTION_MUTE         */  ACTION_UNBOUND,
-    /* ACTION_MENU         */  SDL_CONTROLLER_BUTTON_START,
-    /* ACTION_MENU_UP1     */  SDL_CONTROLLER_BUTTON_DPAD_UP,
-    /* ACTION_MENU_UP2     */  SDL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS | JOY_FLAG_NEG,
-    /* ACTION_MENU_DOWN1   */  SDL_CONTROLLER_BUTTON_DPAD_DOWN,
-    /* ACTION_MENU_DOWN2   */  SDL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS,
-    /* ACTION_MENU_LEFT1   */  SDL_CONTROLLER_BUTTON_DPAD_LEFT,
-    /* ACTION_MENU_LEFT2   */  SDL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS | JOY_FLAG_NEG,
-    /* ACTION_MENU_RIGHT1  */  SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
-    /* ACTION_MENU_RIGHT2  */  SDL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS,
-    /* ACTION_MENU_SELECT1 */  SDL_CONTROLLER_BUTTON_A,
-    /* ACTION_MENU_SELECT2 */  SDL_CONTROLLER_AXIS_TRIGGERRIGHT | JOY_FLAG_AXIS,
+    /* ACTION_MENU         */  PL_CONTROLLER_BUTTON_START,
+    /* ACTION_MENU_UP1     */  PL_CONTROLLER_BUTTON_DPAD_UP,
+    /* ACTION_MENU_UP2     */  PL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS | JOY_FLAG_NEG,
+    /* ACTION_MENU_DOWN1   */  PL_CONTROLLER_BUTTON_DPAD_DOWN,
+    /* ACTION_MENU_DOWN2   */  PL_CONTROLLER_AXIS_LEFTY | JOY_FLAG_AXIS,
+    /* ACTION_MENU_LEFT1   */  PL_CONTROLLER_BUTTON_DPAD_LEFT,
+    /* ACTION_MENU_LEFT2   */  PL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS | JOY_FLAG_NEG,
+    /* ACTION_MENU_RIGHT1  */  PL_CONTROLLER_BUTTON_DPAD_RIGHT,
+    /* ACTION_MENU_RIGHT2  */  PL_CONTROLLER_AXIS_LEFTX | JOY_FLAG_AXIS,
+    /* ACTION_MENU_SELECT1 */  PL_CONTROLLER_BUTTON_A,
+    /* ACTION_MENU_SELECT2 */  PL_CONTROLLER_AXIS_TRIGGERRIGHT | JOY_FLAG_AXIS,
     /* ACTION_MENU_SELECT3 */  ACTION_UNBOUND,
-    /* ACTION_MENU_CANCEL  */  SDL_CONTROLLER_BUTTON_B,
-    /* ACTION_REWIND       */  SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
-    /* ACTION_ADVANCE      */  SDL_CONTROLLER_BUTTON_RIGHTSHOULDER
+    /* ACTION_MENU_CANCEL  */  PL_CONTROLLER_BUTTON_B,
+    /* ACTION_REWIND       */  PL_CONTROLLER_BUTTON_LEFTSHOULDER,
+    /* ACTION_ADVANCE      */  PL_CONTROLLER_BUTTON_RIGHTSHOULDER
 };
 
 static int action_group_movement[] = {
@@ -410,6 +419,35 @@ static int action_group_actions[] = {
 
 #ifdef HAVE_DESKTOP
 static char *okmenu[] = { "OK" };
+
+
+#endif
+
+
+#ifdef PLATFORM_AMIGA
+static char *amigaokmenu[] = { "OK" };
+static char *amigascalemenu[] = { "Automatic", "Off (1x)", "On (2x)" };
+
+/* Open the ASL screen mode requester from the setup menu.  The display is
+   already running, so the new mode is remembered and used next time. */
+void amigascreenmodemenu(void) {
+    amiga_videomode pick;
+    int j = 0;
+
+    memset(&pick, 0, sizeof(pick));
+    if (amiga_select_screenmode(&pick)) {
+        amiga_cfg_modeid_i = (int)pick.modeid;
+        amiga_cfg_width  = pick.width;
+        amiga_cfg_height = pick.height;
+        amiga_cfg_depth  = pick.depth;
+        amiga_lock_mode(pick.modeid, pick.width, pick.height, pick.depth);
+        selectionmenu(1, amigaokmenu, &j, "Mode applies next time you start.");
+    }
+}
+
+void setupamigascaling(void) {
+    selectionmenu(3, amigascalemenu, &amiga_cfg_scale, "Pixel doubling");
+}
 #endif
 
 
@@ -581,7 +619,7 @@ int getnumber(void) {
     j = 0;
     buf[0]=0;
     ch = 0;
-    SDL_StartTextInput();
+    PL_StartTextInput();
     while ((ch != 13) && (ch != 27))
     {
         while ((uni=getkeypress(&ch)) == 0)
@@ -590,17 +628,17 @@ int getnumber(void) {
             textbuf[0] = 95;
             textbuf[1] = 0;
             textprint(94+(j<<3),145,(char)97);
-            SDL_GL_SwapWindow(mainwindow);
-            SDL_Delay(8); /* Just to avoid soaking all CPU. */
+            PL_SwapBuffers();
+            PL_Delay(8); /* Just to avoid soaking all CPU. */
             finalisemenu();
             textbuf[0] = 8;
             textbuf[1] = 0;
             textprint(94+(j<<3),145,(char)0);
-            SDL_GL_SwapWindow(mainwindow);
-            SDL_Delay(8); /* Just to avoid soaking all CPU. */
+            PL_SwapBuffers();
+            PL_Delay(8); /* Just to avoid soaking all CPU. */
         }
         if (uni==1) {
-            if (ch == SDLK_DELETE)
+            if (ch == PLK_DELETE)
             {
                 buf[j] = ch;
                 for(j=0;j<10;j++)
@@ -612,7 +650,7 @@ int getnumber(void) {
                 j = 0;
                 ch = 0;
             }
-            if ((ch == SDLK_BACKSPACE) && (j > 0))
+            if ((ch == PLK_BACKSPACE) && (j > 0))
             {
                 j--, buf[j] = 0;
                 textbuf[0] = ch;
@@ -629,7 +667,7 @@ int getnumber(void) {
                     j++;
         }
     }
-    SDL_StopTextInput();
+    PL_StopTextInput();
     for(i=0;i<256;i++)
         keystatus[i] = 0;
     if (ch==27) return -1;
@@ -730,7 +768,7 @@ void setupscalingmodemenu(void) {
 typedef struct {
     const char* title;
     void(*get_action_name)(char* txt, int len, int action);
-    int (*select)(SDL_Event* e, int action);
+    int (*select)(PL_Event* e, int action);
     void (*draw_instructions)(const char* txt);
 } input_configuration_method;
 
@@ -739,13 +777,13 @@ input_configuration_method *currentmeth;
 const char *currentinst;
 
 static void key_get_action_name(char* txt, int len, int action) {
-    strncpy(txt, SDL_GetKeyName(action_key[action]), len);
+    strncpy(txt, PL_GetKeyName(action_key[action]), len);
 }
 
-static int key_select(SDL_Event* event, int action) {
+static int key_select(PL_Event* event, int action) {
     switch(event->type) {
-        case SDL_KEYDOWN:
-            action_key[action] = event->key.keysym.sym;
+        case PL_KEYDOWN:
+            action_key[action] = event->key;
             return 1;
         default:
             break;
@@ -772,19 +810,19 @@ static void joy_get_action_name(char* txt, int len, int action) {
     }
 }
 
-static int joy_select(SDL_Event* event, int action) {
+static int joy_select(PL_Event* event, int action) {
     switch(event->type) {
-        case SDL_JOYBUTTONDOWN:
-            if (event->jbutton.which == cur_joystick_index) {
-                action_joystick[action] = event->jbutton.button;
+        case PL_JOYBUTTONDOWN:
+            if (event->which == cur_joystick_index) {
+                action_joystick[action] = event->button;
                 return 1;
             }
             break;
-        case SDL_JOYAXISMOTION:
-            if (event->jaxis.which == cur_joystick_index) {
-                if (abs(event->jaxis.value) > 24000) {
-                    int ax = event->jaxis.axis | JOY_FLAG_AXIS;
-                    if (event->jaxis.value < 0) {
+        case PL_JOYAXISMOTION:
+            if (event->which == cur_joystick_index) {
+                if (abs(event->value) > 24000) {
+                    int ax = event->axis | JOY_FLAG_AXIS;
+                    if (event->value < 0) {
                         ax |= JOY_FLAG_NEG;
                     }
                     action_joystick[action] = ax;
@@ -792,8 +830,8 @@ static int joy_select(SDL_Event* event, int action) {
                 }
             }
             break;
-        case SDL_KEYDOWN:
-            if (event->key.keysym.sym == SDLK_BACKSPACE) {
+        case PL_KEYDOWN:
+            if (event->key == PLK_BACKSPACE) {
                 action_joystick[action] = ACTION_UNBOUND;
             }
             return 1;
@@ -811,7 +849,7 @@ static void ctrl_get_action_name(char* txt, int len, int action) {
     } else if (def & JOY_FLAG_AXIS) {
         *txt++ = def & JOY_FLAG_NEG ? '-' : '+';
         def &= JOY_MASK;
-        cptext = SDL_GameControllerGetStringForAxis(def);
+        cptext = PL_ControllerAxisName(def);
         if (cptext) {
             strncpy(txt, cptext, len);
             makeupper(txt);
@@ -819,7 +857,7 @@ static void ctrl_get_action_name(char* txt, int len, int action) {
             snprintf(txt, len, "Axis %d", def);
         }
     } else {
-        cptext = SDL_GameControllerGetStringForButton(def);
+        cptext = PL_ControllerButtonName(def);
         if (cptext) {
             strncpy(txt, cptext, len);
             makeupper(txt);
@@ -829,19 +867,19 @@ static void ctrl_get_action_name(char* txt, int len, int action) {
     }
 }
 
-static int ctrl_select(SDL_Event* event, int action) {
+static int ctrl_select(PL_Event* event, int action) {
     switch(event->type) {
-        case SDL_CONTROLLERBUTTONDOWN:
-            if (event->jbutton.which == cur_controller_index) {
-                action_controller[action] = event->cbutton.button;
+        case PL_CONTROLLERBUTTONDOWN:
+            if (event->which == cur_controller_index) {
+                action_controller[action] = event->button;
                 return 1;
             }
             break;
-        case SDL_CONTROLLERAXISMOTION:
-            if (event->caxis.which == cur_controller_index) {
-                if (abs(event->caxis.value) > 12000) {
-                    int ax = event->caxis.axis | JOY_FLAG_AXIS;
-                    if (event->caxis.value < 0) {
+        case PL_CONTROLLERAXISMOTION:
+            if (event->which == cur_controller_index) {
+                if (abs(event->value) > 12000) {
+                    int ax = event->axis | JOY_FLAG_AXIS;
+                    if (event->value < 0) {
                         ax |= JOY_FLAG_NEG;
                     }
                     action_controller[action] = ax;
@@ -849,8 +887,8 @@ static int ctrl_select(SDL_Event* event, int action) {
                 }
             }
             break;
-        case SDL_KEYDOWN:
-            if (event->key.keysym.sym == SDLK_BACKSPACE) {
+        case PL_KEYDOWN:
+            if (event->key == PLK_BACKSPACE) {
                 action_controller[action] = ACTION_UNBOUND;
             }
             return 1;
@@ -939,7 +977,7 @@ static void draw_setupsetinputgroup() {
 
 void setupsetinputgroup(int *group, input_configuration_method* meth) {
     int i = 0, j, quitf = 0;
-    SDL_Event event;
+    PL_Event event;
 
     currentgroup = group;
     currentmeth = meth;
@@ -958,7 +996,7 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
             meth->draw_instructions(keynames[group[i]]);
             j = 1;
             while(j) {
-                while(SDL_PollEvent(&event))
+                while(PL_PollEvent(&event))
                 {
                     ProcessEvent(&event);
                     if (quitgame) quit();
@@ -967,7 +1005,7 @@ void setupsetinputgroup(int *group, input_configuration_method* meth) {
                         break;
                     }
                 }
-                SDL_Delay(10);
+                PL_Delay(10);
             }
             drawStackTopIndex--;
         }
@@ -1039,6 +1077,7 @@ void setupconfigureinput(void) {
     }
 }
 
+
 static void draw_mainmenu(void) {
     int n = 18;
     drawmenu(360,240,menu);
@@ -1056,6 +1095,19 @@ static void draw_mainmenu(void) {
     n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,"Configure Input");
     n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+#ifdef PLATFORM_AMIGA
+    /* There is no window, no filtering and no stereo view on the Amiga; the
+       rows they used to occupy carry the screen mode settings instead. */
+    sprintf(textbuf,"Screen mode: %dx%d %d bit",
+            amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth);
+    n += 12; textprint(51,n,64);
+    strcpy(textbuf,"Ask for mode at startup: ");
+    strcat(textbuf,amiga_cfg_askmode ? "Yes" : "No");
+    n += 12; textprint(51,n,64);
+    strcpy(textbuf,"Pixel doubling: ");
+    strcat(textbuf,amigascalemenu[amiga_cfg_scale > 2 ? 0 : amiga_cfg_scale]);
+    n += 12; textprint(51,n,64);
+#else
     #ifdef __SWITCH__
     sprintf(textbuf,"Window size: %dx%d %s", screenwidth,
             screenheight, appletGetOperationMode() == AppletOperationMode_Handheld ? "Handheld" : "Dock");
@@ -1073,6 +1125,7 @@ static void draw_mainmenu(void) {
     strcpy(textbuf,"Stereoscopic 3D: ");
     strcat(textbuf,stereoscopicmenu[stereo]);
     n += 12; textprint(51,n,64);
+#endif
     strcpy(textbuf,"Music: ");
     strcat(textbuf,musicmenu[music]);
     n += 12; textprint(51,n,96);
@@ -1091,12 +1144,14 @@ static void draw_mainmenu(void) {
     strcpy(textbuf,"Sound block size: ");
     strcat(textbuf,soundblockmenu[soundblock]);
     n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+#ifndef PLATFORM_AMIGA
     strcpy(textbuf,"Texture colour depth: ");
     strcat(textbuf,texturedepthmenu[texturedepth]);
     n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
     strcpy(textbuf,"View: ");
     strcat(textbuf,scalingtypemenu[scaling]);
     n += 12; textprint(51,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
+#endif
 #ifdef HAVE_DESKTOP
     n += 12; strcpy(textbuf,"Create desktop shortcuts");
     textprint(51,n,96);
@@ -1126,6 +1181,31 @@ void setupmenu(int ingame) {
 
     draw_ptr[++drawStackTopIndex] = draw_mainmenu;
 
+#ifdef PLATFORM_AMIGA
+    /* Twelve rows: the window, filtering, stereo, texture depth and view
+       options of the desktop builds do not apply to a software renderer on a
+       fixed size screen, and the screen mode settings take their place. */
+    while (!quit) {
+        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 12)) < 0) {
+            quit = 1;
+        } else {
+            switch (sel) {
+            case 0:  setupinputdevices();      break;
+            case 1:  setupconfigureinput();    break;
+            case 2:  amigascreenmodemenu();    break;
+            case 3:  amiga_cfg_askmode = !amiga_cfg_askmode; break;
+            case 4:  setupamigascaling();      break;
+            case 5:  setupsetmusic();          break;
+            case 6:  setupsetsound();          break;
+            case 7:  setupsetsoundchannels();  break;
+            case 8:  setupsetmusicchannels();  break;
+            case 9:  setupcheatmenu();         break;
+            case 10: setupsoundblockmenu();    break;
+            case 11: quit = 1;                 break;
+            }
+        }
+    }
+#else
     while(!quit) {
 #ifdef HAVE_DESKTOP
         char errbuf[64] = {0};
@@ -1194,6 +1274,7 @@ void setupmenu(int ingame) {
                 }
             }
     }
+#endif
 
     drawStackTopIndex--;
 }
@@ -1259,6 +1340,16 @@ void configure_screen_size(void) {
     int div1,div2;
     aspw=1.0;
     asph=1.0;
+
+#ifdef PLATFORM_AMIGA
+    /* The Amiga renderer always works in a 360x240 chunky buffer; the display
+       module centres and optionally doubles it inside whatever screen mode
+       the player chose, so there is nothing to scale here. */
+    virtualscreenwidth = 360;
+    virtualscreenheight = 240;
+    return;
+#endif
+
     switch(scaling) {
         case 1:
         case 3:
@@ -1318,8 +1409,8 @@ void load_default_settings(void) {
     }
 
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ) {
-        action_key[ACTION_OLD_LOAD]=SDLK_l;
-        action_key[ACTION_OLD_SAVE]=SDLK_s;
+        action_key[ACTION_OLD_LOAD]=PLK_l;
+        action_key[ACTION_OLD_SAVE]=PLK_s;
     }
 }
 
@@ -1418,8 +1509,8 @@ static int _load_key(const char* key, char* val, setting_t* set) {
         case 0:
             return 1;
         case 1:
-            keycode = SDL_GetKeyFromName(strval);
-            if (keycode == SDLK_UNKNOWN) keycode = -1;
+            keycode = PL_GetKeyFromName(strval);
+            if (keycode == PLK_UNKNOWN) keycode = -1;
             break;
         case 2:
             break;
@@ -1435,7 +1526,7 @@ static int _save_key(const char* key, FILE* f, setting_t* set) {
     if (keycode == -1) {
         txt = "";
     } else {
-        txt = SDL_GetKeyName(keycode);
+        txt = PL_GetKeyName(keycode);
         if (!*txt) {
             fprintf(f, "%s = %d\n", key, keycode);
             return 0;
@@ -1463,17 +1554,17 @@ static int _load_joyaction(const char* key, char* val, setting_t* set) {
                     }
                 }
                 if (flags) {
-                    which = SDL_CONTROLLER_AXIS_INVALID;
+                    which = PL_CONTROLLER_AXIS_INVALID;
                     if (controller)
-                        which = SDL_GameControllerGetAxisFromString(strval + 2);
-                    if (which == SDL_CONTROLLER_AXIS_INVALID)
+                        which = PL_ControllerAxisFromName(strval + 2);
+                    if (which == PL_CONTROLLER_AXIS_INVALID)
                         if (_parse_int(strval + 2, &which) != 0)
                             return 1;
                 } else {
-                    which = SDL_CONTROLLER_BUTTON_INVALID;
+                    which = PL_CONTROLLER_BUTTON_INVALID;
                     if (controller)
-                        which = SDL_GameControllerGetButtonFromString(strval);
-                    if (which == SDL_CONTROLLER_BUTTON_INVALID)
+                        which = PL_ControllerButtonFromName(strval);
+                    if (which == PL_CONTROLLER_BUTTON_INVALID)
                         if (_parse_int(strval, &which) != 0)
                             return 1;
                 }
@@ -1511,7 +1602,7 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
         if (val & JOY_FLAG_AXIS) {
             char neg = val & JOY_FLAG_NEG ? '-' : '+';
             if (controller) {
-                txt = SDL_GameControllerGetStringForAxis(which);
+                txt = PL_ControllerAxisName(which);
                 if (txt && *txt) {
                     snprintf(txtbuf, 32, "\"A%c%s\"", neg, txt);
                 }
@@ -1521,7 +1612,7 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
             }
         } else {
             if (controller) {
-                txt = SDL_GameControllerGetStringForButton(which);
+                txt = PL_ControllerButtonName(which);
                 if (txt && *txt) {
                     snprintf(txtbuf, 32, "\"%s\"", txt);
                 }
@@ -1546,6 +1637,25 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
 #define XINTSETTING(name, gvar) { #name, _load_int, NULL, &gvar }
 #define FLOATSETTING(name, gvar) { #name, _load_float, _save_float, &gvar }
 #define ENUMSETTING(name, values, gvar) { #name, _load_enum, _save_enum, &gvar, values }
+
+#ifdef PLATFORM_AMIGA
+/* Screen mode chosen through the ASL requester at startup. */
+extern int amiga_cfg_modeid_i;
+extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
+extern int amiga_cfg_scale, amiga_cfg_askmode;
+void amiga_settings_loaded(void);
+void amiga_settings_saving(void);
+
+static setting_t amiga_settings[] = {
+    INTSETTING(modeid, amiga_cfg_modeid_i),
+    INTSETTING(width, amiga_cfg_width),
+    INTSETTING(height, amiga_cfg_height),
+    INTSETTING(depth, amiga_cfg_depth),
+    INTSETTING(scale, amiga_cfg_scale),
+    INTSETTING(askmode, amiga_cfg_askmode),
+    { NULL }
+};
+#endif
 
 static setting_t video_settings[] = {
     INTSETTING(fullscreen, fullscr),
@@ -1587,6 +1697,9 @@ static setting_t controller_settings[ACTION_LAST+1];
 
 static setting_section_t sections[] = {
     { "Video", video_settings },
+#ifdef PLATFORM_AMIGA
+    { "Amiga", amiga_settings },
+#endif
     { "Sound", sound_settings },
     { "Music", music_settings },
     { "Input", input_settings },
@@ -1709,6 +1822,10 @@ void loadsettings(void) {
         setup();
     }
     fclose(input);
+
+#ifdef PLATFORM_AMIGA
+    amiga_settings_loaded();
+#endif
 }
 
 void savesettings(void) {
@@ -1732,6 +1849,10 @@ void savesettings(void) {
 
     if (output == NULL) return;
 
+#ifdef PLATFORM_AMIGA
+    amiga_settings_saving();
+#endif
+
     for (cursection = sections; cursection->name; cursection++) {
         fprintf(output, "[%s]\n", cursection->name);
         for (cursetting = cursection->settings; cursetting->name; cursetting++) {
@@ -1749,77 +1870,27 @@ void setup(void) {
     int i, j, k, walcounter;
     unsigned int l;
     unsigned char *v;
-    SDL_Surface *icon;
-    SDL_Rect displaybounds;
+    int deskw, deskh;
 
     configure();
     statusbaryoffset=250;
 
     /* Display accuracy not important in setup... */
 
-    SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|
-             SDL_INIT_JOYSTICK|SDL_INIT_GAMECONTROLLER);
+    PL_Init();
 
-    SDL_GetDisplayBounds(0, &displaybounds);
+    PL_GetDesktopSize(&deskw, &deskh);
 
-    SDL_JoystickEventState(1);
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 5);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,5);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,5);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
-    SDL_ShowCursor(0);
-
-    fprintf(stderr,"Activating video...\n");
-
-    if (displaybounds.w >= 800 && displaybounds.h >= 640) {
+    if (deskw >= 800 && deskh >= 640) {
         screenwidth=720; screenheight=480;
     } else {
         screenwidth=360; screenheight=240;
     }
 
-    // Try to load icon from multiple locations
-    icon = SDL_LoadBMP("ken.bmp");
-    if (icon == NULL) {
-#if defined(__unix__) && !defined(__APPLE__)
-        // Try system installation paths
-        icon = SDL_LoadBMP("/usr/local/share/ken/ken.bmp");
-        if (icon == NULL) {
-            icon = SDL_LoadBMP("/usr/share/ken/ken.bmp");
-        }
-#endif
-        if (icon == NULL) {
-            fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
-        }
-    }
-
-    if (mainwindow != NULL)
-        fatal_error("window already created (setup)");
-    mainwindow = SDL_CreateWindow("Ken's Labyrinth Setup", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                  screenwidth, screenheight, SDL_WINDOW_OPENGL);
-
-    if (mainwindow == NULL) {
+    if (PL_OpenVideo() != 0)
         fatal_error("Video mode set failed.");
-    }
 
-    SDL_GetWindowSize(mainwindow, &screenwidth, &screenheight);
-
-    if (icon != NULL)
-        SDL_SetWindowIcon(mainwindow, icon);
-
-    maincontext = SDL_GL_CreateContext(mainwindow);
-    SDL_GL_SetSwapInterval(1);  // 0 = off, 1 = vsync, -1 = adaptive
-
-    if (maincontext == NULL) {
-        fatal_error("Could not create GL context.");
-    }
-
-    SDL_SetWindowBrightness(mainwindow, 1.0); /* Zap gamma correction. */
+    PL_SetBrightness(1.0); /* Zap gamma correction. */
 
     virtualscreenwidth=360;
     virtualscreenheight=240;
@@ -1839,14 +1910,16 @@ void setup(void) {
     }
 
     screenbuffer=malloc(screenbufferwidth*screenbufferheight);
-    screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
+#ifdef PLATFORM_AMIGA
+    screenbuffer32=NULL;
+#else
+    screenbuffer32=malloc((size_t)screenbufferwidth*screenbufferheight*4);
+#endif
 
     linecompare(479);
 
     if (screenbuffer==NULL) {
-        fprintf(stderr,"Insufficient memory.\n");
-        SDL_Quit();
-        exit(-1);
+        fatal_error("Insufficient memory.");
     }
 
     fprintf(stderr,"Loading configuration file...\n");
@@ -1865,19 +1938,14 @@ void setup(void) {
     if (((lzwbuf = malloc(12304-8200)) == NULL)||
         ((lzwbuf2=malloc(8200))==NULL))
     {
-        fprintf(stderr,"Error #3: Memory allocation failed.\n");
-        SDL_Quit();
-        exit(-1);
+        fatal_error("Error #3: Memory allocation failed.");
     }
 
     convwalls = numwalls;
 
     if ((pic = malloc((numwalls-initialwalls)<<12)) == NULL)
     {
-        fprintf(stderr,
-                "Error #4: This computer does not have enough memory.\n");
-        SDL_Quit();
-        exit(-1);
+        fatal_error("Error #4: This computer does not have enough memory.");
     }
     walcounter = initialwalls;
     if (convwalls > initialwalls)
@@ -1907,11 +1975,7 @@ void setup(void) {
 
     FindJoysticks();
 
-    if (largescreentexture) {
-        glGenTextures(1,&screenbuffertexture);
-    } else {
-        glGenTextures(72,screenbuffertextures);
-    }
+    R_InitOverlay();
 
     saidwelcome = 0;
     fprintf(stderr,"Loading intro pictures...\n");
@@ -1958,6 +2022,6 @@ void setup(void) {
     setupmenu(0);
 
     savesettings();
-    SDL_Quit();
+    PL_Shutdown();
     exit(0);
 }

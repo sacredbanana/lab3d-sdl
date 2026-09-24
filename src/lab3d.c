@@ -4,7 +4,9 @@
 #include "lab3d.h"
 #include "adlibemu.h"
 #include "math.h"
+#ifdef PLATFORM_SDL
 #include "SDL_main.h"
+#endif
 
 static demo_vardef_t demovars[] = {
     DEMO_VAR(boardnum),
@@ -116,7 +118,7 @@ void debuginfo(void) {
     int accelf;
     int accels;
     int accelt;
-    if (newkeystatus(SDLK_F11)) {
+    if (newkeystatus(PLK_F11)) {
         if (!(showdebug & 2))
             showdebug ^= 3;
     } else {
@@ -165,38 +167,12 @@ void debuginfo(void) {
 
 void drawvolumebar(int vol,int type,float level) {
     if (level>0.5) level=0.5;
-    glEnable(GL_BLEND);
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_DEPTH_TEST);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, 360.0, -15+30*type, 225+30*type, -1.0, 1.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glBegin(GL_QUADS);
-    glColor4f(0,0,0,level);
-    glVertex2s(96,110);
-    glVertex2s(96,130);
-    glColor4f(0.25,0.25,0.25,level);
-    glVertex2s(224,130);
-    glVertex2s(224,110);
-    if (type)
-        glColor4f(0,0,255,level);
-    else
-        glColor4f(255,0,0,level);
-    glVertex2s(96,110);
-    glVertex2s(96,130);
-    glVertex2s(96+(vol>>1),130);
-    glVertex2s(96+(vol>>1),110);
-    glEnd();
-    glDisable(GL_BLEND);
-    checkGLStatus();
+    R_DrawVolumeBar(vol, type, level);
 }
 
 static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewinding) {
     char ksmfile[15];
-    double basetime = SDL_GetTicks();
+    double basetime = PL_GetTicks();
     double ctime;
     int democlock = 0;
     double demomsclock = 0;
@@ -272,13 +248,13 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
         if (pause != oldpause) {
             oldpause = pause;
             if (pause) {
-                basetime -= SDL_GetTicks();
+                basetime -= PL_GetTicks();
             } else {
-                basetime += SDL_GetTicks();
+                basetime += PL_GetTicks();
             }
         }
 
-        ctime = ((double)SDL_GetTicks()) - basetime;
+        ctime = ((double)PL_GetTicks()) - basetime;
         /*printf("%lf %lf %lf %d\n", ctime, demomsclock, accelf, pause);*/
         if (!pause) {
             while (demomsclock < ctime) {
@@ -327,7 +303,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
                 }
 
                 if (td <= 0) {
-                    basetime = SDL_GetTicks() - 1;
+                    basetime = PL_GetTicks() - 1;
                     demomsclock = 0;
                     ctime = 0;
                     break;
@@ -340,8 +316,8 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
                 double waitfor = demomsclock;
                 if (waitfor > ctime)
                     waitfor = ctime;
-                while ((ctime = ((double)SDL_GetTicks()) - basetime) < waitfor)
-                    SDL_Delay((int)(waitfor - ctime));
+                while ((ctime = ((double)PL_GetTicks()) - basetime) < waitfor)
+                    PL_Delay((int)(waitfor - ctime));
             }
         }
 
@@ -399,7 +375,7 @@ static int playdemo(demofile_t* demoplaying, demofile_t* demorecording, int rewi
         picrot(posx, posy, posz, ang);
         debuginfo();
         statusbaralldraw();
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
     }
 }
 
@@ -453,6 +429,10 @@ int main(int argc,char **argv)
             printf(" -recordx <slot> <dem>    Same as -record but saves an uncompressed demo file.\n");
             printf(" -play <dem>              Play a demo file.\n");
             printf(" -setup                   Start in settings menu.\n");
+#ifdef PLATFORM_AMIGA
+            printf(" -keepmode                Reuse the saved screen mode, no requester.\n");
+            printf(" -askmode                 Always show the screen mode requester.\n");
+#endif
             printf(" -v, -debug               Verbose output.\n");
             return 0;
         }
@@ -460,29 +440,16 @@ int main(int argc,char **argv)
 
     clockspd=0;
 
-    soundmutex = SDL_CreateMutex();
-    timermutex = SDL_CreateMutex();
-
     /* Initialisation... */
 
-    /* Initialise SDL; */
-
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO |
-             SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER);
+    PL_Init();
 
     #ifdef __SWITCH__
     romfsInit();
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
     #endif
 
-    if (SDL_GL_LoadLibrary(NULL) != 0) {
-        TRACE("Could not dynamically open OpenGL library: %s", SDL_GetError());
-        SDL_Quit();
-    }
-
-    if (strlen(argv[0])>=5) {
+    /* Started from Workbench there is no argv[0] to look at. */
+    if (argc > 0 && argv[0] != NULL && strlen(argv[0])>=5) {
         if (strcmp(argv[0]+strlen(argv[0])-5,"setup")==0)
             setup();
     }
@@ -568,6 +535,12 @@ int main(int argc,char **argv)
             speechstatus=2;
         else if (strcmp(argv[i],"-nosound")==0)
             speechstatus=0;
+#ifdef PLATFORM_AMIGA
+        else if (strcmp(argv[i],"-keepmode")==0)
+            amiga_cfg_askmode = 0;
+        else if (strcmp(argv[i],"-askmode")==0)
+            amiga_cfg_askmode = 1;
+#endif
         else if (strcmp(argv[i],"-setup")==0)
             setup();
         else if ((strcmp(argv[i],"-debug")==0) ||
@@ -592,8 +565,7 @@ int main(int argc,char **argv)
         gamelaunchermenu();
         musicoff();
         #if !defined(__SWITCH__)
-        SDL_DestroyWindow(mainwindow);
-        SDL_GL_DeleteContext(maincontext);
+        PL_CloseVideo();
         #endif
         freememory();
         clearimgcache();
@@ -606,7 +578,7 @@ int main(int argc,char **argv)
 
     initialize();
     
-    if (argc >= 2)
+    if (argc >= 2 && argv[argc-1] != NULL)
     {
         for(i=0;i<8;i++) {
             ksmfile[i] = argv[argc-1][i];
@@ -741,23 +713,22 @@ int main(int argc,char **argv)
 
                     fade(0);
 
-                    glClearColor(0,0,0,0);
-                    glClear(GL_COLOR_BUFFER_BIT);
+                    R_ClearScreen();
 
                     ingame=0;
                     fade(fadewarpval);
                     pictur(180,halfheight,144<<2,0,gameover);
-                    SDL_GL_SwapWindow(mainwindow);
+                    PL_SwapBuffers();
 
-                    SDL_Delay(1000);
+                    PL_Delay(1000);
 
                     for(i=fadewarpval;i>=0;i-=2)
                     {
-                        glClear(GL_COLOR_BUFFER_BIT);
+                        R_ClearScreen();
                         fade(i);
                         pictur(180,halfheight,144<<2,0,gameover);
-                        SDL_GL_SwapWindow(mainwindow);
-                        SDL_Delay(20);
+                        PL_SwapBuffers();
+                        PL_Delay(20);
                     }
                     fade(63);
                     kgif(1);
@@ -884,28 +855,28 @@ int main(int argc,char **argv)
 
         }
         sortcnt = 0;
-        SDL_LockMutex(soundmutex);
-        SDL_LockMutex(timermutex);
+        PL_LockSound();
+        PL_LockTimer();
 
         /* Speed cap at 2 ticks/frame (about 120 fps). */
         if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < (demorecording ? 4 : 2))) {
-            SDL_UnlockMutex(soundmutex);
+            PL_UnlockSound();
             while(clockspeed < (demorecording ? 4 : 2)) {
-                SDL_Delay(0); /* Give other threads a chance. */
+                PL_Delay(0); /* Give other threads a chance. */
                 updateclock();
             }
-            SDL_LockMutex(soundmutex);
+            PL_LockSound();
         }
         if (musicstatus!=1)
-            SDL_Delay(10); /* Just to prevent insane speeds... */
+            PL_Delay(10); /* Just to prevent insane speeds... */
 
         clockspd=clockspeed;
 
         if (clockspd>240) clockspd=240; /* Prevent total insanity if game
                                            is suspended. */
         clockspeed=0;
-        SDL_UnlockMutex(timermutex);
-        SDL_UnlockMutex(soundmutex);
+        PL_UnlockTimer();
+        PL_UnlockSound();
 
         frames++;
         timeused+=clockspd;
@@ -3216,9 +3187,9 @@ int main(int argc,char **argv)
                 scorecount = 0;
                 drawscore(scorecount);
                 drawtime(scoreclock);
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 clockspeed = 0;
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
             }
             else
             {
@@ -3272,7 +3243,7 @@ int main(int argc,char **argv)
             if (fadewarpval > 16)
                 for(i=63;i>=16;i-=2)
                 {
-                    SDL_Delay(10); /* Close enough. */
+                    PL_Delay(10); /* Close enough. */
                     fade(i+64);
                     picrot(posx,posy,posz,ang);
 
@@ -3316,7 +3287,7 @@ int main(int argc,char **argv)
 
                     mixing=0;
 
-                    SDL_GL_SwapWindow(mainwindow);
+                    PL_SwapBuffers();
                 }
             x = getkeydefstat(ACTION_PAUSE);
             y = 1;
@@ -3336,22 +3307,22 @@ int main(int argc,char **argv)
                 }
                 y = x;
                 x = getkeydefstat(ACTION_PAUSE);
-                SDL_Delay(10); /* Leave some CPU for the rest of us! */
+                PL_Delay(10); /* Leave some CPU for the rest of us! */
             }
             if (fadewarpval > 16)
                 for(i=16;i<=fadewarpval;i+=2)
                 {
-                    SDL_Delay(10); /* Close enough. */
+                    PL_Delay(10); /* Close enough. */
                     fade(i+64);
                     picrot(posx,posy,posz,ang);
-                    SDL_GL_SwapWindow(mainwindow);
+                    PL_SwapBuffers();
                 }
             wipeoverlay(0,0,361,statusbaryoffset);
             picrot(posx,posy,posz,ang);
             totalclock = ototclock;
-            SDL_LockMutex(timermutex);
+            PL_LockTimer();
             clockspeed = 0;
-            SDL_UnlockMutex(timermutex);
+            PL_UnlockTimer();
             lastunlock = 1;
             lastshoot = 1;
             lastbarchange = 1;
@@ -3390,7 +3361,7 @@ int main(int argc,char **argv)
             clearkeydefstat(ACTION_MENU_SELECT3);
             while(readmouse(NULL, NULL)!=0) {
                 PollInputs();
-                SDL_Delay(10);
+                PL_Delay(10);
             }
 
             while ((getkeydefstat(ACTION_MENU) == 0) &&
@@ -3406,10 +3377,10 @@ int main(int argc,char **argv)
                 {
                     bstatus=readmouse(NULL, NULL);
                 }
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 totalclock += clockspeed;
                 clockspeed = 0;
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
 
                 j = 63-(((K_INT16)labs((totalclock%120)-60))>>3);
 
@@ -3423,15 +3394,15 @@ int main(int argc,char **argv)
 
                 fade(27);
 
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
 
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 while(clockspeed<4) {
-                    SDL_UnlockMutex(timermutex);
-                    SDL_Delay(10);
-                    SDL_LockMutex(timermutex);
+                    PL_UnlockTimer();
+                    PL_Delay(10);
+                    PL_LockTimer();
                 }
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
             }
             settransferpalette();
             lastunlock = 1;
@@ -3452,21 +3423,21 @@ int main(int argc,char **argv)
             mixing=0;
             for(i=27;i<=63;i+=2)
             {
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 clockspeed=0;
                 while(clockspeed<4) {
-                    SDL_UnlockMutex(timermutex);
-                    SDL_Delay(10);
-                    SDL_LockMutex(timermutex);
+                    PL_UnlockTimer();
+                    PL_Delay(10);
+                    PL_LockTimer();
                 }
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
                 fade(i);
                 picrot(posx,posy,posz,ang);
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
             }
-            SDL_LockMutex(timermutex);
+            PL_LockTimer();
             clockspeed = 0;
-            SDL_UnlockMutex(timermutex);
+            PL_UnlockTimer();
             totalclock = ototclock;
             ototclock = 1;
             wipeoverlay(0,0,361,statusbaryoffset);
@@ -3477,7 +3448,7 @@ int main(int argc,char **argv)
 
         if (getkeydefstat(ACTION_MUTE) > 0)
         {
-            SDL_LockMutex(soundmutex); /* Paranoid, I know... */
+            PL_LockSound(); /* Paranoid, I know... */
             mute = 1 - mute;
             if ((mute == 1) && (musicsource == MUSIC_SOURCE_MIDI)) {
 #ifdef WIN32
@@ -3489,7 +3460,7 @@ int main(int argc,char **argv)
 #endif
                 setmidiinsts();
             }
-            SDL_UnlockMutex(soundmutex);
+            PL_UnlockSound();
             clearkeydefstat(ACTION_MUTE);
         }
 
@@ -3499,7 +3470,7 @@ int main(int argc,char **argv)
         {
             if (ototclock > 1)
             {
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
                 j = mainmenu();
                 if (j < MAINMENU_COPYRIGHT)
                 {
@@ -3561,9 +3532,9 @@ int main(int argc,char **argv)
                         namrememberstat = hiscorenamstat;
                         hiscorenamstat = 0;
                         hiscorenam[0] = 0;
-                        SDL_LockMutex(timermutex);
+                        PL_LockTimer();
                         clockspeed = 0;
-                        SDL_UnlockMutex(timermutex);
+                        PL_UnlockTimer();
                         scoreclock = 0;
                         scorecount = 0;
                         statusbaralldraw();
@@ -3595,9 +3566,9 @@ int main(int argc,char **argv)
                     totalclock = ototclock;
                 if (vidmode == 0)
                     linecompare(statusbar);
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 clockspeed = 0;
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
             }
             else
             {
@@ -3608,42 +3579,44 @@ int main(int argc,char **argv)
                 lastbarchange = 1;
             }
         }
-        if (newkeystatus(SDLK_F5)) {
+        if (newkeystatus(PLK_F5)) {
             soundvolume-=(clockspd>>1);
             if (soundvolume<0) soundvolume=0;
             soundvolumevisible=240;
         }
-        if (newkeystatus(SDLK_F6)) {
+        if (newkeystatus(PLK_F6)) {
             soundvolume+=(clockspd>>1);
             if (soundvolume>256) soundvolume=256;
             soundvolumevisible=240;
         }
-        if (newkeystatus(SDLK_F7)) {
+        if (newkeystatus(PLK_F7)) {
             musicvolume-=(clockspd>>1);
             if (musicvolume<0) musicvolume=0;
-            SDL_LockMutex(soundmutex); /* Probably overkill. */
+            PL_LockSound(); /* Probably overkill. */
             adlibsetvolume(musicvolume*48);
-            SDL_UnlockMutex(soundmutex);
+            PL_UnlockSound();
             musicvolumevisible=240;
         }
-        if (newkeystatus(SDLK_F8)) {
+        if (newkeystatus(PLK_F8)) {
             musicvolume+=(clockspd>>1);
             if (musicvolume>256) musicvolume=256;
-            SDL_LockMutex(soundmutex); /* Probably overkill. */
+            PL_LockSound(); /* Probably overkill. */
             adlibsetvolume(musicvolume*48);
-            SDL_UnlockMutex(soundmutex);
+            PL_UnlockSound();
             musicvolumevisible=240;
         }
-        if (newkeystatus(SDLK_F10)) {
+        if (newkeystatus(PLK_F10)) {
             gammalevel *= pow(1.01, clockspd);
             if (gammalevel>10.0) gammalevel=10.0;
-            if (SDL_SetWindowBrightness(mainwindow, gammalevel) != 0)
+            PL_SetBrightness(gammalevel);
+            if (0)
                 fprintf(stderr,"Gamma not supported.\n");
         }
-        if (newkeystatus(SDLK_F9)) {
+        if (newkeystatus(PLK_F9)) {
             gammalevel *= pow(1.01, -clockspd);
             if (gammalevel<0.1) gammalevel=0.1;
-            if (SDL_SetWindowBrightness(mainwindow, gammalevel) != 0)
+            PL_SetBrightness(gammalevel);
+            if (0)
                 fprintf(stderr,"Gamma not supported.\n");
         }
         if (soundvolumevisible) {
@@ -3668,7 +3641,7 @@ int main(int argc,char **argv)
         if ((scoreclock%240) < clockspd)
             drawtime(scoreclock);
 
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
     }
 
     /* End of main loop. End of game. Tidy up things... */

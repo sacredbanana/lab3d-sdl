@@ -22,25 +22,6 @@ static K_INT16 gameoverfound;
 
 #define EPSILON 0.0000001
 
-#define _DYNAMIC_OGL_FUNCS(mac)                                 \
-    mac(GLGENFRAMEBUFFERS, glGenFramebuffers)                   \
-    mac(GLGENRENDERBUFFERS, glGenRenderbuffers)                 \
-    mac(GLDRAWBUFFERS, glDrawBuffers)                           \
-    mac(GLBINDFRAMEBUFFER, glBindFramebuffer)                   \
-    mac(GLBINDRENDERBUFFER, glBindRenderbuffer)                 \
-    mac(GLRENDERBUFFERSTORAGE, glRenderbufferStorage)           \
-    mac(GLFRAMEBUFFERTEXTURE, glFramebufferTexture)             \
-    mac(GLFRAMEBUFFERRENDERBUFFER, glFramebufferRenderbuffer)
-
-#define _DECLARE_FUNC(type, name) static PFN ##type## PROC ext_##name;
-#define _LOAD_FUNC(type, name) ext_##name = SDL_GL_GetProcAddress(#name); if (!ext_##name) return #name;
-
-_DYNAMIC_OGL_FUNCS(_DECLARE_FUNC)
-
-static GLuint stereo_fbufs[2];
-static GLuint stereo_tex[2];
-static GLuint stereo_depth[2];
-
 /* (x2-x1)^2+(y2-y1)^2. */
 
 double distance2(double x1,double y1,double x2,double y2) {
@@ -447,7 +428,10 @@ void update_bulrot(K_UINT16 posxs, K_UINT16 posys) {
 /* Draw an ingame view, as seen from (posxs,posys,poszs) in direction
    angs. */
 
-static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, double aspw, double asph)
+/* Render one eye's view of the labyrinth.  Called once per frame, or twice
+   by the stereoscopic wrapper in the renderer back end. */
+
+void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, double aspw, double asph)
 {
     unsigned char shadecoffs;
     K_INT16 i, j, k, x, y;
@@ -586,73 +570,8 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
        viewport rather than just draw everything that goes under the status
        bar. Perhaps... later. */
 
-    glDisable(GL_LIGHTING);
-    /* Draw floor and roof (save time by clearing to one of them, and drawing
-       only one rectangle)... */
+    R_BeginScene(posxs, posys, poszs, angs, aspw, asph, yy);
 
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-        glClearColor( palette[0x85*3]/64.0*redfactor,
-                      palette[0x85*3+1]/64.0*greenfactor,
-                      palette[0x85*3+2]/64.0*bluefactor, 0 );
-    else
-        glClearColor( palette[0x84*3]/64.0*redfactor,
-                      palette[0x84*3+1]/64.0*greenfactor,
-                      palette[0x84*3+2]/64.0*bluefactor, 0 );
-
-    glDepthMask(1);
-    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glDisable(GL_TEXTURE_2D);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0.0, (GLfloat)360, 0.0, (GLfloat)240, -1.0, 1.0);
-
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity( );
-
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(0);
-
-
-    glBegin(GL_QUADS);
-
-    glColor3f(palette[0xe3*3]/64.0*redfactor,
-              palette[0xe3*3+1]/64.0*greenfactor,
-              palette[0xe3*3+2]/64.0*bluefactor);
-    glVertex3i(0,240,0);
-    glVertex3i(0,240-yy/90,0);
-    glVertex3i(360,240-yy/90,0);
-    glVertex3i(360,240,0);
-    glEnd();
-
-    checkGLStatus();
-
-    /* Switch to labyrinth view transformations. */
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    xmax = neardist * tan(M_PI*0.25);
-    xmin = -xmax;
-
-    ymin = xmin * 0.75;
-    ymax = -ymin;
-
-    xmax *= aspw; xmin *= aspw;
-    ymax *= asph; ymin *= asph;
-
-    glFrustum(xmin, xmax, ymin, ymax, neardist, 98304.0);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    gluLookAt(posxs, posys, poszs*16.0,
-              posxs+sintable[(angs+512)&2047], posys+sintable[angs],
-              poszs*16.0,
-              0.0,0.0,-1.0);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(1);
     /* Draw solid walls... */
 
 //    printf("Walls found: %d\n",wallsfound);
@@ -699,80 +618,21 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                 break;
         }
 
-        glEnable(GL_TEXTURE_2D);
-        glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
         if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
             k=numsplits;
         else
             for(k=0;k<numsplits;k++)
                 if (splitTexNum[k]==j) break;
 
-        if (k<numsplits) {
-            glBindTexture(GL_TEXTURE_2D,splitTexName[k][0]);
-            glBegin(GL_QUADS);
-            if (shadecoffs) {
-                glColor3f(redfactor,greenfactor,bluefactor);
-            }
-            else {
-                glColor3f(0.9*redfactor,0.9*greenfactor,0.9*bluefactor);
-            }
-
-            glTexCoord2f(0.0,1.0/64.0);
-            glVertex3i(x1,y1,0);
-            glTexCoord2f(1.0,1.0/64.0);
-            glVertex3i(x1,y1,1024);
-            glTexCoord2f(1.0,33.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,1024);
-            glTexCoord2f(0.0,33.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,0);
-            glEnd();
-
-            glBindTexture(GL_TEXTURE_2D,splitTexName[k][1]);
-            glBegin(GL_QUADS);
-            glTexCoord2f(0.0,31.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,0);
-            glTexCoord2f(1.0,31.0/64.0);
-            glVertex3i((x1+x2)>>1,(y1+y2)>>1,1024);
-            glTexCoord2f(1.0,63.0/64.0);
-            glVertex3i(x2,y2,1024);
-            glTexCoord2f(0.0,63.0/64.0);
-            glVertex3i(x2,y2,0);
-            glEnd();
-
+        if (k<numsplits && R_HaveTransitionTextures()) {
+            R_DrawSplitWall(x1,y1,x2,y2,k,shadecoffs!=0);
         } else {
-            if (j == invisible-1)
-                glEnable(GL_BLEND);
-            glBindTexture(GL_TEXTURE_2D,texName[j]);
-            glBegin(GL_QUADS);
-            if (j == invisible-1)
-                glColor4f(1.0,1.0,1.0,0.0); /* Must draw invisible walls
-                                               to make stuff behind invisible;
-                                               see board 15. */
-            else {
-                if (shadecoffs) {
-                    glColor3f(redfactor,greenfactor,bluefactor);
-                }
-                else {
-                    glColor3f(0.9*redfactor,0.9*greenfactor,0.9*bluefactor);
-                }
-            }
-            glTexCoord2f(0.0,walltexcoord[j][0]);
-            glVertex3i(x1,y1,0);
-            glTexCoord2f(1.0,walltexcoord[j][0]);
-            glVertex3i(x1,y1,1024);
-            glTexCoord2f(1.0,walltexcoord[j][1]);
-            glVertex3i(x2,y2,1024);
-            glTexCoord2f(0.0,walltexcoord[j][1]);
-            glVertex3i(x2,y2,0);
-            glEnd();
-            if (j == invisible-1)
-                glDisable(GL_BLEND);
+            R_DrawWall(x1,y1,x2,y2,j,walltexcoord[j][0],walltexcoord[j][1],
+                       shadecoffs!=0, j == invisible-1);
         }
-        checkGLStatus();
     }
 
-
-    glDepthMask(0);
+    R_EndWalls();
 
     /* Check for visible monsters... */
 
@@ -1340,8 +1200,7 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         sorti[temp] = sorti[sortcnt];
         sortbnum[temp] = sortbnum[sortcnt];
     }
-    glDepthMask(1);
-    glDisable(GL_LIGHTING);
+    R_EndScene();
 
     if (bossmonster) {
         mixing=1;
@@ -1355,158 +1214,8 @@ static void _picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     ShowStatusBar();
 }
 
-static char* load_ogl_ext_funcs(void) {
-    _DYNAMIC_OGL_FUNCS(_LOAD_FUNC)
-    return NULL;
-}
-
-void setup_stereo(int s) {
-    static int loaded = 0;
-    int i;
-    if (!loaded) {
-        char *failed;
-        if ((failed = load_ogl_ext_funcs()) != NULL) {
-            loaded = -1;
-            fprintf(stderr, "Could not find %s, Stereo not available (OpenGL too old)", failed);
-            return;
-        }
-        loaded = 1;
-    }
-    if (loaded == -1)
-        return;
-
-    ext_glGenFramebuffers(2, stereo_fbufs);
-    glGenTextures(2, stereo_tex);
-    ext_glGenRenderbuffers(2, stereo_depth);
-
-    stereo = s;
-
-    for (i = 0; i < 2; i++) {
-        glBindTexture(GL_TEXTURE_2D, stereo_tex[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, stereo == 2 ? screenwidth/2 : screenwidth, screenheight, 0,GL_RGB, GL_UNSIGNED_BYTE, 0);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-        ext_glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[i]);
-
-        ext_glBindRenderbuffer(GL_RENDERBUFFER, stereo_depth[i]);
-        ext_glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
-        ext_glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, stereo_depth[i]);
-
-        ext_glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereo_tex[i], 0);
-        GLenum drawbuffers[1] = {GL_COLOR_ATTACHMENT0};
-        ext_glDrawBuffers(1, drawbuffers);
-    }
-    ext_glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void picrot(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs) {
-    int i;
-    if (newkeystatus(SDLK_1)) {
-        g_stereo_sep -= 1;
-    } else if (newkeystatus(SDLK_2)) {
-        g_stereo_sep += 1;
-    }
-    int sep = g_stereo_sep >> 3;
-    int asep = stereo == 2 ? 0 : 4;
-
-    if (!stereo) {
-        _picrot(posxs, posys, poszs, angs, aspw, asph);
-    } else {
-        int yo = (sintable[(angs+512)&2047] * sep) >> 17;
-        int xo = (sintable[angs&2047] * sep) >> 17;
-        ext_glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[0]);
-        glViewport(0, 0, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
-        _picrot(posxs - xo, posys - yo, poszs, angs - asep, aspw, stereo == 2 ? asph*2 : asph);
-
-        ext_glBindFramebuffer(GL_FRAMEBUFFER, stereo_fbufs[1]);
-        glViewport(0, 0, stereo == 2 ? screenwidth/2 : screenwidth, screenheight);
-        _picrot(posxs + xo, posys + yo, poszs, angs + asep, aspw, stereo == 2 ? asph*2 : asph);
-
-        ext_glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0.0, 1.0, 0.0, 1.0, -1.0, 1.0);
-
-        glMatrixMode( GL_MODELVIEW );
-        glLoadIdentity( );
-
-        glViewport(0, 0, screenwidth, screenheight);
-        glDisable(GL_DEPTH_TEST);
-        glDepthMask(0);
-        if (stereo == 2) {
-            for (i = 0; i < 2; i++) {
-                float ofs = i == 0 ? 0.0 : 0.5;
-                glBindTexture(GL_TEXTURE_2D, stereo_tex[i]);
-                glBegin(GL_QUADS);
-                glTexCoord2f(0.0, 0.0);
-                glVertex3f(0.0+ofs, 0.0, 0.0);
-
-                glTexCoord2f(1.0, 0.0);
-                glVertex3f(0.5+ofs, 0.0, 0.0);
-
-                glTexCoord2f(1.0, 1.0);
-                glVertex3f(0.5+ofs, 1.0, 0.0);
-
-                glTexCoord2f(0.0, 1.0);
-                glVertex3f(0.0+ofs, 1.0, 0.0);
-                glEnd();
-            }
-
-        } else {
-            glDisable(GL_BLEND);
-            glEnable(GL_TEXTURE_2D);
-            for (i = 0; i < 2; i++) {
-                if (i == 0)
-                    glColor4f(1.0, 0.0, 0.0, 1.0);
-                else {
-                    glEnable(GL_BLEND);
-                    glColor4f(0.0, 1.0, 1.0, 1.0);
-                    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-                }
-                glBindTexture(GL_TEXTURE_2D, stereo_tex[i]);
-                glBegin(GL_QUADS);
-                glTexCoord2f(0.0, 0.0);
-                glVertex3f(0.0, 0.0, 0.0);
-
-                glTexCoord2f(1.0, 0.0);
-                glVertex3f(1.0, 0.0, 0.0);
-
-                glTexCoord2f(1.0, 1.0);
-                glVertex3f(1.0, 1.0, 0.0);
-
-                glTexCoord2f(0.0, 1.0);
-                glVertex3f(0.0, 1.0, 0.0);
-                glEnd();
-            }
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glColor4f(1.0, 1.0, 1.0, 1.0);
-        }
-    }
-}
-
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume) {
-    glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glEnable(GL_DEPTH_TEST);
-
-    glDisable(GL_LIGHTING);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x-512,y-512,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x-512,y+512,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x+512,y+512,1024);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x+512,y-512,1024);
-    glEnd();
-    glDisable(GL_BLEND);
+    R_DrawFloorSprite(x, y, walnume-1);
 }
 
 /* Draw a sprite at (x,y) in the labyrinth, twisted ang round its Z axis
@@ -1527,38 +1236,9 @@ void flatsprite(K_UINT16 x, K_UINT16 y,K_INT16 ang,K_INT16 playerang,
     y1=y-yoff;
     y2=y+yoff;
 
-    glEnable(GL_DEPTH_TEST);
-
-    glDisable(GL_LIGHTING);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glPushMatrix();
-    glTranslatef((x1+x2)/2.0,(y1+y2)/2.0,512);
-    glRotatef(ang/2048.0*360.0,sintable[(playerang+512)&2047],
-              sintable[playerang],0.0);
-
-    glTranslatef(-(x1+x2)/2.0,-(y1+y2)/2.0,-512);
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,0);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,1024);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,0);
-    glEnd();
-    checkGLStatus();
-    glPopMatrix();
-
-    glDisable(GL_BLEND);
-
+    R_DrawBillboard(x1,y1,x2,y2,walnume-1,
+                    walltexcoord[walnume-1][0], walltexcoord[walnume-1][1],
+                    ang, playerang);
 }
 
 /* Draw wall number walnume-1, topleft at (x,y), magnified siz>>8 times
@@ -1584,47 +1264,7 @@ void pictur(K_INT16 x,K_INT16 y,K_INT16 siz,K_INT16 ang,K_INT16 walnume)
 {
     y+=spriteyoffset;
 
-    glDisable(GL_DEPTH_TEST);
-
-    glDisable(GL_LIGHTING);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(-(virtualscreenwidth-360)/2,
-               360+(virtualscreenwidth-360)/2,
-               -(virtualscreenheight-240)/2,
-               240+(virtualscreenheight-240)/2, -1.0, 1.0);
-//    gluOrtho2D(0.0, (GLfloat)360, 0.0, (GLfloat)240);
-
-    glMatrixMode( GL_MODELVIEW );
-    glLoadIdentity( );
-    glTranslatef(x,240.0-y,0.0);
-    glScalef(siz/256.0,siz/256.0,siz/256.0);
-    glRotatef(((GLfloat)ang)/2048.0*360.0,0.0,0.0,1.0);
-    glTranslatef(-32.0,-32.0,0.0);
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    if (walnume==gameover)
-        glBindTexture(GL_TEXTURE_2D,gameoversprite); /* Horrible kludge. */
-    else
-        glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3f(0.0,0.0,0);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3f(64.0,0.0,0);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3f(64.0,64.0,0);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3f(0.0,64.0,0);
-    glEnd();
-    checkGLStatus();
-
-    glDisable(GL_BLEND);
+    R_DrawSprite2D(x, y, siz, ang, walnume-1, walnume==gameover);
 }
 
 /* Draw wall number walnume-1 at board position (x,y) (multiply by
@@ -1672,25 +1312,9 @@ void doordraw(K_UINT16 x,K_UINT16 y,K_INT16 walnume,K_UINT16 posxs,
             }
         }
     }
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glTexEnvf(GL_TEXTURE_ENV,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-    glBindTexture(GL_TEXTURE_2D,texName[walnume-1]);
-    glBegin(GL_QUADS);
-    glColor3f(redfactor,greenfactor,bluefactor);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,0);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][0]);
-    glVertex3i(x1,y1,1024);
-    glTexCoord2f(1.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,1024);
-    glTexCoord2f(0.0,walltexcoord[walnume-1][1]);
-    glVertex3i(x2,y2,0);
-    glEnd();
-    glDisable(GL_BLEND);
-    checkGLStatus();
-
+    R_DrawBillboard(x1,y1,x2,y2,walnume-1,
+                    walltexcoord[walnume-1][0], walltexcoord[walnume-1][1],
+                    0, 0);
 }
 
 /* Draw an xsiz wide, ysiz high part of texture walnume-1 (from texel

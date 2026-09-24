@@ -1,0 +1,546 @@
+/*
+ * AmigaOS display back end for LAB3D.
+ *
+ * The game renders into a fixed 360x240 chunky buffer (the "virtual screen"
+ * every coordinate in the shared code is expressed in) and this module gets
+ * it onto whatever screen mode the player picked at startup.  Two paths:
+ *
+ *   RTG      cybergraphics.library.  An 8 bit LUT8 screen takes the chunky
+ *            data verbatim; deeper screens go through WriteLUTPixelArray(),
+ *            which expands our palette on the fly, so 15/16/24/32 bit RTG
+ *            modes work without the game knowing.
+ *
+ *   Native   chunky to planar conversion into the screen bitmap.  AGA's 8
+ *            bitplane modes give the full 256 colour palette; on ECS/OCS a
+ *            shallower screen still works, with the palette folded down to
+ *            the available number of pens.
+ *
+ * Either way the screen is double buffered with AllocScreenBuffer() when the
+ * display allows it, so there is no tearing and no flicker.
+ */
+
+#include "amiga/amiga_sys.h"
+
+#include "lab3d.h"
+#include "amiga/amiga_video.h"
+
+/* ------------------------------------------------------------------ state */
+
+amiga_videomode amiga_mode;
+struct Screen  *amiga_screen;
+struct Window  *amiga_window;
+UBYTE          *amiga_chunky;
+
+struct Library *CyberGfxBase;
+struct Library *AslBase;
+
+static struct ScreenBuffer *sbuf[2];
+static struct MsgPort      *dispport, *safeport;
+static int                  sbcurrent;
+static int                  safe_to_write = 1, safe_to_change = 1;
+static int                  doublebuffered;
+
+/* Scaled copy used when amiga_mode.scale == 2. */
+static UBYTE   *scalebuf;
+
+/* Colour table for WriteLUTPixelArray() on deep RTG screens. */
+static ULONG    lut[256];
+
+/* Chunky to planar helper tables (see amiga_c2p.c). */
+extern void amiga_c2p_init(void);
+extern void amiga_c2p(const UBYTE *src, int srcmod,
+                      struct BitMap *bm, int destx, int desty,
+                      int w, int h, int depth);
+
+/* Maps a 256 colour game index onto a pen when the screen has fewer than
+   256 of them. */
+/* Screens with fewer than 256 pens need two maps: penmap[] turns a game
+   colour index into a pen, and pensrc[] names, for each pen, the colour index
+   whose RGB that pen should take. */
+static UBYTE    penmap[256];
+static UBYTE    pensrc[256];
+static int      numpens;
+
+/* Settings, saved in lab3d.cfg so the choice is remembered. */
+ULONG amiga_cfg_modeid = INVALID_ID;
+int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
+int   amiga_cfg_scale = 0;      /* 0 = automatic, 1 or 2 = forced */
+int   amiga_cfg_askmode = 1;    /* show the screen mode requester at startup */
+
+/* ------------------------------------------------------------ mode picking */
+
+/* How much of the 360x240 buffer can we show, and where? */
+static void amiga_layout(amiga_videomode *m) {
+    int scale = amiga_cfg_scale;
+
+    if (scale != 1 && scale != 2) {
+        /* Automatic: double up when the mode is big enough to hold the whole
+           virtual screen twice over. */
+        scale = (m->width >= AMIGA_VIEW_W*2 && m->height >= AMIGA_VIEW_H*2)
+                ? 2 : 1;
+    }
+    if (m->width < AMIGA_VIEW_W*2 || m->height < AMIGA_VIEW_H*2)
+        scale = 1;
+
+    m->scale = scale;
+
+    if (m->width / scale >= AMIGA_VIEW_W && m->height / scale >= AMIGA_VIEW_H) {
+        /* Everything fits. */
+        m->srcx = 0;
+        m->srcy = 0;
+        m->srcw = AMIGA_VIEW_W;
+        m->srch = AMIGA_VIEW_H;
+    } else {
+        /* Show the 320x200 window the original game used, clipped further if
+           the mode is smaller still. */
+        m->srcx = AMIGA_CROP_X;
+        m->srcy = AMIGA_CROP_Y;
+        m->srcw = AMIGA_CROP_W;
+        m->srch = AMIGA_CROP_H;
+
+        if (m->srcw > m->width / scale) {
+            m->srcx += (m->srcw - m->width / scale) / 2;
+            m->srcw = m->width / scale;
+        }
+        if (m->srch > m->height / scale) {
+            m->srcy += (m->srch - m->height / scale) / 2;
+            m->srch = m->height / scale;
+        }
+    }
+
+    m->destx = (m->width  - m->srcw * scale) / 2;
+    m->desty = (m->height - m->srch * scale) / 2;
+
+    /* Keep the destination even so the planar path can work in whole bytes. */
+    m->destx &= ~7;
+    if (m->destx < 0) m->destx = 0;
+    if (m->desty < 0) m->desty = 0;
+}
+
+static void amiga_describe(const amiga_videomode *m) {
+    fprintf(stderr, "Screen mode 0x%08lx: %dx%d, %d bit%s, %s\n",
+            (unsigned long)m->modeid, m->width, m->height, m->depth,
+            m->rtg ? "" : "planes", m->rtg ? "RTG" : "native");
+    fprintf(stderr, "Showing %dx%d of the %dx%d view at (%d,%d), %dx scale.\n",
+            m->srcw, m->srch, AMIGA_VIEW_W, AMIGA_VIEW_H,
+            m->destx, m->desty, m->scale);
+}
+
+/* Fill in the RTG/depth details of a mode id the player chose. */
+static void amiga_probe(amiga_videomode *m) {
+    m->rtg = 0;
+    m->pixfmt = PIXFMT_LUT8;
+
+    if (CyberGfxBase && IsCyberModeID(m->modeid)) {
+        m->rtg = 1;
+        m->pixfmt = (int)GetCyberIDAttr(CYBRIDATTR_PIXFMT, m->modeid);
+        m->depth  = (int)GetCyberIDAttr(CYBRIDATTR_DEPTH, m->modeid);
+    }
+    amiga_layout(m);
+}
+
+int amiga_select_screenmode(amiga_videomode *out) {
+    struct ScreenModeRequester *req;
+    int ok = 0;
+
+    req = (struct ScreenModeRequester *)
+          AllocAslRequestTags(ASL_ScreenModeRequest,
+                              ASLSM_TitleText,      (ULONG)"Ken's Labyrinth - select a screen mode",
+                              ASLSM_InitialDisplayID, amiga_cfg_modeid != INVALID_ID
+                                                      ? amiga_cfg_modeid : 0,
+                              ASLSM_InitialDisplayWidth,  amiga_cfg_width  ? amiga_cfg_width  : AMIGA_CROP_W,
+                              ASLSM_InitialDisplayHeight, amiga_cfg_height ? amiga_cfg_height : AMIGA_CROP_H,
+                              ASLSM_InitialDisplayDepth,  amiga_cfg_depth  ? amiga_cfg_depth  : 8,
+                              ASLSM_DoWidth,        TRUE,
+                              ASLSM_DoHeight,       TRUE,
+                              ASLSM_DoDepth,        TRUE,
+                              ASLSM_MinWidth,       320,
+                              ASLSM_MinHeight,      200,
+                              ASLSM_MinDepth,       4,
+                              ASLSM_MaxDepth,       32,
+                              TAG_END);
+    if (!req) {
+        fprintf(stderr, "Could not open the screen mode requester.\n");
+        return 0;
+    }
+
+    if (AslRequestTags(req, TAG_END)) {
+        out->modeid = req->sm_DisplayID;
+        out->width  = (int)req->sm_DisplayWidth;
+        out->height = (int)req->sm_DisplayHeight;
+        out->depth  = req->sm_DisplayDepth;
+        ok = 1;
+    }
+
+    FreeAslRequest(req);
+    return ok;
+}
+
+/* ---------------------------------------------------------- screen opening */
+
+static void amiga_free_buffers(void) {
+    int i;
+
+    if (doublebuffered) {
+        /* Let any pending flips finish before we pull the buffers away. */
+        if (!safe_to_change && dispport) WaitPort(dispport);
+        if (!safe_to_write  && safeport) WaitPort(safeport);
+    }
+
+    for (i = 0; i < 2; i++) {
+        if (sbuf[i]) {
+            FreeScreenBuffer(amiga_screen, sbuf[i]);
+            sbuf[i] = NULL;
+        }
+    }
+    if (dispport) { DeleteMsgPort(dispport); dispport = NULL; }
+    if (safeport) { DeleteMsgPort(safeport); safeport = NULL; }
+    doublebuffered = 0;
+}
+
+static void amiga_setup_buffers(void) {
+    int i;
+
+    sbuf[0] = AllocScreenBuffer(amiga_screen, NULL, SB_SCREEN_BITMAP);
+    sbuf[1] = AllocScreenBuffer(amiga_screen, NULL, 0);
+    dispport = CreateMsgPort();
+    safeport = CreateMsgPort();
+
+    if (!sbuf[0] || !sbuf[1] || !dispport || !safeport) {
+        fprintf(stderr, "Double buffering unavailable; drawing single buffered.\n");
+        amiga_free_buffers();
+        return;
+    }
+
+    for (i = 0; i < 2; i++) {
+        sbuf[i]->sb_DBufInfo->dbi_SafeMessage.mn_ReplyPort = safeport;
+        sbuf[i]->sb_DBufInfo->dbi_DispMessage.mn_ReplyPort = dispport;
+    }
+
+    sbcurrent = 0;
+    safe_to_write = safe_to_change = 1;
+    doublebuffered = 1;
+}
+
+static struct BitMap *amiga_drawbitmap(void) {
+    if (doublebuffered)
+        return sbuf[sbcurrent]->sb_BitMap;
+    return amiga_screen->RastPort.BitMap;
+}
+
+int amiga_video_open(void) {
+    ULONG err = 0;
+
+    amiga_probe(&amiga_mode);
+    amiga_describe(&amiga_mode);
+
+    amiga_screen = OpenScreenTags(NULL,
+                                  SA_DisplayID,  amiga_mode.modeid,
+                                  SA_Width,      amiga_mode.width,
+                                  SA_Height,     amiga_mode.height,
+                                  SA_Depth,      amiga_mode.depth,
+                                  SA_Type,       CUSTOMSCREEN,
+                                  SA_Quiet,      TRUE,
+                                  SA_ShowTitle,  FALSE,
+                                  SA_Draggable,  FALSE,
+                                  SA_Exclusive,  TRUE,
+                                  SA_AutoScroll, FALSE,
+                                  SA_SharePens,  FALSE,
+                                  SA_ErrorCode,  (ULONG)&err,
+                                  TAG_END);
+    if (!amiga_screen) {
+        fprintf(stderr, "OpenScreen failed (error %ld).\n", (long)err);
+        return -1;
+    }
+
+    /* The real depth we were given may differ from what was asked for. */
+    amiga_mode.depth = amiga_screen->RastPort.BitMap->Depth;
+    if (amiga_mode.rtg)
+        amiga_mode.pixfmt = (int)GetCyberMapAttr(amiga_screen->RastPort.BitMap,
+                                                 CYBRMATTR_PIXFMT);
+
+    numpens = (amiga_mode.rtg || amiga_mode.depth >= 8)
+              ? 256 : (1 << amiga_mode.depth);
+
+    amiga_window = OpenWindowTags(NULL,
+                                  WA_CustomScreen, (ULONG)amiga_screen,
+                                  WA_Left,     0,
+                                  WA_Top,      0,
+                                  WA_Width,    amiga_mode.width,
+                                  WA_Height,   amiga_mode.height,
+                                  WA_Backdrop, TRUE,
+                                  WA_Borderless, TRUE,
+                                  WA_Activate, TRUE,
+                                  WA_RMBTrap,  TRUE,
+                                  WA_ReportMouse, TRUE,
+                                  WA_NoCareRefresh, TRUE,
+                                  WA_SimpleRefresh, TRUE,
+                                  WA_IDCMP, IDCMP_RAWKEY | IDCMP_MOUSEBUTTONS |
+                                            IDCMP_MOUSEMOVE | IDCMP_ACTIVEWINDOW |
+                                            IDCMP_INACTIVEWINDOW | IDCMP_DELTAMOVE,
+                                  TAG_END);
+    if (!amiga_window) {
+        fprintf(stderr, "Could not open the game window.\n");
+        CloseScreen(amiga_screen);
+        amiga_screen = NULL;
+        return -1;
+    }
+
+    /* The game draws its own crosshair and menus; Intuition's pointer would
+       just sit on top of them. */
+    {
+        static const UWORD __attribute__((aligned(4))) blankpointer[] = {
+            0, 0, 0, 0
+        };
+        SetPointer(amiga_window, (UWORD *)blankpointer, 1, 1, 0, 0);
+    }
+
+    amiga_setup_buffers();
+
+    amiga_chunky = AllocVec(AMIGA_VIEW_W * AMIGA_VIEW_H, MEMF_ANY | MEMF_CLEAR);
+    if (!amiga_chunky) {
+        fprintf(stderr, "Out of memory for the frame buffer.\n");
+        amiga_video_close();
+        return -1;
+    }
+
+    if (amiga_mode.scale == 2) {
+        scalebuf = AllocVec(AMIGA_VIEW_W * 2 * AMIGA_VIEW_H * 2,
+                            MEMF_ANY | MEMF_CLEAR);
+        if (!scalebuf) {
+            fprintf(stderr, "Out of memory for 2x scaling; falling back to 1x.\n");
+            amiga_mode.scale = 1;
+            amiga_layout(&amiga_mode);
+        }
+    }
+
+    amiga_build_penmap();
+
+    if (!amiga_mode.rtg)
+        amiga_c2p_init();
+
+    /* Blank the screen so the borders are black rather than whatever
+       Intuition left behind. */
+    SetRast(&amiga_screen->RastPort, 0);
+    if (doublebuffered) {
+        struct RastPort rp = amiga_screen->RastPort;
+        rp.BitMap = sbuf[1]->sb_BitMap;
+        SetRast(&rp, 0);
+    }
+
+    return 0;
+}
+
+void amiga_video_close(void) {
+    amiga_free_buffers();
+
+    if (amiga_window) {
+        ClearPointer(amiga_window);
+        CloseWindow(amiga_window);
+        amiga_window = NULL;
+    }
+    if (amiga_screen) { CloseScreen(amiga_screen); amiga_screen = NULL; }
+    if (amiga_chunky) { FreeVec(amiga_chunky);     amiga_chunky = NULL; }
+    if (scalebuf)     { FreeVec(scalebuf);         scalebuf = NULL; }
+}
+
+/* ---------------------------------------------------------------- palette */
+
+/* The display palette.  palette[] is the game's own working copy and the
+   game reads it back (the floor and ceiling colours come from it), so the
+   renderer keeps its own copy here rather than writing through it. */
+static unsigned char dispal[768];
+
+/*
+ * Load `count` entries starting at `start` into the display.
+ *
+ * Components are the game's 0..63 values scaled by the current fade factors -
+ * on the Amiga the fade goes straight into the hardware palette, which is
+ * what the original DOS game did and costs nothing per frame.
+ */
+void amiga_load_palette(const unsigned char *pal, int start, int count) {
+    ULONG table[1 + 256*3 + 1];
+    int i;
+
+    if (start < 0) start = 0;
+    if (start + count > 256) count = 256 - start;
+    if (count <= 0) return;
+
+    memcpy(dispal + start*3, pal + start*3, (size_t)count * 3);
+
+    if (!amiga_screen) return;
+
+    if (amiga_mode.rtg && amiga_mode.pixfmt != PIXFMT_LUT8) {
+        /* Deep RTG screen: we expand through our own lookup table instead of
+           a hardware palette. */
+        for (i = start; i < start + count; i++) {
+            ULONG r = (ULONG)(dispal[i*3+0] * redfactor);
+            ULONG g = (ULONG)(dispal[i*3+1] * greenfactor);
+            ULONG b = (ULONG)(dispal[i*3+2] * bluefactor);
+            if (r > 63) r = 63;
+            if (g > 63) g = 63;
+            if (b > 63) b = 63;
+            /* 0..63 -> 0..255 */
+            r = (r << 2) | (r >> 4);
+            g = (g << 2) | (g >> 4);
+            b = (b << 2) | (b >> 4);
+            lut[i] = (r << 16) | (g << 8) | b;
+        }
+        return;
+    }
+
+    if (numpens < 256) {
+        /* Fewer pens than colours: every pen may have changed, so reload the
+           lot rather than trying to work out which ones this range touched. */
+        start = 0;
+        count = numpens;
+    }
+
+    table[0] = ((ULONG)count << 16) | (ULONG)start;
+    for (i = 0; i < count; i++) {
+        int src = (numpens == 256) ? (start + i) : (int)pensrc[start + i];
+        ULONG r = (ULONG)(dispal[src*3+0] * redfactor);
+        ULONG g = (ULONG)(dispal[src*3+1] * greenfactor);
+        ULONG b = (ULONG)(dispal[src*3+2] * bluefactor);
+        if (r > 63) r = 63;
+        if (g > 63) g = 63;
+        if (b > 63) b = 63;
+        /* LoadRGB32 wants 32 bit components; replicate the 6 bit value. */
+        table[1 + i*3 + 0] = (r << 26) | (r << 20) | (r << 14) | (r << 8) | (r << 2) | (r >> 4);
+        table[1 + i*3 + 1] = (g << 26) | (g << 20) | (g << 14) | (g << 8) | (g << 2) | (g >> 4);
+        table[1 + i*3 + 2] = (b << 26) | (b << 20) | (b << 14) | (b << 8) | (b << 2) | (b >> 4);
+    }
+    table[1 + count*3] = 0;
+
+    LoadRGB32(&amiga_screen->ViewPort, table);
+}
+
+void amiga_set_palette(const unsigned char *pal) {
+    amiga_load_palette(pal, 0, 256);
+}
+
+/* Re-send the palette we already have, after the fade factors changed. */
+void amiga_refresh_palette(void) {
+    amiga_load_palette(dispal, 0, 256);
+}
+
+/*
+ * On a screen with fewer than 256 pens the game's sixteen hues by sixteen
+ * brightness levels have to be folded down.  Every hue is kept and brightness
+ * levels are merged, because losing a hue loses whole objects while losing
+ * brightness steps only flattens the shading.
+ */
+void amiga_build_penmap(void) {
+    int i, levels;
+
+    if (numpens >= 256) {
+        for (i = 0; i < 256; i++)
+            penmap[i] = pensrc[i] = (UBYTE)i;
+        return;
+    }
+
+    levels = numpens / 16;
+    if (levels < 1) levels = 1;
+
+    for (i = 0; i < 256; i++) {
+        int hue = i >> 4, lev = i & 15;
+        int nl  = (lev * levels) / 16;
+        penmap[i] = (UBYTE)(hue * levels + nl);
+    }
+
+    /* The reverse map: each pen takes the colour from the middle of the
+       brightness band it now stands for. */
+    for (i = 0; i < numpens; i++) {
+        int hue = i / levels, nl = i % levels;
+        int lev = ((nl * 2 + 1) * 16) / (2 * levels);
+        if (lev > 15) lev = 15;
+        pensrc[i] = (UBYTE)(hue * 16 + lev);
+    }
+    for (; i < 256; i++)
+        pensrc[i] = 0;
+}
+
+int amiga_num_pens(void) { return numpens; }
+const UBYTE *amiga_penmap(void) { return penmap; }
+
+/* ----------------------------------------------------------------- blitting */
+
+static void amiga_scale2x(void) {
+    const UBYTE *s = amiga_chunky + amiga_mode.srcy * AMIGA_VIEW_W + amiga_mode.srcx;
+    UBYTE *d = scalebuf;
+    int dstride = amiga_mode.srcw * 2;
+    int x, y;
+
+    for (y = 0; y < amiga_mode.srch; y++) {
+        UBYTE *d0 = d;
+        for (x = 0; x < amiga_mode.srcw; x++) {
+            UBYTE c = s[x];
+            *d++ = c;
+            *d++ = c;
+        }
+        memcpy(d, d0, dstride);     /* duplicate the row */
+        d += dstride;
+        s += AMIGA_VIEW_W;
+    }
+}
+
+void amiga_blit_frame(void) {
+    struct BitMap *bm;
+    const UBYTE *src;
+    int stride, w, h;
+
+    if (!amiga_screen) return;
+
+    if (doublebuffered && !safe_to_write) {
+        while (!GetMsg(safeport))
+            WaitPort(safeport);
+        safe_to_write = 1;
+    }
+
+    if (amiga_mode.scale == 2 && scalebuf) {
+        amiga_scale2x();
+        src    = scalebuf;
+        stride = amiga_mode.srcw * 2;
+        w      = amiga_mode.srcw * 2;
+        h      = amiga_mode.srch * 2;
+    } else {
+        src    = amiga_chunky + amiga_mode.srcy * AMIGA_VIEW_W + amiga_mode.srcx;
+        stride = AMIGA_VIEW_W;
+        w      = amiga_mode.srcw;
+        h      = amiga_mode.srch;
+    }
+
+    bm = amiga_drawbitmap();
+
+    if (amiga_mode.rtg) {
+        struct RastPort rp = amiga_screen->RastPort;
+        rp.BitMap = bm;
+
+        if (amiga_mode.pixfmt == PIXFMT_LUT8) {
+            WritePixelArray((APTR)src, 0, 0, stride, &rp,
+                            amiga_mode.destx, amiga_mode.desty, w, h,
+                            RECTFMT_LUT8);
+        } else {
+            WriteLUTPixelArray((APTR)src, 0, 0, stride, &rp, lut,
+                               amiga_mode.destx, amiga_mode.desty, w, h,
+                               CTABFMT_XRGB8);
+        }
+    } else {
+        amiga_c2p(src, stride, bm, amiga_mode.destx, amiga_mode.desty,
+                  w, h, amiga_mode.depth);
+    }
+
+    if (doublebuffered) {
+        if (!safe_to_change) {
+            while (!GetMsg(dispport))
+                WaitPort(dispport);
+            safe_to_change = 1;
+        }
+
+        if (ChangeScreenBuffer(amiga_screen, sbuf[sbcurrent])) {
+            safe_to_change = 0;
+            safe_to_write  = 0;
+            sbcurrent ^= 1;
+        }
+    }
+}

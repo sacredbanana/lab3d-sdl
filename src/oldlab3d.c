@@ -154,29 +154,29 @@ void oldmain(void)
         update_bulrot(posx, posy);
         picrot(posx,posy,posz,ang);
         sortcnt = 0;
-        SDL_LockMutex(soundmutex);
-        SDL_LockMutex(timermutex);
+        PL_LockSound();
+        PL_LockTimer();
 
         /* Speed cap at 2 ticks/frame (about 120 fps). */
         if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 2)) {
-            SDL_UnlockMutex(soundmutex);
+            PL_UnlockSound();
             while(clockspeed<2) {
-                SDL_Delay(0); /* Give other threads a chance. */
+                PL_Delay(0); /* Give other threads a chance. */
                 PollInputs();
                 updateclock();
             }
-            SDL_LockMutex(soundmutex);
+            PL_LockSound();
         }
 
         if (musicstatus!=1)
-            SDL_Delay(10); /* Just to prevent insane speeds... */
+            PL_Delay(10); /* Just to prevent insane speeds... */
 
         clockspd=clockspeed;
         if (clockspd>48) clockspd=48; /* Prevent total insanity if game
                                          is suspended. */
         clockspeed=0;
-        SDL_UnlockMutex(timermutex);
-        SDL_UnlockMutex(soundmutex);
+        PL_UnlockTimer();
+        PL_UnlockSound();
         lastpageoffset = pageoffset;
         if (vidmode == 0)
         {
@@ -201,7 +201,7 @@ void oldmain(void)
                 if (lastpageoffset > 21600) pageoffset = 0;
             }
         }
-        if (newkeystatus(SDLK_r) > 0)
+        if (newkeystatus(PLK_r) > 0)
             rogermode = rogermode ^ 1; /* Don't ask me, I'm just porting this. */
         if (statusbar == statusbargoal)
         {
@@ -1782,19 +1782,19 @@ void oldmain(void)
                 {
                     kgif(n);
                     SetVisibleScreenOffset(0);
-                    SDL_GL_SwapWindow(mainwindow);
-                    setnewkeystatus(SDLK_ESCAPE, 0);
-                    setnewkeystatus(SDLK_SPACE, 0);
-                    setnewkeystatus(SDLK_RETURN, 0);
+                    PL_SwapBuffers();
+                    setnewkeystatus(PLK_ESCAPE, 0);
+                    setnewkeystatus(PLK_SPACE, 0);
+                    setnewkeystatus(PLK_RETURN, 0);
                     bstatus = 0;
-                    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                    while ((newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
                     (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
                     (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
                     (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0)) {
                         PollInputs();
                         if (moustat == 0)
                             bstatus=readmouse(NULL, NULL);
-                        SDL_Delay(10);
+                        PL_Delay(10);
                     }
                 }
                 quit();
@@ -1849,11 +1849,11 @@ void oldmain(void)
                 pageoffset = lastpageoffset;
                 picrot(posx,posy,posz,ang);
                 spridraw((int)180-64,(int)halfheight-64,(int)128<<2,(int)79);
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
                 m = 0;
                 n = 0;
                 ototclock = totalclock;
-                while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                while ((m == 0) && (newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
                 {
@@ -1863,38 +1863,38 @@ void oldmain(void)
                     switchKeyPressed = padGetButtonsDown(&pad);
                     #endif
 
-                    if (newkeystatus(SDLK_1) || switchKeyPressed & HidNpadButton_L) {
+                    if (newkeystatus(PLK_1) || switchKeyPressed & HidNpadButton_L) {
                         i=0;
                         m = 1;
-                        setnewkeystatus(SDLK_1, 0);
-                    } else if (newkeystatus(SDLK_2) || switchKeyPressed & HidNpadButton_ZL) {
+                        setnewkeystatus(PLK_1, 0);
+                    } else if (newkeystatus(PLK_2) || switchKeyPressed & HidNpadButton_ZL) {
                         i=1;
                         m = 1;
-                        setnewkeystatus(SDLK_2, 0);
-                    } else if (newkeystatus(SDLK_3) || switchKeyPressed & HidNpadButton_R) {
+                        setnewkeystatus(PLK_2, 0);
+                    } else if (newkeystatus(PLK_3) || switchKeyPressed & HidNpadButton_R) {
                         i=2;
                         m = 1;
-                        setnewkeystatus(SDLK_3, 0);
-                    } else if (newkeystatus(SDLK_4) || switchKeyPressed & HidNpadButton_ZR) {
+                        setnewkeystatus(PLK_3, 0);
+                    } else if (newkeystatus(PLK_4) || switchKeyPressed & HidNpadButton_ZR) {
                         i=3;
                         m = 1;
-                        setnewkeystatus(SDLK_4, 0);
-                    } else if (newkeystatus(SDLK_5)) {
+                        setnewkeystatus(PLK_4, 0);
+                    } else if (newkeystatus(PLK_5)) {
                         i=4;
                         m = 1;
-                        setnewkeystatus(SDLK_5, 0);
-                    } else if (newkeystatus(SDLK_6)) {
+                        setnewkeystatus(PLK_5, 0);
+                    } else if (newkeystatus(PLK_6)) {
                         i=5;
                         m = 1;
-                        setnewkeystatus(SDLK_6, 0);
-                    } else if (newkeystatus(SDLK_7)) {
+                        setnewkeystatus(PLK_6, 0);
+                    } else if (newkeystatus(PLK_7)) {
                         i=6;
                         m = 1;
-                        setnewkeystatus(SDLK_7, 0);
-                    } else if (newkeystatus(SDLK_8)) {
+                        setnewkeystatus(PLK_7, 0);
+                    } else if (newkeystatus(PLK_8)) {
                         i=7;
                         m = 1;
-                        setnewkeystatus(SDLK_8, 0);
+                        setnewkeystatus(PLK_8, 0);
                     }
 
                     if (m) {
@@ -1906,7 +1906,7 @@ void oldmain(void)
                         }
                         oldsavegame(i);
                     }
-                    SDL_Delay(10);
+                    PL_Delay(10);
                 }
                 pageoffset = j;
                 totalclock = ototclock;
@@ -1922,12 +1922,12 @@ void oldmain(void)
                 pageoffset = lastpageoffset;
                 picrot(posx,posy,posz,ang);
                 spridraw((int)180-64,(int)halfheight-64,(int)128<<2,(int)78);
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
                 pageoffset = j;
                 m = 0;
                 ototclock = totalclock;
 
-                while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                while ((m == 0) && (newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT3) == 0))
                 {
@@ -1937,42 +1937,42 @@ void oldmain(void)
                     switchKeyPressed = padGetButtonsDown(&pad);
                     #endif
 
-                    if (newkeystatus(SDLK_1) || switchKeyPressed & HidNpadButton_L) {
+                    if (newkeystatus(PLK_1) || switchKeyPressed & HidNpadButton_L) {
                         oldloadgame(0);
                         m = 1;
-                        setnewkeystatus(SDLK_1, 0);
-                    } else if (newkeystatus(SDLK_2) || switchKeyPressed & HidNpadButton_ZL) {
+                        setnewkeystatus(PLK_1, 0);
+                    } else if (newkeystatus(PLK_2) || switchKeyPressed & HidNpadButton_ZL) {
                         oldloadgame(1);
                         m = 1;
-                        setnewkeystatus(SDLK_2, 0);
-                    } else if (newkeystatus(SDLK_3) || switchKeyPressed & HidNpadButton_R) {
+                        setnewkeystatus(PLK_2, 0);
+                    } else if (newkeystatus(PLK_3) || switchKeyPressed & HidNpadButton_R) {
                         oldloadgame(2);
                         m = 1;
-                        setnewkeystatus(SDLK_3, 0);
-                    } else if (newkeystatus(SDLK_4) || switchKeyPressed & HidNpadButton_ZR) {
+                        setnewkeystatus(PLK_3, 0);
+                    } else if (newkeystatus(PLK_4) || switchKeyPressed & HidNpadButton_ZR) {
                         oldloadgame(3);
                         m = 1;
-                        setnewkeystatus(SDLK_4, 0);
-                    } else if (newkeystatus(SDLK_5)) {
+                        setnewkeystatus(PLK_4, 0);
+                    } else if (newkeystatus(PLK_5)) {
                         oldloadgame(4);
                         m = 1;
-                        setnewkeystatus(SDLK_5, 0);
-                    } else if (newkeystatus(SDLK_6)) {
+                        setnewkeystatus(PLK_5, 0);
+                    } else if (newkeystatus(PLK_6)) {
                         oldloadgame(5);
                         m = 1;
-                        setnewkeystatus(SDLK_6, 0);
-                    } else if (newkeystatus(SDLK_7)) {
+                        setnewkeystatus(PLK_6, 0);
+                    } else if (newkeystatus(PLK_7)) {
                         oldloadgame(6);
                         m = 1;
-                        setnewkeystatus(SDLK_7, 0);
-                    } else if (newkeystatus(SDLK_8)) {
+                        setnewkeystatus(PLK_7, 0);
+                    } else if (newkeystatus(PLK_8)) {
                         oldloadgame(7);
                         m = 1;
-                        setnewkeystatus(SDLK_8, 0);
+                        setnewkeystatus(PLK_8, 0);
                     }
 
 
-                    SDL_Delay(10);
+                    PL_Delay(10);
                 }
                 totalclock = ototclock;
                 clockspd = 0;
@@ -2021,15 +2021,15 @@ void oldmain(void)
                 pageoffset = j;
                 ototclock = totalclock;
                 mixing=0;
-                SDL_GL_SwapWindow(mainwindow);
-                while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+                PL_SwapBuffers();
+                while ((newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
                 (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0)) {
                     PollInputs();
                     if (moustat == 0)
                         bstatus=readmouse(NULL, NULL);
-                    SDL_Delay(10);
+                    PL_Delay(10);
                 }
                 totalclock = ototclock;
                 clockspd = 0;
@@ -2060,11 +2060,11 @@ void oldmain(void)
             musicon();
             oldloadstory();
             mixing=0;
-            setnewkeystatus(SDLK_ESCAPE, 0);
-            setnewkeystatus(SDLK_SPACE, 0);
-            setnewkeystatus(SDLK_RETURN, 0);
+            setnewkeystatus(PLK_ESCAPE, 0);
+            setnewkeystatus(PLK_SPACE, 0);
+            setnewkeystatus(PLK_RETURN, 0);
             bstatus=0;
-            while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+            while ((newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
             (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
             (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
             (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0))
@@ -2072,10 +2072,10 @@ void oldmain(void)
                 PollInputs();
                 if (moustat == 0)
                     bstatus=readmouse(NULL, NULL);
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 totalclock += clockspeed;
                 clockspeed = 0;
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
                 j = 63-(((int)labs((totalclock%120)-60))>>3);
                 fade(27);
                 picrot(posx,posy,posz,ang);
@@ -2087,21 +2087,21 @@ void oldmain(void)
 
                 fade(27);
 
-                SDL_GL_SwapWindow(mainwindow);
-                SDL_LockMutex(timermutex);
+                PL_SwapBuffers();
+                PL_LockTimer();
                 while(clockspeed<4) {
-                    SDL_UnlockMutex(timermutex);
-                    SDL_Delay(10);
-                    SDL_LockMutex(timermutex);
+                    PL_UnlockTimer();
+                    PL_Delay(10);
+                    PL_LockTimer();
                 }
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
             }
             lastunlock = 1;
             lastshoot = 1;
             lastbarchange = 1;
-            SDL_LockMutex(timermutex);
+            PL_LockTimer();
             clockspeed = 0;
-            SDL_UnlockMutex(timermutex);
+            PL_UnlockTimer();
             scoreclock = 0;
             scorecount = 0;
             olddrawscore(scorecount);
@@ -2115,17 +2115,17 @@ void oldmain(void)
             musicon();
             for(i=27;i<=63;i+=2)
             {
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 clockspeed=0;
                 while(clockspeed<4) {
-                    SDL_UnlockMutex(timermutex);
-                    SDL_Delay(10);
-                    SDL_LockMutex(timermutex);
+                    PL_UnlockTimer();
+                    PL_Delay(10);
+                    PL_LockTimer();
                 }
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
                 fade(i);
                 picrot(posx,posy,posz,ang);
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
             }
             clockspd = 0;
             totalclock = ototclock;
@@ -2157,7 +2157,7 @@ void oldmain(void)
                 mixing=1;
                 oldtextprint(200-(strlen(textbuf)<<2),28,0);
                 mixing=0;
-                SDL_GL_SwapWindow(mainwindow);
+                PL_SwapBuffers();
                 pageoffset = j;
                 j = 0;
                 ototclock = totalclock;
@@ -2165,10 +2165,10 @@ void oldmain(void)
                 {
                     PollInputs();
 
-                    if (newkeystatus(SDLK_n) != 0)  j |= 1;
-                    if (newkeystatus(SDLK_SPACE) != 0)  j |= 1;
-                    if (newkeystatus(SDLK_RETURN) != 0)  j |= 1;
-                    if (newkeystatus(SDLK_y) != 0)  j |= 2;
+                    if (newkeystatus(PLK_n) != 0)  j |= 1;
+                    if (newkeystatus(PLK_SPACE) != 0)  j |= 1;
+                    if (newkeystatus(PLK_RETURN) != 0)  j |= 1;
+                    if (newkeystatus(PLK_y) != 0)  j |= 2;
                     if (getkeydefstat(ACTION_MENU_SELECT1) != 0) j |= 2;
                     if (getkeydefstat(ACTION_MENU_SELECT2) != 0) j |= 1;
                     if (getkeydefstat(ACTION_MENU_SELECT3) != 0) j |= 1;
@@ -2203,7 +2203,7 @@ void oldmain(void)
         scoreclock += clockspd;
         if ((scoreclock%240) < clockspd)
             olddrawtime(scoreclock);
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
     }
     musicoff();
 }
@@ -2561,9 +2561,9 @@ K_INT16 oldintroduction(void)
         saidwelcome = 1;
     }
 
-    while ((newkeystatus(SDLK_ESCAPE) == 0) &&
-            (newkeystatus(SDLK_SPACE) == 0) &&
-            (newkeystatus(SDLK_RETURN) == 0) &&
+    while ((newkeystatus(PLK_ESCAPE) == 0) &&
+            (newkeystatus(PLK_SPACE) == 0) &&
+            (newkeystatus(PLK_RETURN) == 0) &&
             (getkeydefstatlock(ACTION_MENU) == 0) &&
             (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
             (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
@@ -2571,21 +2571,20 @@ K_INT16 oldintroduction(void)
             (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
             (bstatus == 0))
     {
-        glClearColor(0,0,0,0);
-        glClear(GL_COLOR_BUFFER_BIT);
+        R_ClearScreen();
         PollInputs();
         if (moustat == 0)
             bstatus=readmouse(NULL, NULL);
         j = (((int)labs((totalclock%120)-60))>>3);
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         while(clockspeed<4) {
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10);
-            SDL_LockMutex(timermutex);
+            PL_UnlockTimer();
+            PL_Delay(10);
+            PL_LockTimer();
         }
         totalclock += clockspeed;
         clockspeed = 0;
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
         if (totalclock > 11520)
             totalclock -= 11520;
         lasti = i;
@@ -2628,9 +2627,9 @@ K_INT16 oldintroduction(void)
         {
             pageoffset = plc;
             spridraw((int)180-64,(int)halfheight-64,(int)128<<2,(int)78);
-            SDL_GL_SwapWindow(mainwindow);
+            PL_SwapBuffers();
             m = 0;
-            while ((m == 0) && (newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+            while ((m == 0) && (newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
                 (getkeydefstatlock(ACTION_MENU) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
@@ -2639,30 +2638,30 @@ K_INT16 oldintroduction(void)
             {
                 PollInputs();
                 i=-1;
-                if (newkeystatus(SDLK_1)) {
+                if (newkeystatus(PLK_1)) {
                     i=0;
-                    setnewkeystatus(SDLK_1, 0);
-                } else if (newkeystatus(SDLK_2)) {
+                    setnewkeystatus(PLK_1, 0);
+                } else if (newkeystatus(PLK_2)) {
                     i=1;
-                    setnewkeystatus(SDLK_2, 0);
-                } else if (newkeystatus(SDLK_3)) {
+                    setnewkeystatus(PLK_2, 0);
+                } else if (newkeystatus(PLK_3)) {
                     i=2;
-                    setnewkeystatus(SDLK_3, 0);
-                } else if (newkeystatus(SDLK_4)) {
+                    setnewkeystatus(PLK_3, 0);
+                } else if (newkeystatus(PLK_4)) {
                     i=3;
-                    setnewkeystatus(SDLK_4, 0);
-                } else if (newkeystatus(SDLK_5)) {
+                    setnewkeystatus(PLK_4, 0);
+                } else if (newkeystatus(PLK_5)) {
                     i=4;
-                    setnewkeystatus(SDLK_5, 0);
-                } else if (newkeystatus(SDLK_6)) {
+                    setnewkeystatus(PLK_5, 0);
+                } else if (newkeystatus(PLK_6)) {
                     i=5;
-                    setnewkeystatus(SDLK_6, 0);
-                } else if (newkeystatus(SDLK_7)) {
+                    setnewkeystatus(PLK_6, 0);
+                } else if (newkeystatus(PLK_7)) {
                     i=6;
-                    setnewkeystatus(SDLK_7, 0);
-                } else if (newkeystatus(SDLK_8)) {
+                    setnewkeystatus(PLK_7, 0);
+                } else if (newkeystatus(PLK_8)) {
                     i=7;
-                    setnewkeystatus(SDLK_8, 0);
+                    setnewkeystatus(PLK_8, 0);
                 }
                 if (i >= 0)
                 {
@@ -2689,9 +2688,9 @@ K_INT16 oldintroduction(void)
                             }
                         }
                                       
-                        setnewkeystatus(SDLK_SPACE, 0);
-                        setnewkeystatus(SDLK_RETURN, 0);
-                        setnewkeystatus(SDLK_ESCAPE, 0);
+                        setnewkeystatus(PLK_SPACE, 0);
+                        setnewkeystatus(PLK_RETURN, 0);
+                        setnewkeystatus(PLK_ESCAPE, 0);
                         if (vidmode == 0)
                         {
                             dside = 200;
@@ -2720,7 +2719,7 @@ K_INT16 oldintroduction(void)
                         oldstatusbaralldraw();
                         return(0);
                     }
-                    setnewkeystatus(SDLK_SPACE, 1);
+                    setnewkeystatus(PLK_SPACE, 1);
                     m = 1;
                 }
             }
@@ -2729,15 +2728,15 @@ K_INT16 oldintroduction(void)
             lastshoot = 1;
             lastbarchange = 1;
         }
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
     }
     musicoff();
 
     fade(0);
 
-    setnewkeystatus(SDLK_SPACE, 0);
-    setnewkeystatus(SDLK_RETURN, 0);
-    setnewkeystatus(SDLK_ESCAPE, 0);
+    setnewkeystatus(PLK_SPACE, 0);
+    setnewkeystatus(PLK_RETURN, 0);
+    setnewkeystatus(PLK_ESCAPE, 0);
     if (vidmode == 0)
     {
         dside = 200;
@@ -2922,7 +2921,7 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
     loadmusic("WINGAME");
     musicon();
     ksay(1);
-    while ((newkeystatus(SDLK_ESCAPE) == 0) && (newkeystatus(SDLK_SPACE) == 0) && (newkeystatus(SDLK_RETURN) == 0) &&
+    while ((newkeystatus(PLK_ESCAPE) == 0) && (newkeystatus(PLK_SPACE) == 0) && (newkeystatus(PLK_RETURN) == 0) &&
         (getkeydefstatlock(ACTION_MENU) == 0) && (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
         (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) && (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
         (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) && (bstatus == 0) && (brightness > 2))
@@ -2958,11 +2957,11 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
             fade(brightness);
         }
         revototclock = revtotalclock;
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         revtotalclock += clockspeed;
         clockspeed = 0;
-        SDL_UnlockMutex(timermutex);
-        SDL_GL_SwapWindow(mainwindow);
+        PL_UnlockTimer();
+        PL_SwapBuffers();
     }
     musicoff();
     ksay(23);
@@ -2970,7 +2969,7 @@ void oldwingame(K_UINT16 mxpos, K_UINT16 mypos)
     lastunlock = 1;
     lastshoot = 1;
     lastbarchange = 1;
-    SDL_Delay(2000);
+    PL_Delay(2000);
 }
 
 void oldshowcompass(K_INT16 compang)

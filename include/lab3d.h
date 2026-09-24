@@ -23,8 +23,14 @@
 #endif
 #endif
 
-#include "SDL.h"
+#include "platform.h"
 
+#ifdef PLATFORM_AMIGA
+/* The Amiga port renders in software into an 8 bit chunky buffer; there is no
+   OpenGL anywhere in the build.  render.h supplies the drawing interface and
+   amiga/amigaos.h the few OS types the shared code still mentions. */
+#include "amiga/amigaos.h"
+#else
 #ifdef __SWITCH__
 #include "glad.h"
 #include <switch.h>
@@ -41,6 +47,7 @@
 /* MSVC compatibility hack (some versions have out-of-date OpenGL headers). */
 #define GL_BGR GL_BGR_EXT
 #endif
+#endif /* !PLATFORM_AMIGA */
 
 #ifdef WIN32
 #include "mmsystem.h"
@@ -50,30 +57,18 @@
 #ifdef USE_OSS
 #include "linux/soundcard.h"
 #endif
+#ifndef PLATFORM_AMIGA
 #include <sys/ioctl.h>
+#endif
 /* WIN32 needs this flag to avoid data corruption, POSIX doesn't have it at
    all. So we define it ourselves on non-Windows systems. Yes, I know this is
    messy. */
+#ifndef O_BINARY
 #define O_BINARY 0
 #endif
-
-#ifdef DEBUG_BUFFERS
-#ifdef MAIN
-void SDL_GL_SwapBuffersDebug() {
-    SDL_GL_SwapBuffers();
-    glClearColor(255, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
-}
-#endif
-#define SDL_GL_SwapBuffers SDL_GL_SwapBuffersDebug
 #endif
 
-/* Assume that SDL has fixed data types... */
-
-typedef Uint32 K_UINT32;
-typedef Uint16 K_UINT16;
-typedef Sint32 K_INT32;
-typedef Sint16 K_INT16;
+/* K_UINT32 and friends now come from platform.h. */
 
 #include <string.h>
 #include <stdio.h>
@@ -87,6 +82,7 @@ typedef Sint16 K_INT16;
 #endif
 
 #include "demo.h"
+#include "render.h"
 
 /* Some (obsolete) port numbers... */
 
@@ -520,10 +516,6 @@ EXTERN K_INT16 texturecreationneeded;
 EXTERN int stereo;
 EXTERN int mouseverticalmovement;
 
-/* SDL timer... */
-
-EXTERN SDL_TimerID timer;
-
 /* Overlay buffer... */
 EXTERN unsigned char* screenbuffer;
 EXTERN uint32_t* screenbuffer32;
@@ -658,21 +650,20 @@ void copyslots(K_INT16);
 void youarehere();
 void bigstorymenu();
 void sodamenu();
-Uint32 tickhandler(Uint32 interval, void* param);
 void ksmhandler();
 void SetVisibleScreenOffset(K_UINT16 offset);
 int ClipToBuffer(int* sx, int* sy, int* w, int* h);
 void ShowPartialOverlay(int x, int y, int w, int h, int statusbar);
 void PollInputs();
 void FindJoysticks();
-void ProcessEvent(SDL_Event* event);
+void ProcessEvent(PL_Event* event);
 void checkGLStatus();
 void floorsprite(K_UINT16 x, K_UINT16 y, K_INT16 walnume);
 void flatsprite(K_UINT16 x, K_UINT16 y, K_INT16 ang, K_INT16 playerang,
     K_INT16 walnume);
 
 typedef struct {
-    SDL_Keycode key;
+    PL_Keycode key;
     int scan;
 } pckeymap_t;
 
@@ -681,134 +672,145 @@ typedef struct {
     int value;
 } enumpair;
 
+/* Per-wall parameters, defaults plus anything wallparams.ini overrides. */
+typedef struct _wallparam {
+    int wrapmode;
+    int tcl, tch;
+    int minfilt, magfilt;
+    int bmpkind_override;
+    char* texreplace;
+} wallparam;
+
+EXTERN wallparam default_wallparam;
+
 #ifdef MAIN
 
-/* SDL to PC key mapping table... */
+/* Platform key to PC scan code mapping table... */
 pckeymap_t PCkey[] = {
-    { SDLK_BACKSPACE, 14 },
-    { SDLK_TAB, 15 },
-    { SDLK_CLEAR, 251 },
-    { SDLK_RETURN, 28 },
-    { SDLK_PAUSE, 0 },
-    { SDLK_ESCAPE, 1 },
-    { SDLK_SPACE, 57 },
-    { SDLK_EXCLAIM, 2 },
-    { SDLK_QUOTEDBL, 40 },
-    { SDLK_HASH, 4 },
-    { SDLK_DOLLAR, 5 },
-    { SDLK_AMPERSAND, 8 },
-    { SDLK_QUOTE, 40 },
-    { SDLK_LEFTPAREN, 10 },
-    { SDLK_RIGHTPAREN, 11 },
-    { SDLK_ASTERISK, 9 },
-    { SDLK_PLUS, 13 },
-    { SDLK_COMMA, 51 },
-    { SDLK_MINUS, 12 },
-    { SDLK_PERIOD, 52 },
-    { SDLK_SLASH, 53 },
-    { SDLK_0, 11 },
-    { SDLK_1, 2 },
-    { SDLK_2, 3 },
-    { SDLK_3, 4 },
-    { SDLK_4, 5 },
-    { SDLK_5, 6 },
-    { SDLK_6, 7 },
-    { SDLK_7, 8 },
-    { SDLK_8, 9 },
-    { SDLK_9, 10 },
-    { SDLK_COLON, 39 },
-    { SDLK_SEMICOLON, 39 },
-    { SDLK_LESS, 51 },
-    { SDLK_EQUALS, 13 },
-    { SDLK_GREATER, 52 },
-    { SDLK_QUESTION, 53 },
-    { SDLK_AT, 3 },
-    { SDLK_LEFTBRACKET, 26 },
-    { SDLK_BACKSLASH, 43 },
-    { SDLK_RIGHTBRACKET, 27 },
-    { SDLK_CARET, 7 },
-    { SDLK_UNDERSCORE, 12 },
-    { SDLK_BACKQUOTE, 41 },
-    { SDLK_a, 30 },
-    { SDLK_b, 48 },
-    { SDLK_c, 46 },
-    { SDLK_d, 32 },
-    { SDLK_e, 18 },
-    { SDLK_f, 33 },
-    { SDLK_g, 34 },
-    { SDLK_h, 35 },
-    { SDLK_i, 23 },
-    { SDLK_j, 36 },
-    { SDLK_k, 37 },
-    { SDLK_l, 38 },
-    { SDLK_m, 50 },
-    { SDLK_n, 49 },
-    { SDLK_o, 24 },
-    { SDLK_p, 25 },
-    { SDLK_q, 16 },
-    { SDLK_r, 19 },
-    { SDLK_s, 31 },
-    { SDLK_t, 20 },
-    { SDLK_u, 22 },
-    { SDLK_v, 47 },
-    { SDLK_w, 17 },
-    { SDLK_x, 45 },
-    { SDLK_y, 21 },
-    { SDLK_z, 44 },
-    { SDLK_DELETE, 83 },
-    { SDLK_KP_0, 82 },
-    { SDLK_KP_1, 79 },
-    { SDLK_KP_2, 80 },
-    { SDLK_KP_3, 81 },
-    { SDLK_KP_4, 75 },
-    { SDLK_KP_5, 76 },
-    { SDLK_KP_6, 77 },
-    { SDLK_KP_7, 71 },
-    { SDLK_KP_8, 72 },
-    { SDLK_KP_9, 73 },
-    { SDLK_KP_PERIOD, 83 },
-    { SDLK_KP_DIVIDE, 224 },
-    { SDLK_KP_MULTIPLY, 55 },
-    { SDLK_KP_MINUS, 74 },
-    { SDLK_KP_PLUS, 78 },
-    { SDLK_KP_ENTER, 224 },
-    { SDLK_UP, 200 },
-    { SDLK_DOWN, 208 },
-    { SDLK_RIGHT, 205 },
-    { SDLK_LEFT, 203 },
-    { SDLK_INSERT, 210 },
-    { SDLK_HOME, 199 },
-    { SDLK_END, 207 },
-    { SDLK_PAGEUP, 201 },
-    { SDLK_PAGEDOWN, 209 },
-    { SDLK_F1, 59 },
-    { SDLK_F2, 60 },
-    { SDLK_F3, 61 },
-    { SDLK_F4, 62 },
-    { SDLK_F5, 63 },
-    { SDLK_F6, 64 },
-    { SDLK_F7, 65 },
-    { SDLK_F8, 66 },
-    { SDLK_F9, 67 },
-    { SDLK_F10, 68 },
-    { SDLK_F11, 87 },
-    { SDLK_F12, 88 },
-    { SDLK_F13, 236 },
-    { SDLK_F14, 237 },
-    { SDLK_F15, 238 },
-    { SDLK_NUMLOCKCLEAR, 69 },
-    { SDLK_CAPSLOCK, 58 },
-    { SDLK_SCROLLLOCK, 70 },
-    { SDLK_RSHIFT, 54 },
-    { SDLK_LSHIFT, 42 },
-    { SDLK_RCTRL, 157 },
-    { SDLK_LCTRL, 29 },
-    { SDLK_RALT, 184 },
-    { SDLK_LALT, 56 },
-    { SDLK_MODE, 184 },
-    { SDLK_APPLICATION, 184 },
-    { SDLK_PRINTSCREEN, 183 },
-    { SDLK_PAUSE, 0 },
+    { PLK_BACKSPACE, 14 },
+    { PLK_TAB, 15 },
+    { PLK_CLEAR, 251 },
+    { PLK_RETURN, 28 },
+    { PLK_PAUSE, 0 },
+    { PLK_ESCAPE, 1 },
+    { PLK_SPACE, 57 },
+    { PLK_EXCLAIM, 2 },
+    { PLK_QUOTEDBL, 40 },
+    { PLK_HASH, 4 },
+    { PLK_DOLLAR, 5 },
+    { PLK_AMPERSAND, 8 },
+    { PLK_QUOTE, 40 },
+    { PLK_LEFTPAREN, 10 },
+    { PLK_RIGHTPAREN, 11 },
+    { PLK_ASTERISK, 9 },
+    { PLK_PLUS, 13 },
+    { PLK_COMMA, 51 },
+    { PLK_MINUS, 12 },
+    { PLK_PERIOD, 52 },
+    { PLK_SLASH, 53 },
+    { PLK_0, 11 },
+    { PLK_1, 2 },
+    { PLK_2, 3 },
+    { PLK_3, 4 },
+    { PLK_4, 5 },
+    { PLK_5, 6 },
+    { PLK_6, 7 },
+    { PLK_7, 8 },
+    { PLK_8, 9 },
+    { PLK_9, 10 },
+    { PLK_COLON, 39 },
+    { PLK_SEMICOLON, 39 },
+    { PLK_LESS, 51 },
+    { PLK_EQUALS, 13 },
+    { PLK_GREATER, 52 },
+    { PLK_QUESTION, 53 },
+    { PLK_AT, 3 },
+    { PLK_LEFTBRACKET, 26 },
+    { PLK_BACKSLASH, 43 },
+    { PLK_RIGHTBRACKET, 27 },
+    { PLK_CARET, 7 },
+    { PLK_UNDERSCORE, 12 },
+    { PLK_BACKQUOTE, 41 },
+    { PLK_a, 30 },
+    { PLK_b, 48 },
+    { PLK_c, 46 },
+    { PLK_d, 32 },
+    { PLK_e, 18 },
+    { PLK_f, 33 },
+    { PLK_g, 34 },
+    { PLK_h, 35 },
+    { PLK_i, 23 },
+    { PLK_j, 36 },
+    { PLK_k, 37 },
+    { PLK_l, 38 },
+    { PLK_m, 50 },
+    { PLK_n, 49 },
+    { PLK_o, 24 },
+    { PLK_p, 25 },
+    { PLK_q, 16 },
+    { PLK_r, 19 },
+    { PLK_s, 31 },
+    { PLK_t, 20 },
+    { PLK_u, 22 },
+    { PLK_v, 47 },
+    { PLK_w, 17 },
+    { PLK_x, 45 },
+    { PLK_y, 21 },
+    { PLK_z, 44 },
+    { PLK_DELETE, 83 },
+    { PLK_KP_0, 82 },
+    { PLK_KP_1, 79 },
+    { PLK_KP_2, 80 },
+    { PLK_KP_3, 81 },
+    { PLK_KP_4, 75 },
+    { PLK_KP_5, 76 },
+    { PLK_KP_6, 77 },
+    { PLK_KP_7, 71 },
+    { PLK_KP_8, 72 },
+    { PLK_KP_9, 73 },
+    { PLK_KP_PERIOD, 83 },
+    { PLK_KP_DIVIDE, 224 },
+    { PLK_KP_MULTIPLY, 55 },
+    { PLK_KP_MINUS, 74 },
+    { PLK_KP_PLUS, 78 },
+    { PLK_KP_ENTER, 224 },
+    { PLK_UP, 200 },
+    { PLK_DOWN, 208 },
+    { PLK_RIGHT, 205 },
+    { PLK_LEFT, 203 },
+    { PLK_INSERT, 210 },
+    { PLK_HOME, 199 },
+    { PLK_END, 207 },
+    { PLK_PAGEUP, 201 },
+    { PLK_PAGEDOWN, 209 },
+    { PLK_F1, 59 },
+    { PLK_F2, 60 },
+    { PLK_F3, 61 },
+    { PLK_F4, 62 },
+    { PLK_F5, 63 },
+    { PLK_F6, 64 },
+    { PLK_F7, 65 },
+    { PLK_F8, 66 },
+    { PLK_F9, 67 },
+    { PLK_F10, 68 },
+    { PLK_F11, 87 },
+    { PLK_F12, 88 },
+    { PLK_F13, 236 },
+    { PLK_F14, 237 },
+    { PLK_F15, 238 },
+    { PLK_NUMLOCKCLEAR, 69 },
+    { PLK_CAPSLOCK, 58 },
+    { PLK_SCROLLLOCK, 70 },
+    { PLK_RSHIFT, 54 },
+    { PLK_LSHIFT, 42 },
+    { PLK_RCTRL, 157 },
+    { PLK_LCTRL, 29 },
+    { PLK_RALT, 184 },
+    { PLK_LALT, 56 },
+    { PLK_MODE, 184 },
+    { PLK_APPLICATION, 184 },
+    { PLK_PRINTSCREEN, 183 },
+    { PLK_PAUSE, 0 },
     { 0, -1 },
 };
 
@@ -822,9 +824,6 @@ EXTERN unsigned char* SoundFile;
 /* Sound output buffer... */
 EXTERN K_INT16* SoundBuffer;
 EXTERN int FeedPoint;
-
-/* SDL Audio Device ID */
-EXTERN SDL_AudioDeviceID audiodevice;
 
 /* Last played Music file */
 EXTERN char lastPlayedMusicFile[12];
@@ -846,26 +845,22 @@ EXTERN int fullscreen;
 EXTERN GLint fullfilter, partialfilter, anisotropic;
 
 /* Joystick device. */
-EXTERN SDL_Window* mainwindow;
+/* Set once the display is up; the handle itself lives in the platform layer. */
 EXTERN int window_in_focus;
 
-EXTERN SDL_GameController* cur_controller;
 EXTERN int cur_controller_index;
 EXTERN unsigned int cur_controller_axis_active;
 
-EXTERN SDL_Joystick* cur_joystick;
 EXTERN int cur_joystick_index;
 EXTERN int cur_joystick_num_axes;
 EXTERN unsigned int cur_joystick_axis_active;
 
 EXTERN int joyenable;
 
-EXTERN SDL_GLContext* maincontext;
-
 void DumpSound(unsigned char* sound, K_UINT16 leng, K_UINT32 playpoint, int pos);
-void AudioCallback(void* userdata, Uint8* stream, int len);
+void AudioCallback(void* userdata, unsigned char* stream, int len);
 void TextureConvert(unsigned char* from, unsigned char* to, K_INT16 type);
-Uint16 getkeypress(int* key);
+K_UINT16 getkeypress(int* key);
 void drawtooverlay(K_UINT16 picx, K_UINT16 picy, int w,
     int h, int x, int y, K_INT16 walnum,
     unsigned char coloff);
@@ -875,7 +870,7 @@ void setdarkenedpalette();
 void updateoverlaypalette(K_UINT16 start, K_UINT16 amount, unsigned char* cols);
 void TransitionTexture(int left, int texture, int right);
 
-void process_sdl_event(SDL_Event* e);
+void process_sdl_event(PL_Event* e);
 unsigned char readmouse(int* x, int* y);
 void quit();
 void loadsettings();
@@ -895,13 +890,11 @@ int getkeypressure(int keydef, int pressval, int runpressval);
 void fatal_error(const char* fmt, ...);
 int newkeystatus(int key);
 void setnewkeystatus(int key, int val);
-int get_pckey(SDL_Keycode key);
+int get_pckey(PL_Keycode key);
 int read_ini(FILE* input, char* buf, int buflen, char** keyp, char** valp, int* linep);
 int get_enum(char* str, enumpair* cur);
 int smooth_input(int, int, int, int);
 void setup_stereo(int);
-
-EXTERN SDL_mutex* soundmutex, * timermutex;
 
 #define JOY_FLAG_NEG  0x40000000
 #define JOY_FLAG_AXIS 0x20000000
@@ -922,7 +915,7 @@ EXTERN int keyspressed[128];
 EXTERN int musicvolume, soundvolume;
 EXTERN int channels;
 K_INT16 ksaystereo(K_UINT16 filenum, K_UINT16 x, K_UINT16 y);
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+#if PL_BYTEORDER == PL_LIL_ENDIAN
 #define readLE16 read
 #define readLE32 read
 #define writeLE16 write
@@ -935,13 +928,18 @@ ssize_t writeLE32(int fd, void* buf, size_t count);
 #endif
 EXTERN double gammalevel;
 
+#ifdef PLATFORM_AMIGA
+/* Screen mode selection, implemented in src/amiga/. */
+extern int amiga_cfg_askmode;
+#endif
+
 
 /* Data from wallparam.ini */
 
 EXTERN int shadow2[numwalls]; // Renamed to avoid conflict with shadow in CoreFoundation
 EXTERN double walltexcoord[numwalls][2];
 
-#if SDL_BYTE_ORDER==SDL_LITTLE_ENDIAN
+#if PL_BYTEORDER==PL_LIL_ENDIAN
 #define RED_SHIFT 0
 #define GREEN_SHIFT 8
 #define BLUE_SHIFT 16

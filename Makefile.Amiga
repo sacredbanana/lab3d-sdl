@@ -1,0 +1,118 @@
+# ---------------------------------------------------------------------------
+# LAB3D/Amiga - AmigaOS 3.x / 68k build
+#
+# Built with bebbo's m68k-amigaos-gcc inside the sacredbanana/amiga-compiler
+# Docker image (see build-amiga.sh).  Four CPU variants are produced:
+#
+#   Kens-Labyrinth.020      68020, no FPU (software floating point)
+#   Kens-Labyrinth.020fpu   68020 with a 68881/68882
+#   Kens-Labyrinth.040      68040
+#   Kens-Labyrinth.060      68060
+#
+# The game does a fair amount of floating point per frame in the ray caster,
+# so the FPU builds are substantially faster; the plain 020 build exists for
+# unexpanded A1200s and 68EC020 machines.
+#
+#   make -f Makefile.Amiga            build all four
+#   make -f Makefile.Amiga 020        build one
+#   make -f Makefile.Amiga clean
+# ---------------------------------------------------------------------------
+
+CC       = m68k-amigaos-gcc
+PROGRAM  = Kens-Labyrinth
+OUT_DIR  = dist/amiga
+BUILD    = build/amiga
+
+SRC_DIR  = src
+INC_DIR  = include
+
+# Shared game code plus the Amiga back ends.  Neither src/platform_sdl.c nor
+# src/render_gl.c is built here: this port links no SDL and no OpenGL.
+SOURCES = \
+	$(SRC_DIR)/lab3d.c \
+	$(SRC_DIR)/subs.c \
+	$(SRC_DIR)/graphx.c \
+	$(SRC_DIR)/init.c \
+	$(SRC_DIR)/setup.c \
+	$(SRC_DIR)/oldlab3d.c \
+	$(SRC_DIR)/launcher.c \
+	$(SRC_DIR)/demo.c \
+	$(SRC_DIR)/adlibemu.c \
+	$(SRC_DIR)/amiga/amiga_platform.c \
+	$(SRC_DIR)/amiga/amiga_video.c \
+	$(SRC_DIR)/amiga/amiga_c2p.c \
+	$(SRC_DIR)/amiga/amiga_audio.c \
+	$(SRC_DIR)/amiga/amiga_settings.c \
+	$(SRC_DIR)/amiga/amiga_gzstub.c \
+	$(SRC_DIR)/amiga/render_soft.c
+
+# --------------------------------------------------------------- CPU variants
+
+# 68020 without an FPU.  -msoft-float keeps libnix's soft float routines in
+# play; do not drop it or the binary will trap on a plain 68EC020.
+#
+# -m68040 and -m68060 on their own select *soft* float in this toolchain, so
+# -m68881 has to be spelled out or the 040/060 builds end up slower than the
+# 020 FPU one.  With it, gcc emits the 040/060 double-rounding forms
+# (fdmul/fddiv) rather than the extended precision 68881 ones.
+CPUFLAGS_020    = -m68020 -msoft-float
+CPUFLAGS_020FPU = -m68020 -m68881
+CPUFLAGS_040    = -m68040 -m68881
+CPUFLAGS_060    = -m68060 -m68881
+
+VARIANTS = 020 020fpu 040 060
+
+# --------------------------------------------------------------------- flags
+
+WARNINGS = -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
+           -Wno-unused-function -Wno-parentheses -Wno-char-subscripts \
+           -Wno-misleading-indentation
+
+# -noixemul: link against libnix, so no ixemul.library is needed at runtime.
+# -fno-strict-aliasing: the game punts between K_INT16* and unsigned char*
+#   all over the place, which strict aliasing would be entitled to break.
+# -fno-math-errno lets gcc inline fsqrt on the FPU builds without changing
+# IEEE semantics; the ray caster leans on exact epsilon comparisons, so the
+# rest of -ffast-math is deliberately left off.
+BASEFLAGS = -noixemul -fno-strict-aliasing -fno-math-errno \
+            -I$(INC_DIR) -I$(INC_DIR)/amiga -D__AMIGA__ -DPLATFORM_AMIGA
+
+ifeq ($(DEBUG),1)
+OPTFLAGS = -O1 -g -DDEBUG
+else
+OPTFLAGS = -O2 -fomit-frame-pointer
+endif
+
+CFLAGS  = $(BASEFLAGS) $(OPTFLAGS) $(WARNINGS)
+LDLIBS  = -lm -lamiga
+
+.PHONY: all clean dirs $(VARIANTS)
+
+all: $(VARIANTS)
+
+dirs:
+	@mkdir -p $(OUT_DIR)
+	@mkdir -p $(BUILD)
+
+# Expands to one full set of object rules plus a link rule per variant.
+define VARIANT_RULES
+$(1)_OBJS = $$(patsubst $$(SRC_DIR)/%.c,$$(BUILD)/$(1)/%.o,$$(SOURCES))
+
+$$(BUILD)/$(1)/%.o: $$(SRC_DIR)/%.c
+	@mkdir -p $$(dir $$@)
+	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) -c $$< -o $$@
+
+$(1): dirs $$($(1)_OBJS)
+	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) -o $$(OUT_DIR)/$$(PROGRAM).$(1) \
+	    $$($(1)_OBJS) $$(LDLIBS)
+	@echo "Built $$(OUT_DIR)/$$(PROGRAM).$(1)"
+endef
+
+$(eval $(call VARIANT_RULES,020,020))
+$(eval $(call VARIANT_RULES,020fpu,020FPU))
+$(eval $(call VARIANT_RULES,040,040))
+$(eval $(call VARIANT_RULES,060,060))
+
+clean:
+	rm -rf $(BUILD)
+	rm -f $(OUT_DIR)/$(PROGRAM).*

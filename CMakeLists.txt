@@ -107,6 +107,8 @@ file(GLOB LAB3D_PROJECT_SOURCES
   ${MAIN_SOURCE_DIR}/oldlab3d.c
   ${MAIN_SOURCE_DIR}/setup.c
   ${MAIN_SOURCE_DIR}/subs.c
+  ${MAIN_SOURCE_DIR}/platform_sdl.c
+  ${MAIN_SOURCE_DIR}/render_gl.c
 )
 
 if (UNIX AND (NOT APPLE))

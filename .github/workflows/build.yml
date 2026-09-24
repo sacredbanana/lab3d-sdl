@@ -105,6 +105,23 @@ jobs:
         path: dist/switch/ken
         if-no-files-found: error
 
+  build_amiga:
+    name: Build for AmigaOS 3.x (68020, 68020+FPU, 68040, 68060)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build
+      run: ./build-amiga.sh
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-AmigaOS3
+        path: dist/amiga/Kens-Labyrinth
+        if-no-files-found: error
+
   build_macos:
     name: Build for macOS for Intel and Apple Silicon
     runs-on: macos-latest

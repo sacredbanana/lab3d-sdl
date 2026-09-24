@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include <SDL_endian.h>
 #include <zlib.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "platform.h"
 #include "demo.h"
 
 #ifdef WIN32
@@ -23,11 +23,11 @@ static void truncate_file(FILE* f) {
 
 #endif
 
-static Uint16 get16(Uint8* a) {
+static K_UINT16 get16(unsigned char* a) {
     return a[0] | (a[1] << 8);
 }
 
-static Uint16 set16(Uint8* a, Uint16 v) {
+static K_UINT16 set16(unsigned char* a, K_UINT16 v) {
     *a++ = v;
     *a = v >> 8;
     return v;
@@ -48,20 +48,20 @@ struct demofile {
     vartrack_t* vars;
 
     /* Allocated sequentially */
-    Uint8* cur_data;
-    Uint8* delta_buf;
-    Uint8* rle_buf;
+    unsigned char* cur_data;
+    unsigned char* delta_buf;
+    unsigned char* rle_buf;
 
-    Uint32 totalclock;
+    K_UINT32 totalclock;
 
     int cursize;
     int buffer_size;
 
     int nvars;
 
-    Uint8 format;
-    Uint8 recording;
-    Uint8 compressed;
+    unsigned char format;
+    unsigned char recording;
+    unsigned char compressed;
 };
 
 
@@ -142,7 +142,7 @@ static int demofile_write(demofile_t* d, const void* data, int size) {
 }
 
 static int demofile_write_hdr(demofile_t* d, int size, int clock) {
-    Uint8 hdr[4];
+    unsigned char hdr[4];
     set16(hdr, size);
     set16(hdr+2, clock);
     return demofile_write(d, hdr, 4);
@@ -151,8 +151,8 @@ static int demofile_write_hdr(demofile_t* d, int size, int clock) {
 static int demofile_read_frame(demofile_t* d) {
     int i, j;
     int readsize, timediff;
-    Uint8 *delta, *rle, *delta_end, hdr[4];
-    Uint64 *tdelta, *tdata;
+    unsigned char *delta, *rle, *delta_end, hdr[4];
+    K_UINT32 *tdelta, *tdata;
 
     if ((j = demofile_read(d, hdr, 4)) < 4) {
         return -1;
@@ -174,13 +174,13 @@ static int demofile_read_frame(demofile_t* d) {
         delta_end = delta + d->buffer_size;
         i = readsize;
         while (i > 0 && delta < delta_end) {
-            Uint8 r = *rle++;
+            unsigned char r = *rle++;
             i--;
             if (r == 0) {
                 unsigned int cnt = 0;
                 int shift = 0;
                 while (i > 0) {
-                    Uint8 tc = *rle++;
+                    unsigned char tc = *rle++;
                     i--;
                     cnt |= (tc & 0x7F) << shift;
                     shift += 7;
@@ -197,9 +197,9 @@ static int demofile_read_frame(demofile_t* d) {
             memset(delta, 0, delta_end - delta);
     }
 
-    tdata = (Uint64*)d->cur_data;
-    tdelta = (Uint64*)d->delta_buf;
-    i = (d->buffer_size + 7) >> 3;
+    tdata = (K_UINT32*)d->cur_data;
+    tdelta = (K_UINT32*)d->delta_buf;
+    i = (d->buffer_size + 3) >> 2;
 
     do {
         *tdata++ ^= *tdelta++;
@@ -221,7 +221,7 @@ static int demofile_read_frame(demofile_t* d) {
 
 int demofile_advance(demofile_t* d, int dir) {
     int rc, prevsize;
-    Uint8 hdr[2];
+    unsigned char hdr[2];
 
     if (dir == -1) {
         if (!demofile_rewindable(d))
@@ -243,38 +243,43 @@ int demofile_advance(demofile_t* d, int dir) {
     return rc;
 }
 
-#define DECODELOOP(size, type, swap)            \
-    case size: {                                \
-        type* ndelt = (type*)delta;             \
-        type* nptr = (type*)ct->ptr;            \
-        do {                                    \
-            type ov = *nldata++;                \
-            *nptr++ = swap(ov);                 \
-        } while (--i);                          \
-        delta = (Uint8*)ndelt;                  \
-        ldata = (Uint8*)nldata;                 \
-    }                                           \
-    break
-
 void demofile_update_vars(demofile_t* d) {
     int i, j;
-    Uint8 *cdata;
+    unsigned char *cdata;
     vartrack_t* ct;
 
     for (j = 0, ct = d->vars; j < d->nvars; j++, ct++) {
         cdata = d->cur_data + ct->pos;
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-        i = ct->cnt * ct->elemsize;
-        memcpy(ct->ptr, cdata, i);
+#if PL_BYTEORDER == PL_LIL_ENDIAN
+        memcpy(ct->ptr, cdata, (size_t)ct->cnt * ct->elemsize);
 #else
-        i = ct->cnt;
-
-        switch(ct->elemsize) {
-            DECODELOOP(1, Uint8, NOSWAP);
-            DECODELOOP(2, Uint16, SDL_SwapLE16);
-            DECODELOOP(4, Uint32, SDL_SwapLE32);
-            default:
-                fatal_error("unknown size: %d (%s)", ct->elemsize, ct->name);
+        /* Demo files are always little endian.  Unpack a byte at a time so
+           that this works whatever the alignment of the variable is - the
+           macro that used to live here referred to locals belonging to a
+           different function and had never been compiled. */
+        switch (ct->elemsize) {
+        case 1:
+            memcpy(ct->ptr, cdata, (size_t)ct->cnt);
+            break;
+        case 2: {
+            K_UINT16 *dst = (K_UINT16 *)ct->ptr;
+            for (i = 0; i < ct->cnt; i++, cdata += 2)
+                dst[i] = (K_UINT16)(cdata[0] | (cdata[1] << 8));
+            break;
+        }
+        case 4: {
+            K_UINT32 *dst = (K_UINT32 *)ct->ptr;
+            for (i = 0; i < ct->cnt; i++, cdata += 4)
+                dst[i] = (K_UINT32)cdata[0]         |
+                         ((K_UINT32)cdata[1] << 8)  |
+                         ((K_UINT32)cdata[2] << 16) |
+                         ((K_UINT32)cdata[3] << 24);
+            break;
+        }
+        default:
+            fprintf(stderr, "demo: unsupported variable size %d\n",
+                    ct->elemsize);
+            break;
         }
 #endif
     }
@@ -285,7 +290,7 @@ static int demofile_read_fileheader(demofile_t* d, demo_vardef_t* vars, const ch
     int i, pos, nvars;
     demo_vardef_t *cvardef, *lastvardef;
     vartrack_t* cvartrack;
-    Uint8 hdr[8];
+    unsigned char hdr[8];
     char name[256];
 
     d->gzfil = gzopen(filename, "rb9");
@@ -405,7 +410,7 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
     int i, j, pos;
     demo_vardef_t* cvardef;
     vartrack_t* cvartrack;
-    Uint8 hdr[8];
+    unsigned char hdr[8];
 
     for (i = 0, cvardef = vars; cvardef->name; cvardef++) {
         i++;
@@ -480,6 +485,9 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
 
 #define NOSWAP(X) (X)
 
+/* The swap macros evaluate their argument more than once, so the value has to
+   be read into a temporary first - passing *nptr++ straight in incremented the
+   pointer several times per element on big endian machines. */
 #define ENCODELOOP(size, type, swap)                \
     case size: {                                    \
         type* ndelta = (type*)(delta + ct->pos);    \
@@ -487,7 +495,8 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
         type* nptr = (type*)ct->ptr;                \
         do {                                        \
             type ov = *nldata;                      \
-            type nv = swap(*nptr++);                \
+            type raw = *nptr++;                     \
+            type nv = swap(raw);                    \
             *nldata++ = nv;                         \
             *ndelta++ = ov ^ nv;                    \
         } while (--i);                              \
@@ -496,8 +505,8 @@ static int demofile_write_fileheader(demofile_t* d, demo_vardef_t* vars, const c
 
 void demofile_write_frame(demofile_t* d, int timediff) {
     int i, j, zc, writesize;
-    Uint8 *ldata, *delta, *rle, *rle_end;
-    Uint8 hdr[2];
+    unsigned char *ldata, *delta, *rle, *rle_end;
+    unsigned char hdr[2];
     vartrack_t* ct;
 
     ldata = d->cur_data;
@@ -507,10 +516,10 @@ void demofile_write_frame(demofile_t* d, int timediff) {
         i = ct->cnt;
 
         switch(ct->elemsize) {
-            ENCODELOOP(1, Uint8, NOSWAP);
-            ENCODELOOP(2, Uint16, SDL_SwapLE16);
-            ENCODELOOP(4, Uint32, SDL_SwapLE32);
-            ENCODELOOP(8, Uint64, SDL_SwapLE64);
+            ENCODELOOP(1, unsigned char, NOSWAP);
+            ENCODELOOP(2, K_UINT16, PL_SwapLE16);
+            ENCODELOOP(4, K_UINT32, PL_SwapLE32);
+            ENCODELOOP(8, uint64_t, PL_SwapLE64);
         }
     }
 
@@ -520,7 +529,7 @@ void demofile_write_frame(demofile_t* d, int timediff) {
     i = d->buffer_size;
     zc = 0;
     do {
-        Uint8 bv = *delta++;
+        unsigned char bv = *delta++;
         if (bv == 0) {
             zc++;
         } else {
@@ -561,7 +570,7 @@ void demofile_write_frame(demofile_t* d, int timediff) {
 }
 
 /*
-static int demofile_read_frame(demofile_t* d, Uint8* hdr, int dir) {
+static int demofile_read_frame(demofile_t* d, unsigned char* hdr, int dir) {
     int prev_ofs, readsize;
 
     if (demo->format == 1) {

@@ -1,7 +1,7 @@
 CC := gcc
 
 BIN  = ken.exe
-SRCS = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c setup.c subs.c
+SRCS = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c setup.c subs.c platform_sdl.c render_gl.c
 OBJS = $(SRCS:%.c=%.obj) icon.obj
 
 WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function

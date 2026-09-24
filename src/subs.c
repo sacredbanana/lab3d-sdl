@@ -2,8 +2,9 @@
 #include "adlibemu.h"
 #include <math.h>
 #include <ctype.h>
-#include "SDL_endian.h"
+#ifdef ENABLE_HIRES_TEXTURES
 #include "SDL_image.h"
+#endif
 
 /* Various constants that really should be stored in the data files... */
 
@@ -15,10 +16,10 @@
 #define LZW_STACK_SIZE 4096
 
 /* Last time tick handler was called... */
-static Uint32 lastTick=0;
+static K_UINT32 lastTick=0;
 
 /* Fractional part of milliseconds. */
-static Uint32 tickFrac=0;
+static K_UINT32 tickFrac=0;
 
 /* Sequencer buffer. Completely overkill, unless Ken wants to play hundreds of
    notes at once. */
@@ -26,13 +27,6 @@ static Uint32 tickFrac=0;
 #ifdef USE_OSS
 SEQ_DEFINEBUF (2048);
 #endif
-
-/* Palette for OpenGL transfer... */
-
-static GLfloat Red[256], Blue[256], Green[256];
-static GLfloat Alpha[256];
-
-static unsigned char ipalr[256], ipalg[256], ipalb[256];
 
 static char BADNAME[13]="MESTINXBADLY";
 
@@ -48,8 +42,8 @@ void fatal_error(const char* fmt, ...) {
     if (*e == '\n') *e = 0;
 
     fprintf (stderr, "ERROR: %s\n", txt);
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "LAB3D-SDL Fatal Error", txt, mainwindow);
-    SDL_Quit();
+    PL_FatalBox("LAB3D Fatal Error", txt);
+    PL_Shutdown();
     exit (-1);
 
 }
@@ -71,27 +65,27 @@ void setnewkeystatus(int key, int val) {
             break;
     }
     if (val) {
-        /*fprintf(stderr, "PRESS %08x (%s)\n", key, SDL_GetKeyName(key));*/
+        /*fprintf(stderr, "PRESS %08x (%s)\n", key, PL_GetKeyName(key));*/
         if (i == numkeyspressed && i < 128) {
             keyspressed[numkeyspressed++] = key;
         }
     } else {
-        /*fprintf(stderr, "RELEASE %08x (%s)\n", key, SDL_GetKeyName(key));*/
+        /*fprintf(stderr, "RELEASE %08x (%s)\n", key, PL_GetKeyName(key));*/
         if (i != numkeyspressed) {
             keyspressed[i] = keyspressed[--numkeyspressed];
         }
     }
 }
 
-int get_pckey(SDL_Keycode key) {
+int get_pckey(PL_Keycode key) {
     pckeymap_t* c;
     for(c = PCkey; c->scan != -1; c++) {
         if (c->key == key) {
-            /*fprintf(stderr, "PCKEY lookup: %08x (%s) = %x\n", key, SDL_GetKeyName(key), c->scan);*/
+            /*fprintf(stderr, "PCKEY lookup: %08x (%s) = %x\n", key, PL_GetKeyName(key), c->scan);*/
             return c->scan;
         }
     }
-    /*fprintf(stderr, "PCKEY lookup: %08x (%s) not found\n", key, SDL_GetKeyName(key));*/
+    /*fprintf(stderr, "PCKEY lookup: %08x (%s) not found\n", key, PL_GetKeyName(key));*/
     return -1;
 }
 
@@ -109,28 +103,13 @@ void seqbuf_dump ()
 }
 #endif
 
-/* Check OpenGL status and complain if necessary. */
-void checkGLStatus()
-{
-    GLenum errCode;
-
-    while ((errCode=glGetError())!=GL_NO_ERROR) {
-        #ifdef __SWITCH__
-        fprintf(stderr, "OpenGL Error: %d\n", errCode);
-        #else
-        const GLubyte *errString = gluErrorString(errCode);
-        fprintf(stderr, "OpenGL Error: %s\n", errString);
-        #endif
-    }
-}
-
 void ConvertPartialOverlay(int x, int y, int w, int h);
 
 /* Endian-converting reads. */
 
-#if SDL_BYTEORDER != SDL_LIL_ENDIAN
-#define SWAPBLOCK16 for(a=0;a<(cnt>>1);a++) *(b+a)=SDL_Swap16(*(b+a));
-#define SWAPBLOCK32 for(a=0;a<(cnt>>2);a++) *(b+a)=SDL_Swap32(*(b+a));
+#if PL_BYTEORDER != PL_LIL_ENDIAN
+#define SWAPBLOCK16 for(a=0;a<(cnt>>1);a++) *(b+a)=PL_Swap16(*(b+a));
+#define SWAPBLOCK32 for(a=0;a<(cnt>>2);a++) *(b+a)=PL_Swap32(*(b+a));
 
 ssize_t readLE16(int fd, void *buf, size_t cnt) {
     ssize_t r=read(fd, buf, cnt);
@@ -192,12 +171,12 @@ void writeshort(unsigned char *t, K_UINT16 v) {
     *(t+1)=(v>>8)&255;
 }
 
-#define GKP_AXIS(type, sdltype)                                         \
-if (cur_##type && action_##type[keydef] != ACTION_UNBOUND) {            \
+#define GKP_AXIS(type, Type)                                            \
+if (PL_Have##Type() && action_##type[keydef] != ACTION_UNBOUND) {       \
     int act = action_##type[keydef];                                    \
     if (act & JOY_FLAG_AXIS) {                                          \
         int which = act & JOY_MASK;                                     \
-        int value = SDL_##sdltype##GetAxis(cur_##type, which);          \
+        int value = PL_##Type##GetAxis(which);                          \
         int neg = act & JOY_FLAG_NEG ? 1 : 0;                           \
         if (neg) value = -value;                                        \
         if (value < low_deadzone)                                       \
@@ -220,7 +199,7 @@ if (cur_##type && action_##type[keydef] != ACTION_UNBOUND) {            \
         }                                                               \
         if (value) return value;                                        \
     } else {                                                            \
-        if (SDL_##sdltype##GetButton(cur_##type, act & JOY_MASK)) {     \
+        if (PL_##Type##GetButton(act & JOY_MASK)) {                     \
             if (pressval == runpressval)                                \
                 return pressval;                                        \
             return getkeydefstat(ACTION_RUN) ? runpressval : pressval;  \
@@ -240,7 +219,7 @@ int getkeypressure(int keydef, int pressval, int runpressval) {
     }
     if (window_in_focus) {
         GKP_AXIS(joystick, Joystick);
-        GKP_AXIS(controller, GameController);
+        GKP_AXIS(controller, Controller);
     }
     return 0;
 }
@@ -248,7 +227,7 @@ int getkeypressure(int keydef, int pressval, int runpressval) {
 int getkeydefstat(int keydef) {
     int val = getkeypressure(keydef, 1, 1) ? 1 : 0;
     if (val) {
-        if (SDL_GetTicks() < action_repeat_lock[keydef])
+        if (PL_GetTicks() < action_repeat_lock[keydef])
             return 0;
     } else {
         action_repeat_lock[keydef] = 0;
@@ -267,9 +246,9 @@ int getkeydefstatlock(int keydef) {
 int _repeatkeydef(int keydef, int startms, int repms) {
     int val = getkeypressure(keydef, 1, 1) ? 1 : 0;
     if (val) {
-        if (SDL_GetTicks() < action_repeat_lock[keydef])
+        if (PL_GetTicks() < action_repeat_lock[keydef])
             return 0;
-        action_repeat_lock[keydef] = SDL_GetTicks() + (action_repeat_lock[keydef] ? repms : startms);
+        action_repeat_lock[keydef] = PL_GetTicks() + (action_repeat_lock[keydef] ? repms : startms);
     } else {
         action_repeat_lock[keydef] = 0;
     }
@@ -302,7 +281,6 @@ int smooth_input(int cvel, int dvel, int accel, int decel) {
     return cvel;
 }
 
-void BuildMipmaps(Uint32* pix, int w, int h, int hasalpha, int maxlevel);
 
 /* Load a board. Uses LZW compression. Get a lawyer. */
 
@@ -317,7 +295,7 @@ void loadboard()
     K_UINT16 stack[LZW_STACK_SIZE];
     K_UINT16 stackp=0;
 
-#if SDL_BYTEORDER != SDL_LIL_ENDIAN
+#if PL_BYTEORDER != PL_LIL_ENDIAN
     int a; K_UINT16 *b; size_t cnt;
 #endif
 
@@ -334,9 +312,7 @@ void loadboard()
             numwarps=0;
             justwarped=0;
         } else {
-            fprintf(stderr, "Can't find boards.dat.\n");
-            SDL_Quit();
-            exit(1);
+            fatal_error("Can't find boards.dat.");
         }
     } else {
         sprintf(filepath, "%sboards.kzp", gameroot);
@@ -437,7 +413,7 @@ void loadboard()
             fatal_error("Can't find boards.kzp.");
         }
     }
-#if SDL_BYTEORDER != SDL_LIL_ENDIAN
+#if PL_BYTEORDER != PL_LIL_ENDIAN
     b=(K_UINT16 *)board;
     cnt=8192;
     SWAPBLOCK16;
@@ -452,23 +428,7 @@ void loadboard()
         spritepalette[1]=63;
         spritepalette[2]=63;
     }
-    glBindTexture(GL_TEXTURE_2D, texName[map-1]);
-    checkGLStatus();
-
-    TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, fullfilter);
-
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    checkGLStatus();
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    checkGLStatus();
-
-    BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
-    checkGLStatus();
+    R_UpdateWallTexture(map);
 
     /* Place warps and monsters... */
 
@@ -680,14 +640,14 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
 
     if (!soundpan) pan=128;
 
-    SDL_LockMutex(soundmutex);
+    PL_LockSound();
     if ((speechstatus == 0) || (mute == 1)) {
-        SDL_UnlockMutex(soundmutex);
+        PL_UnlockSound();
         return(-1);
     }
     numfiles=readshort(SoundFile);
     if (filenum >= numfiles) {
-        SDL_UnlockMutex(soundmutex);
+        PL_UnlockSound();
         return(-1);
     }
 
@@ -695,7 +655,7 @@ K_INT16 ksaypan(K_UINT16 filenum, K_UINT16 pan, int ui) {
     leng=readshort(SoundFile+(6+filenum*6));
 
     DumpSound(SoundFile+sndfiloffs, leng, ((FeedPoint+blocksize)&65535), pan);
-    SDL_UnlockMutex(soundmutex);
+    PL_UnlockSound();
     return 0;
 }
 
@@ -791,7 +751,7 @@ void preparesound(void *dasnd, long numbytestoprocess)
 
 /* SDL audio callback. Feed a chunk from sound buffer. */
 
-void AudioCallback(void *userdata, Uint8 *stream, int len) {
+void AudioCallback(void *userdata, unsigned char *stream, int len) {
     int rl;
     int i;
     int t=0;
@@ -801,15 +761,15 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
 
     if (soundtimer) {
         soundtimerbytes+=len;
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         while(soundtimerbytes>=soundbytespertick) {
             soundtimerbytes-=soundbytespertick;
             clockspeed++;
         }
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
     }
 
-    SDL_LockMutex(soundmutex);
+    PL_LockSound();
 
     if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) len>>=2;
 
@@ -832,19 +792,19 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
                 if (channels==1)
                     switch(i&3) {
                         case 0:
-                            t=SoundBuffer[j1]+((Sint16 *)stream)[i];
+                            t=SoundBuffer[j1]+((K_INT16 *)stream)[i];
                             break;
                         case 1:
                             t=3*(SoundBuffer[j1]>>2)+(SoundBuffer[j2]>>2)+
-                                ((Sint16 *)stream)[i];
+                                ((K_INT16 *)stream)[i];
                             break;
                         case 2:
                             t=(SoundBuffer[j1]>>1)+(SoundBuffer[j2]>>1)+
-                                ((Sint16 *)stream)[i];
+                                ((K_INT16 *)stream)[i];
                             break;
                         case 3:
                             t=(SoundBuffer[j1]>>2)+3*(SoundBuffer[j2]>>2)+
-                                ((Sint16 *)stream)[i];
+                                ((K_INT16 *)stream)[i];
                             j1++;
                             j2++;
                             j2&=65535;
@@ -854,25 +814,25 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
                     switch(i&7) {
                         case 0:
                         case 1:
-                            t=SoundBuffer[j1+(i&1)]+((Sint16 *)stream)[i];
+                            t=SoundBuffer[j1+(i&1)]+((K_INT16 *)stream)[i];
                             break;
                         case 2:
                         case 3:
                             t=3*(SoundBuffer[j1+(i&1)]>>2)+
                                 (SoundBuffer[j2+(i&1)]>>2)+
-                                ((Sint16 *)stream)[i];
+                                ((K_INT16 *)stream)[i];
                             break;
                         case 4:
                         case 5:
                             t=(SoundBuffer[j1+(i&1)]>>1)+
                                 (SoundBuffer[j2+(i&1)]>>1)+
-                                ((Sint16 *)stream)[i];
+                                ((K_INT16 *)stream)[i];
                             break;
                         case 6:
                         case 7:
                             t=(SoundBuffer[j1+(i&1)]>>2)+
                                 3*(SoundBuffer[j2+(i&1)]>>2)+
-                                ((Sint16 *)stream)[i];
+                                ((K_INT16 *)stream)[i];
                             if ((i&7)==7) {
                                 j1+=2;
                                 j2+=2;
@@ -882,7 +842,7 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
                     }
                 if (t<-32768) t=-32768;
                 if (t>32767) t=32767;
-                ((Sint16 *)stream)[i]=t;
+                ((K_INT16 *)stream)[i]=t;
             }
         }
     }
@@ -893,7 +853,7 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
     FeedPoint+=rl;
     FeedPoint&=65535;
 
-    SDL_UnlockMutex(soundmutex);
+    PL_UnlockSound();
 
     if (rl<len) {
         if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
@@ -906,49 +866,48 @@ void AudioCallback(void *userdata, Uint8 *stream, int len) {
 /* Copy sound to sound buffer. */
 
 void DumpSound(unsigned char *sound, K_UINT16 length, K_UINT32 playpoint, int pan) {
-    // Define variables used in the function
-    K_INT32 currentPoint, adjustedVolume;
-    K_UINT32 endPoint, soundLength;
+    K_INT32 adjustedVolume;
+    K_UINT32 i, p;
+    int cvtmax, cvtlen, srcrate;
+    unsigned char *cvtbuf;
 
-    // Convert the sound effects from 44.1KHz to the current sample rate
-    SDL_AudioCVT cvt;
-    SDL_BuildAudioCVT(&cvt, AUDIO_U8, 1, musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM ? 44100 : 11025, AUDIO_U8, 1, samplerate);
-    cvt.len = length;
-    cvt.buf = (Uint8 *) SDL_malloc(cvt.len * cvt.len_mult);
-    memcpy(cvt.buf, sound, length);
-    SDL_ConvertAudio(&cvt);
+    /* Sound effects are stored at the rate the music source implies; convert
+       them to whatever rate the audio device actually gave us. */
+    srcrate = (musicsource == MUSIC_SOURCE_ADLIB ||
+               musicsource == MUSIC_SOURCE_ADLIB_RANDOM) ? 44100 : 11025;
+
+    cvtmax = (int)(((long)length * (long)samplerate) / srcrate) + 16;
+    cvtbuf = malloc(cvtmax);
+    if (cvtbuf == NULL)
+        return;
+
+    cvtlen = PL_ResampleU8(sound, length, srcrate, cvtbuf, cvtmax, samplerate);
+
+    /* SoundBuffer holds 65536 signed 16 bit samples and wraps. */
+    p = playpoint & 65535;
 
     if (channels == 1) {
-        endPoint = playpoint + length;
-        endPoint = (endPoint > 65536) ? 65536 : endPoint;
-        soundLength = endPoint - playpoint;
-
-        for(currentPoint = playpoint; currentPoint < endPoint; currentPoint++) {
-            adjustedVolume = SoundBuffer[currentPoint] + (cvt.buf[currentPoint - playpoint] - 128) * soundvolume;
-            // Ensure value is within SInt16 range
-            adjustedVolume = (adjustedVolume < -32768) ? -32768 : adjustedVolume;
-            adjustedVolume = (adjustedVolume > 32767) ? 32767 : adjustedVolume;
-            SoundBuffer[currentPoint] = adjustedVolume;
+        for (i = 0; i < (K_UINT32)cvtlen; i++) {
+            adjustedVolume = SoundBuffer[p] +
+                             (cvtbuf[i] - 128) * soundvolume;
+            if (adjustedVolume < -32768) adjustedVolume = -32768;
+            if (adjustedVolume > 32767) adjustedVolume = 32767;
+            SoundBuffer[p] = adjustedVolume;
+            p = (p + 1) & 65535;
         }
     } else {
-        endPoint = playpoint + (length << 1);
-        endPoint = (endPoint > 65536) ? 65536 : endPoint;
-        soundLength = (endPoint - playpoint) >> 1;
-
-        for(currentPoint = playpoint; currentPoint < endPoint; currentPoint++) {
-            int volumeAdjustment = ((currentPoint - playpoint) & 1) ? pan : (256 - pan);
-            adjustedVolume = SoundBuffer[currentPoint] + 
-                    (((cvt.buf[(currentPoint - playpoint) >> 1] - 128) * soundvolume * volumeAdjustment) >> 7);
-            // Ensure value is within SInt16 range
-            adjustedVolume = (adjustedVolume < -32768) ? -32768 : adjustedVolume;
-            adjustedVolume = (adjustedVolume > 32767) ? 32767 : adjustedVolume;
-            SoundBuffer[currentPoint] = adjustedVolume;
+        for (i = 0; i < (K_UINT32)(cvtlen << 1); i++) {
+            int volumeAdjustment = (i & 1) ? pan : (256 - pan);
+            adjustedVolume = SoundBuffer[p] +
+                    (((cvtbuf[i >> 1] - 128) * soundvolume * volumeAdjustment) >> 7);
+            if (adjustedVolume < -32768) adjustedVolume = -32768;
+            if (adjustedVolume > 32767) adjustedVolume = 32767;
+            SoundBuffer[p] = adjustedVolume;
+            p = (p + 1) & 65535;
         }
     }
 
-    if (soundLength < length) DumpSound(sound + soundLength, length - soundLength, 0, pan);
-
-    SDL_free(cvt.buf);
+    free(cvtbuf);
 }
 
 
@@ -1028,342 +987,6 @@ void drawlife()
     oldlife = life;
 }
 
-int powerof2 (int in)
-{
-    int i = 0;
-    in--;
-    while (in) {
-        in >>= 1;
-        i++;
-    }
-    return 1 << i;
-}
-
-typedef struct imgcache {
-    char* name;
-    int w, h;
-    //double tcx, tcy;
-    GLuint texnum;
-    struct imgcache* next;
-} imgcache;
-
-
-static imgcache* img_cache=NULL;
-
-void clearimgcache()
-{
-    free(img_cache);
-    img_cache = NULL;
-}
-
-static inline int AverageColour32 (Uint32 * p, int x, int y, int w, int h)
-{
-    int a, c, n = 0;
-    int r = 0, g = 0, b = 0;
-    for (a = -1; a <= 1; a++) {
-        if (x + a < 0)
-            continue;
-        if (x + a >= w)
-            continue;
-        for (c = -1; c <= 1; c++) {
-            if (y + c < 0)
-                continue;
-            if (y + c >= h)
-                continue;
-            if (ALPHACMP (p[(x + a) + w * (y + c)]) > 0) {
-                Uint32 t = p[(x + a) + w * (y + c)];
-                b += BLUECMP (t);
-                g += GREENCMP (t);
-                r += REDCMP (t);
-                n++;
-            }
-        }
-    }
-    if (n > 0)
-        return ((b / n) << BLUE_SHIFT) + ((g / n) << GREEN_SHIFT) +
-            ((r / n) << RED_SHIFT);
-    else
-        return 0;
-}
-
-static inline void TextureAvg32 (Uint32 * pic, int w, int h)
-{
-
-    Uint32 *f = pic;
-
-    int x, y;
-
-    for (y = 0; y < h; y++)
-        for (x = 0; x < w; x++) {
-            if (ALPHACMP (*f) == 0) {
-                *f = AverageColour32 (pic, x, y, w, h);
-            }
-            f++;
-        }
-}
-
-#ifndef GL_EXT_texture_filter_anisotropic
-#define GL_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
-#define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
-#endif
-
-static void SetAnisotropic(void) {
-    checkGLStatus();
-
-    //#ifdef GL_EXT_texture_filter_anisotropic
-    GLfloat aniso;
-    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
-    if (glGetError()!=GL_NO_ERROR) {
-        fprintf(stderr, "Warning: Anisotropic filtering not supported by driver, using trilinear filtering.\n");
-        anisotropic=0;
-    }
-    //#else
-    //anisotropic=0;
-    //fprintf(stderr, "Warning: Anisotropic filtering not supported at compile time, using trilinear filtering.\n");
-    //#endif
-
-}
-
-#ifndef __SWITCH__
-#define USE_GLU_MIPMAPS
-#endif
-
-#ifdef USE_GLU_MIPMAPS
-
-void BuildMipmaps(Uint32* pix, int w, int h, int hasalpha, int maxlevel) {
-    if (hasalpha) TextureAvg32(pix, w, h);
-    glPixelStorei (GL_UNPACK_ROW_LENGTH, w);
-    gluBuild2DMipmaps(GL_TEXTURE_2D, hasalpha?GL_RGBA:GL_RGB, w, h, GL_RGBA, GL_UNSIGNED_BYTE, pix);
-}
-#else
-
-void ShrinkImageWeight (Uint32* src, Uint32* dest, int sw, int sh, int xs, int ys) {
-    int dw=sw/xs;
-    int dh=sh/ys;
-    int sx, sy, dx, dy, xi, yi;
-    double r, g, b, a;
-    double rt, gt, bt, at;
-    double wrt, wgt, wbt;
-    double pixscl=(255.0/(xs*ys));
-    double cpixscl;
-    int ir, ig, ib, ia;
-    for (sy=0, dy=0;dy<dh;sy+=ys, dy++) {
-        for (sx=0, dx=0;dx<dw;sx+=xs, dx++) {
-            rt=0; gt=0;
-            bt=0; at=0;
-            for (yi=0;yi<ys;yi++)
-                for (xi=0;xi<xs;xi++) {
-                    Uint32 sp=src[sx+xi + (sy+yi)*sw];
-                    a = ALPHACMP(sp)/255.0;
-                    r = REDCMP(sp)/255.0;
-                    g = GREENCMP(sp)/255.0;
-                    b = BLUECMP(sp)/255.0;
-                    rt += r; gt += g;
-                    bt += b; at += a;
-                    wrt += r*a;
-                    wgt += g*a;
-                    wbt += b*a;
-                }
-            ia=(at*pixscl);
-            if (at==0.0) {
-                ir=rt*pixscl;
-                ig=gt*pixscl;
-                ib=bt*pixscl;
-            } else {
-                cpixscl=255.0/at;
-                ir=rt*cpixscl;
-                ig=gt*cpixscl;
-                ib=bt*cpixscl;
-            }
-            *(dest++) = ir<<RED_SHIFT | ib<<BLUE_SHIFT | ig<<GREEN_SHIFT | ia<<ALPHA_SHIFT;
-        }
-    }
-}
-#if !defined(min) && !defined(__SWITCH__) 
-#define min(x, y) ({ typeof(x) _x_; typeof(y) _y_; _x_=(x); _y_=(y); _x_ < _y_ ? _x_ : _y_ })
-#endif
-
-void ShrinkImage (Uint32* src, Uint32* dest, int sw, int sh, int xs, int ys) {
-    int dw=sw>>xs;
-    int dh=sh>>ys;
-    int sx, sy, dx, dy, xi, yi;
-    int rt, gt, bt, at;
-    int xsk=1<<xs;
-    int ysk=1<<ys;
-    int scale=xs+ys;
-    for (sy=0, dy=0;dy<dh;sy+=ysk, dy++) {
-        for (sx=0, dx=0;dx<dw;sx+=xsk, dx++) {
-            rt=0; gt=0;
-            bt=0; at=0;
-            for (yi=0;yi<ysk;yi++)
-                for (xi=0;xi<xsk;xi++) {
-                    Uint32 sp=src[sx+xi + (sy+yi)*sw];
-                    rt += REDCMP(sp);
-                    gt += GREENCMP(sp);
-                    bt += BLUECMP(sp);
-                    at += ALPHACMP(sp);
-                }
-            rt>>=scale;
-            gt>>=scale;
-            bt>>=scale;
-            at>>=scale;
-            *(dest++) = rt<<RED_SHIFT | bt<<BLUE_SHIFT | gt<<GREEN_SHIFT | at<<ALPHA_SHIFT;
-        }
-    }
-}
-#define TWO_BUFFERS
-void BuildMipmaps(Uint32* pix, int w, int h, int hasalpha, int maxmips) {
-    int format=hasalpha?GL_RGBA:GL_RGB;
-    Uint32* bufs[16];
-    bufs[0]=pix;
-
-#ifdef TWO_BUFFERS
-    Uint32* buf1=malloc((w>>1)*(h>>1)*4);
-    Uint32* buf2=malloc((w>>1)*(h>>1)*4);
-    bufs[1] = bufs[3] = bufs[5] = bufs[7] = bufs[9] = bufs[11]= buf1;
-    bufs[2] = bufs[4] = bufs[6] = bufs[8] = bufs[10]= bufs[12]= buf2;
-#else
-    int z;
-    for (z=1;z<16;z++) {
-        bufs[z]=malloc((w>>1)*(h>>1)*4);
-    }
-#endif
-    int cw=w;
-    int ch=h;
-    int ow, oh;
-    int xs, ys;
-    int level=0;
-
-    while (1) {
-        if (hasalpha) TextureAvg32(bufs[level], cw, ch);
-        glPixelStorei (GL_UNPACK_ROW_LENGTH, cw);
-        glTexImage2D (GL_TEXTURE_2D, level, format, cw, ch, 0, GL_RGBA,
-                      GL_UNSIGNED_BYTE, bufs[level]);
-        glFinish();
-        if (cw<=1 && ch<=1 ) break;
-        ow=cw; oh=ch;
-        xs=0; ys=0;
-        if (cw>1) { cw >>= 1; xs=1; }
-        if (ch>1) { ch >>= 1; ys=1; }
-        level++;
-        if (!(maxmips!=-1 && level>=maxmips)) ShrinkImage(bufs[level-1], bufs[level], ow, oh, xs, ys);
-    }
-#ifdef TWO_BUFFERS
-    free(buf1); free(buf2);
-#else
-    for (z=1;z<16;z++) {
-        free(bufs[z]);
-    }
-#endif
-}
-
-#endif /*USE_GLU_MIPMAPS*/
-
-
-
-void UploadTexture(GLuint tex, void* pixels, int w, int h,  int repx, int repy, int hasalpha, int minfilt, int magfilt) {
-    int mipmaps=1;
-
-    glBindTexture(GL_TEXTURE_2D, tex);
-    checkGLStatus ();
-
-    glPixelStorei (GL_UNPACK_SKIP_PIXELS, 0);
-    glPixelStorei (GL_UNPACK_SKIP_ROWS, 0);
-    glPixelStorei (GL_UNPACK_ALIGNMENT, 1);
-    checkGLStatus ();
-
-    switch (minfilt) {
-        case GL_NEAREST:
-        case GL_LINEAR:
-            mipmaps=0;
-            if (!magfilt) magfilt=minfilt;
-            break;
-        case GL_NEAREST_MIPMAP_NEAREST:
-        case GL_NEAREST_MIPMAP_LINEAR:
-            if (!magfilt) magfilt=GL_NEAREST;
-            break;
-        case GL_LINEAR_MIPMAP_NEAREST:
-        case GL_LINEAR_MIPMAP_LINEAR:
-            if (!magfilt) magfilt=GL_LINEAR;
-            break;
-    }
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, repy?GL_REPEAT:GL_CLAMP_TO_EDGE);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, repx?GL_REPEAT:GL_CLAMP_TO_EDGE);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilt);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);
-
-    if (mipmaps) {
-        if (anisotropic)
-            SetAnisotropic();
-        BuildMipmaps (pixels, w, h, hasalpha, 20);
-    } else {
-        glTexImage2D (GL_TEXTURE_2D, 0, hasalpha?GL_RGBA:GL_RGB, w, h, 0, GL_RGBA,
-                      GL_UNSIGNED_BYTE, pixels);
-    }
-    checkGLStatus ();
-}
-
-int checkalpha(Uint32* tex, int w, int cw, int ch) {
-    int skip=w-cw;
-    int i, j;
-    for (i=0;i<ch;i++, tex += skip) {
-        for (j=0;j<cw;j++, tex++) {
-            if (ALPHACMP(*tex)!=0xFF) return 1;
-        }
-    }
-    return 0;
-}
-
-imgcache* LoadImageCache(const char* fname, int repeatx, int minfilt, int magfilt) {
-    imgcache* cur = img_cache;
-    while (cur) {
-        if (!strcmp(fname, cur->name)) {
-            return cur;
-        }
-        cur = cur->next;
-    }
-    sprintf(filepath, "%s%s", gameroot, fname);
-    SDL_Surface* base_image = IMG_Load(filepath);
-    if (!base_image) {
-        fatal_error( "Could not load image %s: %s", fname, SDL_GetError());
-    }
-
-    imgcache* new = (imgcache*)malloc(sizeof(imgcache));
-    new->name = strdup(fname);
-
-    glGenTextures (1, &new->texnum);
-
-    SDL_SetSurfaceAlphaMod(base_image, 255);
-    SDL_SetSurfaceBlendMode(base_image, SDL_BLENDMODE_NONE);
-    SDL_Surface* conv = SDL_CreateRGBSurface(SDL_SWSURFACE, base_image->w, base_image->h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
-    Uint32* temptex = (Uint32*)malloc(base_image->w*base_image->h*4);
-
-    SDL_BlitSurface(base_image, NULL, conv, NULL);
-
-    /* Convert to column-major order */
-    int xx, yy;
-    Uint32* temp = (Uint32*)temptex;
-    for(xx=0; xx < base_image->w; xx++)
-        for(yy=0; yy < base_image->h; yy++)
-            *temp++ = ((Uint32*)conv->pixels)[xx+base_image->w*yy];
-
-    int hasalph = checkalpha((Uint32*) base_image->pixels, base_image->w, base_image->w, base_image->h);
-
-    new->w = base_image->w;
-    new->h = base_image->h;
-    UploadTexture(new->texnum, temptex, base_image->h, base_image->w, 0,
-                  repeatx, hasalph, minfilt, magfilt);
-    SDL_FreeSurface(base_image);
-    SDL_FreeSurface(conv);
-    free(temptex);
-
-    new->next=img_cache;
-    img_cache=new;
-    return new;
-
-}
-
 int read_ini(FILE* input, char* buf, int buflen, char **keyp, char **valp, int *linep) {
     char *line, *end, *val;
     while (fgets(buf, buflen, input)) {
@@ -1424,14 +1047,6 @@ int get_enum(char* str, enumpair* cur) {
     }
     return cur->value;
 }
-
-typedef struct {
-    int wrapmode;
-    int tcl, tch;
-    int minfilt, magfilt;
-    int bmpkind_override;
-    char* texreplace;
-} wallparam;
 
 wallparam default_wallparam={
     -1,
@@ -1697,8 +1312,8 @@ void loadwalls(int replace)
                Yes, I know I'm too clever for my own good.
                Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
             SetVisibleScreenOffset(0);
-            SDL_PumpEvents();
-            SDL_GL_SwapWindow(mainwindow);
+            PL_PumpEvents();
+            PL_SwapBuffers();
             cwparam = &wparams[i];
             int minfilt = cwparam->minfilt;
             int magfilt = cwparam->magfilt;
@@ -1726,38 +1341,15 @@ void loadwalls(int replace)
             printf("Shadow: %d\n", shadow[i + 1]);
             printf("\n");
 #endif
+#ifdef ENABLE_HIRES_TEXTURES
             if (cwparam->texreplace) {
-                imgcache* cache = LoadImageCache(cwparam->texreplace, wrapmode, minfilt, magfilt);
-                texName[i] = cache->texnum;
-                if (cwparam->tch == -1) cwparam->tch = cache->w;
-                walltexcoord[i][0] = ((double)cwparam->tcl / (double)cache->w);
-                walltexcoord[i][1] = ((double)cwparam->tch / (double)cache->w);
-                //printf("TexCoords for %d: %d %d /%d %.6f %.6f\n", i, cwparam->tcl, cwparam->tch, cache->w, walltexcoord[i][0], walltexcoord[i][1]);
+                R_ReplaceWallTexture(i, cwparam, wrapmode, minfilt, magfilt);
             }
-            else {
+            else
+#endif
+            {
                 walltexcoord[i][0] = 0.0;
                 walltexcoord[i][1] = 1.0;
-
-                glGenTextures(1, &texName[i]);
-
-                glBindTexture(GL_TEXTURE_2D, texName[i]);
-                checkGLStatus();
-
-                if (wrapmode) {
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                }
-                else {
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-                }
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, magfilt);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minfilt);
-                checkGLStatus();
-
-                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-                checkGLStatus();
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-                checkGLStatus();
 
                 /* Replace door1 with colour test image. */
 
@@ -1769,46 +1361,20 @@ void loadwalls(int replace)
                 }
 #endif
 
-                TextureConvert(walsegg, RGBATexture, bmpkind[i + 1]);
-
                 if (debugmode)
                     fprintf(stderr, "Trying to upload texture.\n");
 
-                if (anisotropic)
-                    SetAnisotropic();
-                BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
+                R_LoadWallTexture(i, walsegg, bmpkind[i + 1],
+                                  wrapmode, minfilt, magfilt);
 
                 if (debugmode)
                     fprintf(stderr, "Upload texture complete.\n");
+
                 if (i == gameover - 1) {
-                    /* Keep two copies of this; one for walls, the other for spinning
-                       overlay text. */
-                    glGenTextures(1, &gameoversprite);
-
-                    glBindTexture(GL_TEXTURE_2D, gameoversprite);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
-                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                        fullfilter);
-                    TextureConvert(walsegg, RGBATexture, 4);
-
-                    if (anisotropic)
-                        SetAnisotropic();
-                    BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
+                    /* Keep two copies of this; one for walls, the other for
+                       the spinning overlay text. */
+                    R_LoadGameOverSprite(walsegg);
                 }
-
-                checkGLStatus();
-
-                	    // printf("Wall number %d:\n", i);
-
-                        // for(int k=0;k<64;k++) {
-                        // for(int j=0;j<64;j++) {
-                        // printf("%2x", walsegg[k+j*64]);
-                        // }
-                        // printf("\n");
-                        // }
-                        // printf("\n");
             }
         }
         close(fil);
@@ -1821,10 +1387,10 @@ void loadwalls(int replace)
 //      Examine textures...
 
 /*  for(i=0;i<rnumwalls;i++) {
-  glClear(GL_COLOR_BUFFER_BIT);
+  R_ClearScreen();
   printf("Texture number %d.\n", i);
   spridraw(180, 50, 512, i+1);
-SDL_GL_SwapWindow(mainwindow);
+PL_SwapBuffers();
 pressakey();
 }
 /**/
@@ -1844,19 +1410,9 @@ pressakey();
         textprint(30, 232, 0);
     }
 
-    if (dotransition && (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)) {
-        /* Set up transition textures between walls properly. */
-
-        TransitionTexture(0, 1, 2);
-        TransitionTexture(2, 3, 0);
-        TransitionTexture(6, 7, 8);
-        TransitionTexture(8, 9, 6);
-
-        /* Set up end of game rainbow. */
-
-        TransitionTexture(424, 425, 426);
-        TransitionTexture(47, 424, 425);
-        TransitionTexture(425, 426, 47);
+    if (dotransition && R_HaveTransitionTextures() &&
+        (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1)) {
+        R_MakeTransitionTextures();
     } else {
         for (i=0;i<numsplits;i++) {
             splitTexNum[i]=-1;
@@ -1864,139 +1420,6 @@ pressakey();
 
     }
 }
-
-#define COPYLINE                                \
-    for(y=0;y<64;y++) {                         \
-        *(t++)=spritepalette[(*f)*3]<<2;        \
-        *(t++)=spritepalette[(*f)*3+1]<<2;      \
-        *(t++)=spritepalette[(*f)*3+2]<<2;      \
-        *(t++)=255;                             \
-        f++;                                    \
-    }
-
-/* Create a smoother transition texture. */
-
-void TransitionTexture(int left, int texture, int right) {
-    unsigned char texdata[66*64*4];
-
-    unsigned char *f=walseg[left]+(63*64), *t=texdata;
-
-    static int texnum=0;
-
-    int x, y;
-
-    COPYLINE;
-
-    f=walseg[texture];
-
-    for(x=0;x<64;x++)
-        COPYLINE;
-
-    f=walseg[right];
-
-    COPYLINE;
-
-    for(x=0;x<2;x++) {
-
-        glGenTextures(1, &splitTexName[texnum][x]);
-
-        glBindTexture(GL_TEXTURE_2D, splitTexName[texnum][x]);
-        checkGLStatus();
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                        fullfilter);
-        checkGLStatus();
-
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        checkGLStatus();
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        checkGLStatus();
-
-        /* Add code here to upload two textures from texdata, one with cols
-           0-63, other 2-65. */
-
-        glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-        glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-
-        BuildMipmaps((Uint32*)(texdata+x*512), 64, 64, 1, 10);
-
-        checkGLStatus();
-    }
-    splitTexNum[texnum++]=texture;
-
-}
-
-/* Get average of neighbouring pixels... */
-
-int AverageColour(unsigned char *p, int x, int y, int colour) {
-    int a, b, c=0, n=0;
-
-    for(a=-1;a<=1;a++) {
-        if (x+a<0) continue;
-        if (x+a>63) continue;
-        for(b=-1;b<=1;b++) {
-            if (y+b<0) continue;
-            if (y+b>63) continue;
-            if (p[(x+a)*64+(y+b)]!=255) {
-                c+=spritepalette[p[(x+a)*64+(y+b)]*3+colour]<<2;
-                n++;
-            }
-        }
-    }
-    if (n>0) return c/n; else return 0;
-}
-
-/* Convert a texture from 8-bit indexed to 32-bit RGBA. */
-void TextureConvert(unsigned char *from, unsigned char *to, Sint16 type) {
-
-    unsigned char *f=from, *t=to;
-
-    int x, y;
-
-    for(x=0;x<64;x++)
-        for(y=0;y<64;y++) {
-            if ((type>1)&&(*(f))==255) {
-                *(t++)=0;
-                *(t++)=0;
-                *(t++)=0;
-                *(t++)=0;
-            } else {
-                *(t++)=spritepalette[(*f)*3]<<2;
-                *(t++)=spritepalette[(*f)*3+1]<<2;
-                *(t++)=spritepalette[(*f)*3+2]<<2;
-                *(t++)=255;
-            }
-            f++;
-        }
-    //TextureAvg32((Uint32*)to, 64, 64);
-}
-
-/*void TextureConvert(unsigned char *from, unsigned char *to, K_INT16 type) {
-
-  unsigned char *f=from, *t=to;
-
-  int x, y;
-
-  for(x=0;x<64;x++)
-  for(y=0;y<64;y++) {
-  if ((type>1)&&(*(f))==255) {
-  *(t++)=AverageColour(from, x, y, 0);
-  *(t++)=AverageColour(from, x, y, 1);
-  *(t++)=AverageColour(from, x, y, 2);
-  *(t++)=0;
-  } else {
-  *(t++)=spritepalette[(*f)*3]<<2;
-  *(t++)=spritepalette[(*f)*3+1]<<2;
-  *(t++)=spritepalette[(*f)*3+2]<<2;
-  *(t++)=255;
-  }
-  f++;
-  }
-  }*/
 
 /* Load a saved game... */
 
@@ -2495,8 +1918,7 @@ void introduction(K_INT16 songnum)
 
     spriteyoffset=20;
 
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT);
+    R_ClearScreen();
 
     if (!introskip) {
         if (songnum == 0)
@@ -2541,15 +1963,15 @@ void introduction(K_INT16 songnum)
         }
         j = (((int)labs((totalclock%120)-60))>>3);
 
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         while(clockspeed<4) {
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10);
-            SDL_LockMutex(timermutex);
+            PL_UnlockTimer();
+            PL_Delay(10);
+            PL_LockTimer();
         }
         totalclock += clockspeed;
         clockspeed = 0;
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
 
         dalasti = dai;
         dai = (totalclock>>2);
@@ -2637,9 +2059,9 @@ void introduction(K_INT16 songnum)
             clearkeydefstat(ACTION_MENU_CANCEL);
             clearkeydefstat(ACTION_MENU_SELECT3);
             clearkeydefstat(ACTION_MENU_SELECT1);
-            SDL_LockMutex(timermutex);
+            PL_LockTimer();
             clockspeed = 0;
-            SDL_UnlockMutex(timermutex);
+            PL_UnlockTimer();
         }
         if ((getkeydefstatlock(ACTION_MENU_CANCEL) != 0) ||
             (getkeydefstatlock(ACTION_MENU_SELECT1) != 0) ||
@@ -2652,9 +2074,9 @@ void introduction(K_INT16 songnum)
             else if (((newgamepisode == 2) && (numboards < 20)) || ((newgamepisode == 3) && (numboards < 30)))
             {
                 ksayui(12);
-                SDL_LockMutex(timermutex);
+                PL_LockTimer();
                 clockspeed = 0;
-                SDL_UnlockMutex(timermutex);
+                PL_UnlockTimer();
             }
             else
             {
@@ -2673,7 +2095,7 @@ void introduction(K_INT16 songnum)
         if ((dai >= 128) && (dalasti < 128))
             fade(63);
         drawintroduction();
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
     }
 
     spriteyoffset=0;
@@ -2704,7 +2126,7 @@ void introduction(K_INT16 songnum)
         scrsize = 21600-2880;
     }
 
-    glClear(GL_COLOR_BUFFER_BIT);
+    R_ClearScreen();
 
     loadboard();
     owecoins = 0;
@@ -2758,9 +2180,9 @@ void introduction(K_INT16 songnum)
     namrememberstat = hiscorenamstat;
     hiscorenamstat = 0;
     hiscorenam[0] = 0;
-    SDL_LockMutex(timermutex);
+    PL_LockTimer();
     clockspeed = 0;
-    SDL_UnlockMutex(timermutex);
+    PL_UnlockTimer();
     scoreclock = 0;
     scorecount = 0;
     fadewarpval = 63;
@@ -3002,18 +2424,17 @@ void musicon()
     count = (templong>>12)-1;
     countstop = (templong>>12)-1;
     nownote = 0;
-    SDL_LockMutex(soundmutex);
+    PL_LockSound();
     musicstatus = 1;
     ksaystat = 0;
     if (musicpan) randominsts();
 
     if (ksaystat == 0)
     {
-        lastTick=SDL_GetTicks();
-        if (!timer)
-            timer=SDL_AddTimer(4, tickhandler, NULL);/* 250 Hz, should be 240.*/
+        lastTick=PL_GetTicks();
+        PL_StartClock();
     }
-    SDL_UnlockMutex(soundmutex);
+    PL_UnlockSound();
 }
 
 /* Stop music (and timer!). */
@@ -3024,12 +2445,7 @@ void musicoff()
 
     ksaystat = 0;
     if (ksaystat == 0)
-    {
-        if (timer) {
-            SDL_RemoveTimer(timer);
-            timer=0;
-        }
-    }
+        PL_StopClock();
     if (musicsource == MUSIC_SOURCE_MIDI) {
 #ifdef WIN32
         midiOutReset(sequencerdevice);
@@ -3046,18 +2462,18 @@ void musicoff()
             outdata((char)0, (unsigned char)(0xa0+i), (char)0);
             outdata((char)0, (unsigned char)(0xb0+i), (char)0);
         }
-    SDL_LockMutex(soundmutex);
+    PL_LockSound();
     musicstatus = 0;
-    SDL_UnlockMutex(soundmutex);
+    PL_UnlockSound();
 }
 
-/* SDL tick handler, complete with routine to even out timer ticks at funny
-   intervals... */
+/* Game clock, complete with routine to even out timer ticks at funny
+   intervals.  Driven by the platform layer at roughly 250Hz. */
 
 void updateclock(void) {
-    Uint32 now;
+    K_UINT32 now;
 
-    now=SDL_GetTicks();
+    now=PL_GetTicks();
 
     while(((lastTick+(4+(tickFrac==0)))<=now)||(lastTick>now)) {
         if (!soundtimer) clockspeed = clockspeed < 32767 ? clockspeed + 1 : clockspeed;
@@ -3066,13 +2482,6 @@ void updateclock(void) {
         tickFrac++;
         if (tickFrac==6) tickFrac=0;
         }
-}
-
-Uint32 tickhandler(Uint32 interval, void *param) {
-    SDL_LockMutex(timermutex);
-    updateclock();
-    SDL_UnlockMutex(timermutex);
-    return interval;
 }
 
 /* Update clock and music... */
@@ -3520,20 +2929,20 @@ void wingame(K_INT16 episode)
             else
                 posy = starty+16384+512;
             picrot(posx, posy, posz, ang);
-            SDL_GL_SwapWindow(mainwindow);
+            PL_SwapBuffers();
             sortcnt = 0;
-            SDL_LockMutex(soundmutex);
-            SDL_LockMutex(timermutex);
+            PL_LockSound();
+            PL_LockTimer();
             if ((musicstatus == 1) && (clockspeed >= 0) && (clockspeed < 3))
                 while(clockspeed<3) {
-                    SDL_UnlockMutex(timermutex);
-                    SDL_UnlockMutex(soundmutex);
-                    SDL_Delay(10);
-                    SDL_LockMutex(soundmutex);
-                    SDL_LockMutex(timermutex);
+                    PL_UnlockTimer();
+                    PL_UnlockSound();
+                    PL_Delay(10);
+                    PL_LockSound();
+                    PL_LockTimer();
                 }
-            SDL_UnlockMutex(timermutex);
-            SDL_UnlockMutex(soundmutex);
+            PL_UnlockTimer();
+            PL_UnlockSound();
         }
         if (episode == 2)
         {
@@ -3582,12 +2991,12 @@ void wingame(K_INT16 episode)
                 {
                     templong=note[0];
 
-                    SDL_LockMutex(timermutex);
+                    PL_LockTimer();
                     count = (templong>>12)-1;
                     countstop = (templong>>12)-1;
                     nownote = 0;
                     mute = oldmute;
-                    SDL_UnlockMutex(timermutex);
+                    PL_UnlockTimer();
 
                     death = 4096;
                     // if ((vidmode == 0) && (statusbar < 399))
@@ -3600,8 +3009,7 @@ void wingame(K_INT16 episode)
                     // }
                     fade(63);
                     setdarkenedpalette();
-                    glClearColor( 0, 0, 0, 0 );
-                    glClear(GL_COLOR_BUFFER_BIT);
+                    R_ClearScreen();
                     wipeoverlay(0, 0, 361, 241);
                     drawmenu(304, 192, menu);
 
@@ -3619,9 +3027,9 @@ void wingame(K_INT16 episode)
                     finalisemenu();
 
                     ksayui(23);
-                    SDL_GL_SwapWindow(mainwindow);
+                    PL_SwapBuffers();
                     pressakey();
-                    glClear(GL_COLOR_BUFFER_BIT);
+                    R_ClearScreen();
                     drawmenu(304, 192, menu);
                     clearkeydefstat(ACTION_MENU_CANCEL);
                     clearkeydefstat(ACTION_MENU_SELECT1);
@@ -3637,23 +3045,23 @@ void wingame(K_INT16 episode)
                     }
                     finalisemenu();
                     settransferpalette();
-                    SDL_GL_SwapWindow(mainwindow);
+                    PL_SwapBuffers();
                     pressakey();
                 }
             }
         }
         revototclock = revtotalclock;
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         if (clockspeed==0) {
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10); /* To avoid soaking up all CPU. */
-            SDL_LockMutex(timermutex);
+            PL_UnlockTimer();
+            PL_Delay(10); /* To avoid soaking up all CPU. */
+            PL_LockTimer();
         }
         revtotalclock += clockspeed;
         totalclock += clockspeed;
         animate2 = animate2 ^ 1;
         clockspeed = 0;
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
     }
     musicoff();
     fade(0);
@@ -3714,15 +3122,13 @@ void winallgame()
               for(i=lside;i<rside;i++)
               height[i] = 0;
             */
-            glClearColor( 0, 0, 0, 0 );
-            glClear(GL_COLOR_BUFFER_BIT);
+            R_ClearScreen();
             pictur(180, halfheight, 4+(((int)revtotalclock)>>2), ((int)((revtotalclock<<2))&2047)^2047, earth);
-            SDL_GL_SwapWindow(mainwindow);
+            PL_SwapBuffers();
         }
         else
         {
-            glClearColor( 0, 0, 0, 0 );
-            glClear(GL_COLOR_BUFFER_BIT);
+            R_ClearScreen();
             wipeoverlay(0, 0, 361, 241);
             setdarkenedpalette();
             drawmenu(304, 192, menu);
@@ -3732,9 +3138,9 @@ void winallgame()
             displaystory(-17);
             finalisemenu();
             ksayui(23);
-            SDL_GL_SwapWindow(mainwindow);
+            PL_SwapBuffers();
             pressakey();
-            glClear(GL_COLOR_BUFFER_BIT);
+            R_ClearScreen();
             drawmenu(304, 192, menu);
             clearkeydefstat(ACTION_MENU_CANCEL);
             clearkeydefstat(ACTION_MENU_SELECT1);
@@ -3744,20 +3150,20 @@ void winallgame()
             displaystory(-16);
             finalisemenu();
             settransferpalette();
-            SDL_GL_SwapWindow(mainwindow);
+            PL_SwapBuffers();
             pressakey();
             leavewin = 1;
         }
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         if (clockspeed==0) {
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10); /* To avoid soaking up all CPU. */
-            SDL_LockMutex(timermutex);
+            PL_UnlockTimer();
+            PL_Delay(10); /* To avoid soaking up all CPU. */
+            PL_LockTimer();
         }
         revtotalclock += clockspeed;
         totalclock += clockspeed;
         clockspeed = 0;
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
     }
     musicoff();
     fade(0);
@@ -3776,87 +3182,6 @@ void winallgame()
     lastshoot = 1;
     lastbarchange = 1;
     death = 4095;
-}
-
-/* Darkened palette for end of game sequences... */
-
-void setdarkenedpalette() {
-    K_INT16 a;
-
-    for(a=0;a<256;a++) {
-        ipalr[a]=(palette[a*3]*27)>>3;
-        ipalg[a]=(palette[a*3+1]*27)>>3;
-        ipalb[a]=(palette[a*3+2]*27)>>3;
-
-        Red[a]=palette[a*3]*27/4096.0;
-        Green[a]=palette[a*3+1]*27/4096.0;
-        Blue[a]=palette[a*3+2]*27/4096.0;
-        Alpha[a]=1.0;
-    }
-
-    if (ingame)
-        Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
-
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
-
-    ConvertPartialOverlay(0, 0, 360, 240);
-}
-
-/* Normal palette... */
-
-void settransferpalette() {
-    K_INT16 a;
-
-    for(a=0;a<256;a++) {
-        ipalr[a]=(palette[a*3]*27)>>3;
-        ipalg[a]=(palette[a*3+1]*27)>>3;
-        ipalb[a]=(palette[a*3+2]*27)>>3;
-
-        Red[a]=palette[a*3]/64.0;
-        Green[a]=palette[a*3+1]/64.0;
-        Blue[a]=palette[a*3+2]/64.0;
-        Alpha[a]=1.0;
-    }
-
-    if (ingame)
-        Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
-
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
-
-    ConvertPartialOverlay(0, 0, 360, 240);
-}
-
-/* Change some of the palette... */
-
-void updateoverlaypalette(K_UINT16 start, K_UINT16 amount, unsigned char *cols) {
-    K_INT16 i;
-
-    for(i=0;i<amount;i++) {
-        ipalr[i+start]=(cols[i*3]*27)>>3;
-        ipalg[i+start]=(cols[i*3+1]*27)>>3;
-        ipalb[i+start]=(cols[i*3+2]*27)>>3;
-
-        Red[i+start]=cols[i*3]/64.0;
-        Green[i+start]=cols[i*3+1]/64.0;
-        Blue[i+start]=cols[i*3+2]/64.0;
-        Alpha[i+start]=1.0;
-    }
-
-    if (ingame)
-        Red[255]=Green[255]=Blue[255]=Alpha[255]=0.0;
-
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_R, 256, Red);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_G, 256, Green);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_B, 256, Blue);
-    glPixelMapfv(GL_PIXEL_MAP_I_TO_A, 256, Alpha);
-
-    ConvertPartialOverlay(0, 0, 360, 240);
 }
 
 /* Fade... */
@@ -3885,6 +3210,8 @@ void fade(K_INT16 brightness)
         bluefactor/=redfactor;
         redfactor=1.0;
     }
+
+    R_FadeChanged();
 }
 
 /* Show the compass. */
@@ -4147,353 +3474,15 @@ K_INT16 kgif(K_INT16 filenum)
 
 /* Upload rectangular part of overlay from memory to specified texture. */
 
-void UploadPartialOverlayToTexture(int x, int y, int dx, int dy, int w, int h,
-                                   GLuint tex) {
-    glBindTexture(GL_TEXTURE_2D, tex);
-    checkGLStatus();
-
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, screenbufferwidth);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, x);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, y);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    checkGLStatus();
-
-    if (texturecreationneeded) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, partialfilter);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, partialfilter);
-    }
-
-    //glPixelTransferi(GL_MAP_COLOR, GL_TRUE);
-
-    if (debugmode)
-        fprintf(stderr, "Partial overlay upload (%d %d %d %d)... ",
-                w, h, dx, dy);
-
-    if (texturecreationneeded) {
-        if (debugmode)
-            fprintf(stderr, "(texturecreationneeded) ");
-        glTexImage2D(GL_TEXTURE_2D, 0, colourformat, w,
-                     h, 0, GL_RGBA,
-                     GL_UNSIGNED_BYTE,
-                     screenbuffer32);
-    } else {
-        glTexSubImage2D(GL_TEXTURE_2D, 0, dx, dy, w, h,
-                        GL_RGBA,
-                        GL_UNSIGNED_BYTE,
-                        screenbuffer32);
-    }
-    checkGLStatus();
-    if (debugmode)
-        fprintf(stderr, "done.\n");
-    //glPixelTransferi(GL_MAP_COLOR, GL_FALSE);
-    glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-}
-
 int ClipToBuffer(int *sx, int *sy, int *w, int *h) {
-    SDL_Rect scn, param, out;
+    PL_Rect scn, param, out;
 
     scn.x = 0; scn.y = 0; scn.w = screenbufferwidth; scn.h = screenbufferheight;
     param.x = *sx; param.y = *sy; param.w = *w; param.h = *h;
-    if (!SDL_IntersectRect(&scn, &param, &out))
+    if (!PL_IntersectRect(&scn, &param, &out))
         return 0;
     *sx = out.x; *sy = out.y; *w = out.w; *h = out.h;
     return 1;
-}
-
-void ConvertPartialOverlay(int sx, int sy, int w, int h) {
-    unsigned char *f, *t;
-
-    int x, y;
-    int skip;
-
-    if (!ClipToBuffer(&sx, &sy, &w, &h))
-        return;
-
-    f=&screenbuffer[sx+screenbufferwidth*sy];
-    t=(unsigned char*)&screenbuffer32[sx+screenbufferwidth*sy];
-
-    skip=screenbufferwidth-w;
-    //printf("sx=%d, sy=%d, w=%d, h=%d, spos=%d skip=%d\n", sx, sy, w, h, sx+screenbufferwidth*sy, skip);
-    for(y=0;y<h;y++, f+=skip, t+=(skip*4))
-        for(x=0;x<w;x++) {
-            if ((*(f))==255 && ingame) {
-                *(t++)=0;
-                *(t++)=0;
-                *(t++)=0;
-                *(t++)=0;
-            } else {
-                *(t++)=ipalr[*f];
-                *(t++)=ipalg[*f];
-                *(t++)=ipalb[*f];
-                *(t++)=255;
-            }
-            f++;
-        }
-    //TextureAvg32((Uint32*)to, 64, 64);
-
-}
-
-/* Upload rectangular part of overlay from memory to overlay texture... */
-
-void UploadPartialOverlay(int x, int y, int w, int h) {
-    int left, right, top, bottom, i, j;
-    int lr, rr, tr, br;
-
-    if (!ClipToBuffer(&x, &y, &w, &h))
-        return;
-
-    ConvertPartialOverlay(x, y, w, h);
-    if (menuing) return;
-
-    if (largescreentexture) {
-        /* On my nVidia Riva TNT, uploading 1 pixel high subimages is very slow
-           (driver bug?), so I upload an extra row. Very odd. Probably a driver
-           issue (nVidia driver version 1.0-1541 on Linux 2.4.4-4GB).
-
-           This only seems to affect the large textures. Very odd. */
-
-        UploadPartialOverlayToTexture(x, y, x, y, w, (h>1)?h:2,
-                                      screenbuffertexture);
-    } else {
-        left=(x-2)/62;
-        if (left<0) left=0;
-        right=(x+w-1)/62;
-        if (right>5) right=5;
-        top=(y-2)/62;
-        if (top<0) top=0;
-        bottom=(y+h-1)/62;
-        if (bottom>11) bottom=11;
-
-        for(i=top;i<=bottom;i++)
-            for(j=left;j<=right;j++) {
-                lr=x-62*j;
-                rr=lr+w-1;
-                tr=y-62*i;
-                br=tr+h-1;
-
-                if (rr<0) continue;
-                if (lr>63) continue;
-                if (br<0) continue;
-                if (tr>63) continue;
-
-                if (lr<0) lr=0;
-                if (rr>63) rr=63;
-                if (tr<0) tr=0;
-                if (br>63) br=63;
-
-                UploadPartialOverlayToTexture(lr+62*j, tr+62*i, lr, tr, rr-lr+1,
-                                              br-tr+1,
-                                              screenbuffertextures[i*6+j]);
-            }
-    }
-    ShowPartialOverlay(x-1,y-1,w+2,h+2,0);
-    /*ShowPartialOverlay(0, 0, virtualscreenwidth, virtualscreenheight, 0);*/
-}
-
-/* Upload entire overlay from memory to texture (creates textures)... */
-
-void UploadOverlay(void) {
-    int i, j;
-
-    settransferpalette();
-    ConvertPartialOverlay(0, 0, screenbufferwidth, screenbufferheight);
-
-    if (largescreentexture)
-        UploadPartialOverlayToTexture(0, 0, 0, 0, screenbufferwidth,
-                                      screenbufferheight,
-                                      screenbuffertexture);
-    else {
-        for(i=0;i<12;i++)
-            for(j=0;j<6;j++)
-                UploadPartialOverlayToTexture(62*j, 62*i, 0, 0, 64, 64,
-                                              screenbuffertextures[i*6+j]);
-    }
-    texturecreationneeded=0;
-}
-
-/* Display rectangular part of overlay... */
-
-void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
-
-    float tx1, tx2, ty1, ty2;
-    int i, j, tr, br, lr, rr, left, right, top, bottom;
-
-    float vl, vt1, vt2;
-
-    if (statusbar==0) {
-        y-=visiblescreenyoffset;
-        if (x+w>360) w=360-x;
-        if (y+h>240) h=240-y;
-        if (x<0) {w+=x; x=0;}
-        if (y<0) {h+=y; y=0;}
-        if ((w<=0)||(h<=0)) return;
-        y+=visiblescreenyoffset;
-    }
-
-    if (mixing)
-        glEnable(GL_BLEND);
-    else {
-        glAlphaFunc(GL_GEQUAL, 0.99);
-        glEnable(GL_ALPHA_TEST);
-    }
-    glEnable(GL_TEXTURE_2D);
-    glDisable(GL_DEPTH_TEST);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    vl=floor(-((float)virtualscreenwidth-360.0)/2.0);
-    vt1=floor(240.0+(virtualscreenheight-240.0)/2.0);
-    vt2=floor(statusbaryoffset+statusbaryvisible+statusbaryoffset-y);
-
-    if (statusbar==1)
-        glOrtho(vl,
-                   vl+virtualscreenwidth,
-                   vt2,
-                   vt2-virtualscreenheight,
-                   -1.0,
-                   1.0);
-    else if (statusbar==2) {
-        glOrtho(vl+340.0-x,
-                   vl+virtualscreenwidth+340.0-x,
-                   vt2,
-                   vt2-virtualscreenheight,
-                   -1.0,
-                   1.0);
-        x=340; y=statusbaryoffset;
-    }
-    else
-        glOrtho(vl,
-                   vl+virtualscreenwidth,
-                   vt1,
-                   vt1-virtualscreenheight,
-                   -1.0,
-                   1.0);
-
-//    gluOrtho2D(0.0, 360.0, 0.0, 240.0);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    if (largescreentexture) {
-        tx1=((float)x)/(float)(screenbufferwidth);
-        tx2=((float)(x+w))/(float)screenbufferwidth;
-
-        ty1=((float)y)/(float)(screenbufferheight);
-        ty2=((float)(y+h))/(float)screenbufferheight;
-
-        y-=visiblescreenyoffset;
-
-        glBindTexture(GL_TEXTURE_2D, screenbuffertexture);
-        glBegin(GL_QUADS);
-        glColor3f(redfactor, greenfactor, bluefactor);
-        /*printf("ty1=%f ty2=%f y1=%d y2=%d\n", ty1, ty2, y, y+h);*/
-        glTexCoord2f(tx1, ty2);
-        glVertex2s(x, y+h);
-        glTexCoord2f(tx2, ty2);
-        glVertex2s(x+w, y+h);
-        glTexCoord2f(tx2, ty1);
-        glVertex2s(x+w, y);
-        glTexCoord2f(tx1, ty1);
-        glVertex2s(x, y);
-        glEnd();
-    } else {
-        left=(x-1)/62;
-        if (left<0) left=0;
-        right=(x+w-2)/62;
-        if (right>5) right=5;
-        top=(y-1)/62;
-        if (top<0) top=0;
-        bottom=(y+h-2)/62;
-        if (bottom>11) bottom=11;
-
-//	printf("Drawing %d %d %d %d\n", x, y, w, h);
-
-        for(i=top;i<=bottom;i++)
-            for(j=left;j<=right;j++) {
-                lr=x-62*j;
-                rr=lr+w-1;
-                tr=y-62*i;
-                br=tr+h-1;
-
-                if (rr<(j>0)) continue;
-                if (lr>(63-(j<5))) continue;
-                if (br<(i>0)) continue;
-                if (tr>(63-(i<11))) continue;
-
-                if (lr<(j>0)) lr=(j>0);
-                if (rr>(63-(j<5))) rr=63-(j<5);
-                if (tr<(i>0)) tr=(i>0);
-                if (br>(63-(i<11))) br=63-(i<11);
-
-                tx1=((float)lr)/64.0;
-                tx2=((float)(rr+1))/64.0;
-
-                ty1=((float)tr)/64.0;
-                ty2=((float)(br+1))/64.0;
-
-                if (debugmode) {
-                    fprintf(stderr, "Partial overlay display... ");
-                    fprintf(stderr, "%d %d %d %d %d %d... ", i, j, lr, tr, rr, br);
-                }
-
-                glBindTexture(GL_TEXTURE_2D, screenbuffertextures[i*6+j]);
-                glBegin(GL_QUADS);
-                glColor3f(redfactor, greenfactor, bluefactor);
-                glTexCoord2f(tx1, ty2);
-                glVertex2s(lr+62*j, br+1+62*i-visiblescreenyoffset);
-                glTexCoord2f(tx2, ty2);
-                glVertex2s(rr+1+62*j, br+1+62*i-visiblescreenyoffset);
-                glTexCoord2f(tx2, ty1);
-                glVertex2s(rr+1+62*j, tr+62*i-visiblescreenyoffset);
-                glTexCoord2f(tx1, ty1);
-                glVertex2s(lr+62*j, tr+62*i-visiblescreenyoffset);
-                glEnd();
-
-                if (debugmode)
-                    fprintf(stderr, "done.\n");
-
-            }
-    }
-    if (mixing)
-        glDisable(GL_BLEND);
-    else
-        glDisable(GL_ALPHA_TEST);
-    checkGLStatus();
-
-    if (statusbar==1) {
-        for(i=0;i<(virtualscreenwidth-319)/2;i+=20) {
-            ShowPartialOverlay(340+i, statusbaryoffset, 20, statusbaryvisible, 2);
-            ShowPartialOverlay(0-i, statusbaryoffset, 20, statusbaryvisible, 2);
-        }
-    }
-
-}
-
-/* Draw status bar if necessary. */
-
-void ShowStatusBar() {
-//    if (statusbaryoffset>=240) return;
-    mixing=1;
-    ShowPartialOverlay(20, statusbaryoffset, 320, statusbaryvisible, 1);
-    mixing=0;
-}
-
-/* Redraw overlay as if screen offset were offset bytes... */
-
-void SetVisibleScreenOffset(K_UINT16 offset) {
-
-    float y=offset/90;
-
-    glClearColor(0, 0, 0, 0);
-    glClear( GL_COLOR_BUFFER_BIT);
-
-    visiblescreenyoffset=y;
-
-    ShowPartialOverlay(0, 0+y, 360, 240, 0);
 }
 
 void setgamevideomode()
@@ -4604,7 +3593,7 @@ void displaystory(K_INT16 boardnume)
 
 K_INT16 setupmouse()
 {
-    SDL_SetRelativeMouseMode(1);
+    PL_SetRelativeMouseMode(1);
     return(0); /* Assume mouse always exists. */
 }
 
@@ -4848,7 +3837,7 @@ void hiscorecheck()
     K_INT32 hiscore[8], scorexist, templong;
 
     picrot(posx, posy, posz, ang);
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     picrot(posx, posy, posz, ang);
 
     sprintf(filepath, "%shiscore.dat", gameroot);
@@ -5027,7 +4016,7 @@ void hiscorecheck()
                     setuptextbuf(hiscore[i]);
                     textprint(215, 60+(i<<3)+i+1, lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 0 : (char)96);
                 }
-            SDL_GL_SwapWindow(mainwindow);
+            PL_SwapBuffers();
             sprintf(&textbuf[0], "Time penalty: 10 * ");
             textbuf[19] = (char)((templong/10000000L)%10L)+48;
             textbuf[20] = (char)((templong/1000000L)%10L)+48;
@@ -5088,14 +4077,14 @@ void hiscorecheck()
     sprintf(&textbuf[0], "Press any key to continue.");
     textprint(180-(strlen(textbuf)<<2), 135+1, (char)65);
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     while ((getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT1) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT2) == 0) &&
            (getkeydefstatlock(ACTION_MENU_SELECT3) == 0) &&
            (bstatus == 0)) {
         PollInputs();
-        SDL_Delay(10);
+        PL_Delay(10);
     }
 }
 
@@ -5161,7 +4150,7 @@ void getname()
     getUsername();
     #else
     int uni;
-    SDL_StartTextInput();
+    PL_StartTextInput();
     while ((ch != 13) && (ch != 27))
     {
         while ((uni=getkeypress(&ch)) == 0)
@@ -5174,17 +4163,17 @@ void getname()
             textbuf[0] = 95;
             textbuf[1] = 0;
             textprint(94 + (j << 3), 145, (char)97);
-            SDL_GL_SwapWindow(mainwindow);
-            SDL_Delay(8); /* Just to avoid soaking all CPU. */
+            PL_SwapBuffers();
+            PL_Delay(8); /* Just to avoid soaking all CPU. */
             drawnameinput();
             textbuf[0] = 8;
             textbuf[1] = 0;
             textprint(94+(j<<3), 145, (char)0);
-            SDL_GL_SwapWindow(mainwindow);
-            SDL_Delay(8); /* Just to avoid soaking all CPU. */
+            PL_SwapBuffers();
+            PL_Delay(8); /* Just to avoid soaking all CPU. */
         }
         if (uni == 1) {
-            if (ch == SDLK_DELETE)
+            if (ch == PLK_DELETE)
             {
                 hiscorenam[j] = ch;
                 for(j=0;j<16;j++)
@@ -5196,7 +4185,7 @@ void getname()
                 j = 0;
                 ch = 0;
             }
-            if ((ch == SDLK_BACKSPACE) && (j > 0))
+            if ((ch == PLK_BACKSPACE) && (j > 0))
             {
                 j--, hiscorenam[j] = 0;
                 textbuf[0] = ch;
@@ -5215,9 +4204,9 @@ void getname()
             }
         }
     }
-    SDL_StopTextInput();
-    setnewkeystatus(SDLK_ESCAPE, 0);
-    setnewkeystatus(SDLK_RETURN, 0);
+    PL_StopTextInput();
+    setnewkeystatus(PLK_ESCAPE, 0);
+    setnewkeystatus(PLK_RETURN, 0);
 
     for(i=0;i<256;i++)
         keystatus[i] = 0;
@@ -5341,8 +4330,7 @@ void screencapture()
     bmpheaderwrite(0x16, screenheight);
 
     if (screen!=NULL) {
-        glReadPixels(0, 0, screenwidth, screenheight, GL_BGR, GL_UNSIGNED_BYTE,
-                     screen);
+        R_ReadPixelsBGR(screen, screenwidth, screenheight);
         strcpy(filepath, gameroot);
         strcat(filepath, filename);
         unlink(filepath);
@@ -5419,7 +4407,7 @@ K_INT16 mainmenu()
         spriteyoffset=20;
         drawintroduction();
         spriteyoffset=0;
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
     } else {
         ShowStatusBar();
     }
@@ -5434,7 +4422,7 @@ K_INT16 mainmenu()
 
     while ((mainmenuplace >= 0) && (done == 0))
     {
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
         picrot(posx, posy, posz, ang);
 
         if ((mainmenuplace = getselection(88, 41, mainmenuplace, 10)) >= 0)
@@ -5497,7 +4485,6 @@ K_INT16 mainmenu()
 
             if (done == 0)
             {
-                checkGLStatus();
                 /* Redraw whatever was beneath the menu. Double buffer to
                    avoid annoying flicker. */
                 for (int i = 0; i < 2; i++) {
@@ -5515,8 +4502,7 @@ K_INT16 mainmenu()
                         picrot(posx, posy, posz, ang);
                         drawmainmenu();
                     }
-                    SDL_GL_SwapWindow(mainwindow);
-                    checkGLStatus();
+                    PL_SwapBuffers();
                 }
             }
         }
@@ -5581,7 +4567,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         for (int i = 0; i <= drawStackTopIndex; i++)
             draw_ptr[i]();
 
-        SDL_Delay(10); /* Let's not soak up all CPU... */
+        PL_Delay(10); /* Let's not soak up all CPU... */
 
         if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
             statusbardraw(16+(animater6/2)*16, 0, 15, 15, xoffs+20-n, nowselector*12+yoffs+n-1, 85);
@@ -5616,7 +4602,7 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
                 statusbardraw(16, 15, 13, 13, xoffs + 20 - n, nowselector * 12 + yoffs + n - 1 + 1, menu);
         }
 
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
 
         switch (menuDirection) {
         case DIRECTION_NONE:
@@ -5763,7 +4749,7 @@ void creditsmenu()
     loadstory(-1);
     displaystory(-1);
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -5790,7 +4776,7 @@ void bigstorymenu()
         loadstory(i);
         displaystory(i);
         finalisemenu();
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
         nowenterstate = 15;
         lastenterstate = 15;
         while ((nowenterstate <= lastenterstate) && (bstatus <= obstatus))
@@ -5814,7 +4800,7 @@ void bigstorymenu()
             if (moustat == 0) {
                 bstatus=readmouse(NULL, NULL);
             }
-            SDL_Delay(10);
+            PL_Delay(10);
         }
         if ((nowenterstate & 2) == 2 && (i > j))
             i--;
@@ -5880,7 +4866,7 @@ void helpmenu()
     strcpy(&textbuf[0], "Help");
     textprint(161, 18+n+1, 32);
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -6058,9 +5044,9 @@ void sodamenu()
         ksayui(26);
     }
     totalclock = ototclocker;
-    SDL_LockMutex(timermutex);
+    PL_LockTimer();
     clockspeed = 0;
-    SDL_UnlockMutex(timermutex);
+    PL_UnlockTimer();
     wipeoverlay(0, 0, 361, statusbaryoffset);
     statusbaralldraw();
     linecompare(statusbar);
@@ -6126,7 +5112,7 @@ void orderinfomenu() {
     textprint(30, 176, 48);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 
 }
@@ -6429,13 +5415,7 @@ void copyslots(K_INT16 slotnum)
             l[k+384]=tempbuf[(i<<8)+(j<<3)+6];
             l[k+448]=tempbuf[(i<<8)+(j<<3)+7];
         }
-    glBindTexture(GL_TEXTURE_2D, texName[slotnum-1]);
-    checkGLStatus();
-
-    TextureConvert(l, RGBATexture, bmpkind[slotnum]);
-
-    BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
-    checkGLStatus();
+    R_UpdateWallTexture(slotnum);
     free(RGBATexture);
 }
 
@@ -6451,54 +5431,21 @@ void youarehere()
     walseg[map-1][yourhereoldpos]=255;
 }
 
-/* Update map texture... */
-
-void updatemap() {
-    unsigned char *RGBATexture=malloc(64*64*4);
-
-    glBindTexture(GL_TEXTURE_2D, texName[map-1]);
-    checkGLStatus();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    TextureConvert(walseg[map-1], RGBATexture, bmpkind[map]);
-
-    BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
-
-    checkGLStatus();
-    free(RGBATexture);
-}
-
-/* Update game over texture... */
-
-void updategameover() {
-    unsigned char *RGBATexture=malloc(64*64*4);
-
-    glBindTexture(GL_TEXTURE_2D, texName[gameover-1]);
-    checkGLStatus();
-
-    TextureConvert(walseg[gameover-1], RGBATexture, bmpkind[gameover]);
-
-    BuildMipmaps((Uint32*)RGBATexture, 64, 64, 1, 10);
-
-    checkGLStatus();
-    free(RGBATexture);
-}
-
 /* Get keypress in Unicode form. */
 
-Uint16 getkeypress(int* key) {
-    SDL_Event event;
+K_UINT16 getkeypress(int* key) {
+    PL_Event event;
 
-    while(SDL_PollEvent(&event))
+    while(PL_PollEvent(&event))
     {
         ProcessEvent(&event);
         switch(event.type)
         {
-            case SDL_KEYDOWN:
-                *key = event.key.keysym.sym;
+            case PL_KEYDOWN:
+                *key = event.key;
                 return 1;
-            case SDL_TEXTINPUT:
-                *key = event.text.text[0];
+            case PL_TEXTINPUT:
+                *key = event.text[0];
                 return 2;
             default:
                 break;
@@ -6522,87 +5469,51 @@ void FindJoysticks() {
         rc = hiddbgAttachHdlsVirtualDevice(&HdlsHandle, &device);
         printf("hiddbgAttachHdlsVirtualDevice(): 0x%x\n", rc);
     }
-
-    cur_joystick_index = 0;
-    cur_controller = SDL_GameControllerOpen(0);
-    cur_controller_index = 0;
-    joystat = 1;
-    return;
     #endif
 
-    int i;
     if (!joyenable) return;
-    for (i = 0; i < SDL_NumJoysticks(); ++i) {
-        if (SDL_IsGameController(i)) {
-            fprintf(stderr, "Controller at %d\n", i);
-            if (!cur_controller) {
-                cur_controller = SDL_GameControllerOpen(i);
-                cur_controller_index = i;
-            }
-        } else {
-            fprintf(stderr, "Joystick at %d\n", i);
-            if (!cur_joystick) {
-                cur_joystick = SDL_JoystickOpen(i);
-                cur_joystick_index = i;
-            }
-        }
-    }
-    fprintf(stderr, "Controller index = %d\n", cur_controller_index);
-    fprintf(stderr, "Joystick index = %d\n", cur_joystick_index);
-    joystat = (cur_joystick || cur_controller) ? 0 : 1;
+    PL_OpenJoysticks();
 }
 
 /* Poll for keyboard input or quit command. */
 
-void ProcessEvent(SDL_Event* event) {
+void ProcessEvent(PL_Event* event) {
     int sk, scan;
     
     switch(event->type)
     {
-        case SDL_QUIT:
+        case PL_QUIT:
             quitgame=1;
             break;
-        case SDL_WINDOWEVENT:
-            if (event->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
-                window_in_focus = 1;
-            } else if (event->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
-                window_in_focus = 0;
-            } else if (event->window.event == SDL_WINDOWEVENT_EXPOSED) {
-                glClearColor(0, 0, 0, 0);
-                glClear(GL_COLOR_BUFFER_BIT);
-                ShowPartialOverlay(0, 0, screenbufferwidth, screenbufferheight, 0);
-            }
+        case PL_FOCUSGAINED:
+            window_in_focus = 1;
             break;
-        case SDL_JOYDEVICEADDED:
-        case SDL_CONTROLLERDEVICEADDED:
+        case PL_FOCUSLOST:
+            window_in_focus = 0;
+            break;
+        case PL_EXPOSED:
+            R_ClearScreen();
+            ShowPartialOverlay(0, 0, screenbufferwidth, screenbufferheight, 0);
+            break;
+        case PL_JOYDEVICEADDED:
+        case PL_CONTROLLERDEVICEADDED:
             FindJoysticks();
             break;
-        case SDL_JOYDEVICEREMOVED:
-            if (event->jdevice.which == cur_joystick_index) {
-                cur_joystick_index = -1;
-                SDL_JoystickClose(cur_joystick);
-                cur_joystick = NULL;
-            }
+        case PL_JOYDEVICEREMOVED:
+        case PL_CONTROLLERDEVICEREMOVED:
+            PL_CloseJoysticks();
             FindJoysticks();
             break;
-        case SDL_CONTROLLERDEVICEREMOVED:
-            if (event->cdevice.which == cur_controller_index) {
-                cur_controller_index = -1;
-                SDL_GameControllerClose(cur_controller);
-                cur_controller = NULL;
-            }
-            FindJoysticks();
-            break;
-        case SDL_KEYDOWN:
-            sk=event->key.keysym.sym;
+        case PL_KEYDOWN:
+            sk=event->key;
             scan = get_pckey(sk);
             if (scan>=0) {
                 keystatus[scan] = 1;
             }
             setnewkeystatus(sk, 1);
             break;
-        case SDL_KEYUP:
-            sk=event->key.keysym.sym;
+        case PL_KEYUP:
+            sk=event->key;
             scan = get_pckey(sk);
             if (scan >= 0) {
                 keystatus[scan] = 0;
@@ -6615,8 +5526,13 @@ void ProcessEvent(SDL_Event* event) {
 }
 
 void PollInputs() {
-    SDL_Event event;
-    while(SDL_PollEvent(&event))
+    PL_Event event;
+
+    /* Platforms without a timer thread drive the game clock and the audio
+       mixer from here; on SDL this is a no-op. */
+    PL_PumpClock();
+
+    while(PL_PollEvent(&event))
     {
         ProcessEvent(&event);
     }
@@ -6634,7 +5550,7 @@ void PollInputs() {
 
 unsigned char readmouse(int *x, int *y) {
     int tx, ty;
-    unsigned char bstatus=SDL_GetRelativeMouseState(&tx, &ty);
+    unsigned char bstatus=PL_GetRelativeMouseState(&tx, &ty);
 
     /* Swap middle and right mouse buttons to match Microsoft style. */
 
@@ -6660,19 +5576,16 @@ void quit() {
 
     /* Start by demolishing all other threads... */
 
-    SDL_UnlockMutex(timermutex); /* Just in case we have it... */
-    SDL_UnlockMutex(soundmutex); /* Just in case we have it... */
-
-    SDL_DestroyMutex(timermutex);
-    SDL_DestroyMutex(soundmutex);
+    PL_UnlockTimer(); /* Just in case we have it... */
+    PL_UnlockSound(); /* Just in case we have it... */
 
     musicoff();
 
     if (speechstatus >= 2) {
-        /* SDL is very careful to allow the sound thread to stop. Good for
-           us. */
+        /* The platform layer waits for the mixing callback to stop before
+           it returns. */
 
-        SDL_CloseAudioDevice(audiodevice);
+        PL_CloseAudio();
         free(SoundBuffer);
     }
 
@@ -6696,11 +5609,7 @@ void quit() {
     free(lzwbuf2);
     if (convwalls > 0) free(pic);
 
-    if (cur_joystick)
-        SDL_JoystickClose(cur_joystick);
-
-    if (cur_controller)
-        SDL_GameControllerClose(cur_controller);
+    PL_CloseJoysticks();
 
     #ifdef __SWITCH__
     romfsExit();
@@ -6715,8 +5624,7 @@ void quit() {
     hiddbgExit();
     consoleExit(NULL);
     #endif
-    SDL_VideoQuit();
-    SDL_Quit();
+    PL_Shutdown();
 
     exit(0);
 }

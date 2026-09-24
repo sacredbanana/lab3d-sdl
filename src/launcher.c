@@ -52,7 +52,7 @@ void whatsnew421() {
     textprint(30, 88, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -82,7 +82,7 @@ void whatsnew420() {
     textprint(30, 128, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -97,7 +97,7 @@ void whatsnew418() {
     textprint(30, 58, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -118,7 +118,7 @@ void whatsnew417() {
     textprint(30, 88, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -151,7 +151,7 @@ void whatsnew416() {
     textprint(30, 148, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -178,7 +178,7 @@ void whatsnew415() {
     textprint(30, 108, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -196,7 +196,7 @@ void whatsnew414() {
     textprint(30, 78, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -223,7 +223,7 @@ void whatsnew413() {
     textprint(30, 116, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -256,7 +256,7 @@ void whatsnew412() {
     textprint(30, 126, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 
     drawmenu(320, 172, menu);
@@ -280,7 +280,7 @@ void whatsnew412() {
     textprint(30, 108, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -316,7 +316,7 @@ void whatsnew411() {
     textprint(30, 136, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -355,7 +355,7 @@ void whatsnew410() {
     textprint(30, 146, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -400,7 +400,7 @@ void whatsnew401() {
     textprint(30, 166, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -442,7 +442,7 @@ void whatsnew400() {
     textprint(30, 156, 96);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 
@@ -484,7 +484,7 @@ void whatsnewkenslabyrinth2() {
     textprint(30, 176, 48);
 
     finalisemenu();
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
     pressakey();
 }
 

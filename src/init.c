@@ -27,8 +27,6 @@ void initialize()
 
     FindJoysticks();
 
-    SDL_JoystickEventState(1);
-    FindJoysticks();
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
@@ -65,12 +63,12 @@ void initialize()
             i = 1;
         }
 
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         oclockspeed=clockspeed;
 
         clearkeydefstat(ACTION_MENU);
 
-        SDL_GL_SwapWindow(mainwindow);
+        PL_SwapBuffers();
 
         while ((getkeydefstatlock(ACTION_MENU) == 0) &&
                 (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
@@ -100,21 +98,20 @@ void initialize()
             }
 
             while(clockspeed<oclockspeed+12) {
-                SDL_UnlockMutex(timermutex);
-                SDL_Delay(10);
-                SDL_LockMutex(timermutex);
+                PL_UnlockTimer();
+                PL_Delay(10);
+                PL_LockTimer();
             }
             oclockspeed+=12;
 
             if (!((lab3dversion==KENS_LABYRINTH_1_0 
             || lab3dversion==KENS_LABYRINTH_1_1)|j)) {
-                SDL_UnlockMutex(timermutex);
-                glClearColor(0,0,0,0);
-                glClear(GL_COLOR_BUFFER_BIT);
+                PL_UnlockTimer();
+                R_ClearScreen();
                 visiblescreenyoffset=(l/90)-20;
                 ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
-                SDL_GL_SwapWindow(mainwindow);
-                SDL_LockMutex(timermutex);
+                PL_SwapBuffers();
+                PL_LockTimer();
             }
             PollInputs();
             bstatus = 0;
@@ -126,27 +123,26 @@ void initialize()
         oclockspeed=clockspeed;
         for(i=63;i>=0;i-=4)
         {
-            SDL_UnlockMutex(timermutex);
+            PL_UnlockTimer();
             fade(64+i);
-            glClearColor(0,0,0,0);
-            glClear(GL_COLOR_BUFFER_BIT);
+            R_ClearScreen();
             if ((lab3dversion==KENS_LABYRINTH_1_0 
             || lab3dversion==KENS_LABYRINTH_1_1)|j)
                 visiblescreenyoffset=0;
             else
                 visiblescreenyoffset=(l/90)-20;
             ShowPartialOverlay(20,20+visiblescreenyoffset,320,200,0);
-            SDL_GL_SwapWindow(mainwindow);
-            SDL_LockMutex(timermutex);
+            PL_SwapBuffers();
+            PL_LockTimer();
 
             while(clockspeed<oclockspeed+4) {
-                SDL_UnlockMutex(timermutex);
-                SDL_Delay(10);
-                SDL_LockMutex(timermutex);
+                PL_UnlockTimer();
+                PL_Delay(10);
+                PL_LockTimer();
             }
             oclockspeed+=4;
         }
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
     }
     
     lastunlock = 1;
@@ -165,9 +161,7 @@ void initialize()
             fprintf(stderr, "Detected %d boards.\n", numboards);
             close(i);
         } else {
-            fprintf(stderr,"boards.dat not found.\n");
-            SDL_Quit();
-            exit(1);
+            fatal_error("boards.dat not found.");
         }
     } else {
         sprintf(filepath, "%sboards.kzp", gameroot);
@@ -182,9 +176,7 @@ void initialize()
                 numboards = 10;
             close(i);
         } else {
-            fprintf(stderr,"boards.kzp not found.\n");
-            SDL_Quit();
-            exit(1);
+            fatal_error("boards.kzp not found.");
         }
     }
     if (!introskip)
@@ -193,111 +185,22 @@ void initialize()
 
 void initvideo()
 {
-    K_INT16 i, j, k;
+    time_t tnow;
+
     walltol=32;
     neardist=16;
     vidmode = 1; /* Force fake 360x240 mode. */
-    time_t tnow;
 
     time(&tnow);
     srand((unsigned int)tnow);
 
-    int realr,realg,realb,realz,reald = 0;
-    SDL_Surface *icon;
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE,8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE,8);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,24);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER,1);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE,0);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE,0);
+    /* Open the display.  PL_OpenVideo() picks up screenwidth/screenheight,
+       corrects them to what was actually obtained and calls
+       configure_screen_size() for us. */
+    if (PL_OpenVideo() != 0)
+        fatal_error("Video mode set failed.");
 
-    SDL_ShowCursor(0);
-
-    // Try to load icon from multiple locations
-    icon = SDL_LoadBMP("ken.bmp");
-    if (icon == NULL) {
-#if defined(__unix__) && !defined(__APPLE__)
-        // Try system installation paths
-        icon = SDL_LoadBMP("/usr/local/share/ken/ken.bmp");
-        if (icon == NULL) {
-            icon = SDL_LoadBMP("/usr/share/ken/ken.bmp");
-        }
-#endif
-        if (icon == NULL) {
-            fprintf(stderr,"Warning: ken.bmp (icon file) not found.\n");
-        }
-    }
-
-    fprintf(stderr,"Activating video...\n");
-
-    if (mainwindow == NULL) {
-        if (fullscreen) {
-            mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                      0, 0, SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_OPENGL);
-        } else {
-            mainwindow = SDL_CreateWindow("Ken's Labyrinth", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                      screenwidth, screenheight, SDL_WINDOW_OPENGL);
-        }
-        if (mainwindow == NULL) {
-            fatal_error("Video mode set failed.");
-        }
-        SDL_SetWindowGrab(mainwindow, SDL_TRUE);
-    }
-
-    SDL_GetWindowSize(mainwindow, &screenwidth, &screenheight);
-    configure_screen_size();
-    fprintf(stderr,"True size: %dx%d\n", screenwidth, screenheight);
-
-    if (icon != NULL)
-        SDL_SetWindowIcon(mainwindow, icon);
-
-    maincontext = SDL_GL_CreateContext(mainwindow);
-    SDL_GL_SetSwapInterval(1);  // 0 = off, 1 = vsync, -1 = adaptive
- 
-    if (maincontext == NULL) {
-        fatal_error("Could not create GL context.");
-    }
-
-    #ifdef __SWITCH__
-    gladLoadGL();
-    #endif
-
-    SDL_GL_GetAttribute(SDL_GL_RED_SIZE,&realr);
-    SDL_GL_GetAttribute(SDL_GL_GREEN_SIZE,&realg);
-    SDL_GL_GetAttribute(SDL_GL_BLUE_SIZE,&realb);
-    SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE,&realz);
-    SDL_GL_GetAttribute(SDL_GL_DOUBLEBUFFER,&reald);
-
-    fprintf(stderr,"GL Vendor: %s\n",glGetString(GL_VENDOR));
-    fprintf(stderr,"GL Renderer: %s\n",glGetString(GL_RENDERER));
-    fprintf(stderr,"GL Version: %s\n",glGetString(GL_VERSION));
-    //fprintf(stderr,"GL Extensions: %s\n",glGetString(GL_EXTENSIONS));
-
-    #ifndef __SWITCH__
-    fprintf(stderr,"GLU Version: %s\n",gluGetString(GLU_VERSION));
-    fprintf(stderr,"GLU Extensions: %s\n",gluGetString(GLU_EXTENSIONS));
-
-    if (reald==0) {
-        fatal_error("Double buffer not available.");
-    }
-    #endif
-
-    fprintf(stderr,
-            "Opened GL at %d/%d/%d (R/G/B) bits, %d bit depth buffer.\n",
-            realr,realg,realb,realz);
-
-    if (realz<24) {
-        walltol=256;
-        neardist=128;
-    }
-
-    SDL_SetWindowBrightness(mainwindow, gammalevel);
-
-    largescreentexture = 1;
+    largescreentexture = R_WantsLargeOverlayTexture();
 
     if (largescreentexture) {
         /* One large 512x512 texture. */
@@ -312,7 +215,13 @@ void initvideo()
     }
 
     screenbuffer=malloc(screenbufferwidth*screenbufferheight);
-    screenbuffer32=malloc(screenbufferwidth*screenbufferheight*4);
+#ifdef PLATFORM_AMIGA
+    /* The software renderer composites straight from the 8 bit overlay, so
+       the 32 bit shadow copy the GL path uploads from is not needed. */
+    screenbuffer32=NULL;
+#else
+    screenbuffer32=malloc((size_t)screenbufferwidth*screenbufferheight*4);
+#endif
 
     linecompare(479);
 
@@ -320,17 +229,13 @@ void initvideo()
         fatal_error("Could not create screen buffer");
     }
 
-    fprintf(stderr,"Allocating screen buffer texture...\n");
-    if (largescreentexture) {
-        glGenTextures(1,&screenbuffertexture);
-    } else {
-        glGenTextures(72,screenbuffertextures);
-    }
+    fprintf(stderr,"Allocating screen buffer textures...\n");
+    R_InitOverlay();
 }
 
 void freememory()
 {
-    SDL_CloseAudioDevice(audiodevice);
+    PL_CloseAudio();
     free(lzwbuf);
     free(lzwbuf2);
     free(pic);
@@ -349,10 +254,6 @@ void freememory()
     screenbuffer = NULL;
     screenbuffer32 = NULL;
 
-    #ifndef __SWITCH__
-    mainwindow = NULL;
-    maincontext = NULL;
-    #endif
 }
 
 void initmemory()
@@ -375,10 +276,7 @@ void initmemory()
 
     if ((pic = malloc((numwalls-initialwalls)<<12)) == NULL)
     {
-        fprintf(stderr,
-                "Error #4: This computer does not have enough memory.\n");
-        SDL_Quit();
-        exit(-1);
+        fatal_error("Error #4: This computer does not have enough memory.");
     }
 
     if ((note = malloc(16384)) == NULL)
@@ -428,26 +326,10 @@ void initaudio()
 
     if (musicsource == MUSIC_SOURCE_MIDI) {
         fprintf(stderr,"Opening music output...\n");
-#ifdef WIN32
-        if ((i=midiOutOpen(&sequencerdevice,MIDI_MAPPER,(DWORD)(NULL),
-                           (DWORD)(NULL),0))!=
-            MMSYSERR_NOERROR) {
-            fatal_error("Could not open MIDI output");
+        if (PL_MidiOpen() != 0) {
+            fprintf(stderr,"No MIDI output available; music disabled.\n");
+            musicsource = MUSIC_SOURCE_NONE;
         }
-#endif
-#ifdef USE_OSS
-        sequencerdevice=open("/dev/sequencer", O_WRONLY, 0);
-        if (sequencerdevice<0) {
-            fprintf(stderr,"Music failed opening /dev/sequencer.\n");
-            SDL_Quit();
-            exit(-1);
-        }
-        if (ioctl(sequencerdevice, SNDCTL_SEQ_NRMIDIS, &nrmidis) == -1) {
-            fatal_error("Can't get info about midi ports!");
-            SDL_Quit();
-            exit(-1);
-        }
-#endif
     }
 
     if (speechstatus >= 2)
@@ -482,28 +364,18 @@ void initaudio()
         }
         fclose(file);
 
-        SDL_LockMutex(soundmutex);
+        PL_LockSound();
         fprintf(stderr,"Opening sound output in %s for %s sound effects...\n",
                 (channels-1)?"stereo":"mono",
                 soundpan?"stereo":"mono");
 
-        SDL_AudioSpec want, have;
-        want.freq = (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) ? 44100 : 11025;
-        want.format = AUDIO_S16SYS;
-        want.channels = channels;
-        want.samples = soundblocksize;
-        want.userdata = NULL;
-        want.callback = AudioCallback;
+        samplerate = PL_OpenAudio((musicsource == MUSIC_SOURCE_ADLIB ||
+                                   musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
+                                  ? 44100 : 11025,
+                                  channels, soundblocksize);
 
-        audiodevice = SDL_OpenAudioDevice(NULL, 0, &want, &have, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
-        if (audiodevice == 0) {
-            TRACE("Failed to open audio: %s", SDL_GetError());
-        }
-
-        soundbytespertick = channels * have.freq * 2 / 240;
+        soundbytespertick = channels * samplerate * 2 / 240;
         soundtimerbytes = 0;
-
-        samplerate = have.freq;
 
         if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
         fprintf(stderr,"Opening Adlib emulation for %s music (%s output)...\n",
@@ -514,9 +386,9 @@ void initaudio()
 
         reset_dsp();
 
-        SDL_UnlockMutex(soundmutex);
+        PL_UnlockSound();
 
-        SDL_PauseAudioDevice(audiodevice, 0);
+        PL_PauseAudio(0);
     } else {
         if (soundtimer)
             fprintf(stderr,"Warning: no sound, using system timer.\n");
@@ -527,8 +399,6 @@ void initaudio()
 void initgraphics()
 {
     K_INT16 i, j, k, oclockspeed;
-
-    glDrawBuffer(GL_BACK);
 
     texturecreationneeded = 1;
 
@@ -574,13 +444,13 @@ void initgraphics()
         }
 
     SetVisibleScreenOffset(0);
-    SDL_GL_SwapWindow(mainwindow);
+    PL_SwapBuffers();
 
     if (moustat == 0)
             moustat = setupmouse();
     if (!introskip)
     {
-        SDL_LockMutex(timermutex);
+        PL_LockTimer();
         oclockspeed = clockspeed;
         while ((getkeydefstatlock(ACTION_MENU) == 0) &&
             (getkeydefstatlock(ACTION_MENU_CANCEL) == 0) &&
@@ -597,11 +467,11 @@ void initgraphics()
             {
                 bstatus=readmouse(NULL, NULL);
             }
-            SDL_UnlockMutex(timermutex);
-            SDL_Delay(10);
-            SDL_LockMutex(timermutex);
+            PL_UnlockTimer();
+            PL_Delay(10);
+            PL_LockTimer();
         }
-        SDL_UnlockMutex(timermutex);
+        PL_UnlockTimer();
     }
 }
 
@@ -718,7 +588,7 @@ void initgameversion()
 
 void resetaudio()
 {
-    SDL_CloseAudioDevice(audiodevice);
+    PL_CloseAudio();
     musicoff();
     configure();
     if (SoundFile) {
@@ -729,12 +599,7 @@ void resetaudio()
         free(SoundBuffer);
         SoundBuffer = NULL;
     }
-    #ifdef WIN32
-    // Close sequencer device if it's already open
-    if (sequencerdevice != 0)
-        midiOutClose(sequencerdevice);
-    sequencerdevice = 0;
-    #endif
+    PL_MidiClose();
     initaudio();
     loadmusic(lastPlayedMusicFile);
     musicon();

@@ -1,4 +1,4 @@
-OBJS=subs.o init.o graphx.o lab3d.o setup.o adlibemu.o
+OBJS=subs.o init.o graphx.o lab3d.o setup.o adlibemu.o platform_sdl.o render_gl.o
 
 %.o: %.c lab3d.h
 	gcc -O3 -Wall `sdl-config --cflags` -o $@ -c $<

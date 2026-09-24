@@ -12,7 +12,8 @@ FreeBSD 4.7, Raspberry Pi OS and Nintendo Switch.
 
 Improvements over the original Ken's Labyrinth:
 
-- Runs natively on 32-bit/64-bit Intel/ARM Windows, macOS, Unix or Nintendo Switch.
+- Runs natively on 32-bit/64-bit Intel/ARM Windows, macOS, Unix, Nintendo Switch
+  or a 68020 or better Commodore Amiga running AmigaOS 3.x.
 - Supports big-endian CPUs.
 - Uses OpenGL to provide hardware accelerated, anti-aliased graphics with
   trilinear interpolation in true colour (where available).
@@ -86,6 +87,76 @@ Navigate to the Switch folder inside your Nintendo Switch SD card and create a n
 called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files. (This is the "gamedata" directory if you wish to have the game launcher. Otherwise just copy a single version of Ken's Labyrinth to the directory containing the executable
 WITHOUT including the gamedata directory.)
 
+## Amiga (AmigaOS 3.x, 68020+)
+
+The Amiga port is a separate build of the same game: it uses no SDL and no
+OpenGL, drawing the labyrinth with its own software renderer and talking to
+intuition.library, graphics.library, cybergraphics.library, audio.device and
+lowlevel.library directly.
+
+Four executables are supplied, one per CPU class:
+
+Executable | For |
+-----------|-----|
+`Kens-Labyrinth.020`    | 68020/68EC020 with no FPU (software floating point) |
+`Kens-Labyrinth.020fpu` | 68020/68030 with a 68881 or 68882 |
+`Kens-Labyrinth.040`    | 68040 |
+`Kens-Labyrinth.060`    | 68060 |
+
+Copy the one that matches your machine, together with the `gamedata` drawer,
+into a directory of your choice and run it from a Shell or from Workbench.
+The ray caster does a lot of floating point work per frame, so the FPU builds
+are considerably faster than the plain 020 one - use `.020` only on a machine
+that genuinely has no FPU.
+
+### Choosing a screen mode
+
+Every time the game starts it opens an ASL screen mode requester listing all
+the modes your system offers - native OCS/ECS/AGA modes and, if you have
+CyberGraphX or Picasso96 installed, every RTG mode as well. Whatever you pick
+is remembered in `settings.ini`; start with `-keepmode` to skip the requester
+and reuse it.
+
+The game always renders into a 360x240 chunky buffer (the resolution the DOS
+original used, in VGA Mode X) and the display layer fits that into the mode you
+chose:
+
+- A mode of 360x240 or larger shows the whole view.
+- A smaller mode, such as the standard 320x256 PAL screen, shows the 320x200
+  window the original game used, centred.
+- A mode at least 720x480 can pixel-double the view; set *Pixel doubling* in
+  the setup menu to force this on or off.
+
+On an RTG screen, 8 bit modes take the chunky pixels directly and 15/16/24/32
+bit modes are expanded through a colour table, so any RTG mode works. On a
+native screen the renderer converts chunky to planar itself; an 8 bitplane AGA
+mode gives the full 256 colour palette, and a shallower ECS/OCS screen still
+runs with the palette folded down to the pens available.
+
+RTG is significantly faster than a native screen, because an 8 bit RTG blit is
+a straight memory copy while a planar screen needs chunky-to-planar conversion
+for every pixel of every frame.
+
+### Controls
+
+Keyboard, mouse and joystick all work and are configurable from
+*Setup -> Configure Input*, as on every other platform. The joystick is read
+through lowlevel.library on port 1, so a CD32 pad's extra buttons are
+available as buttons 0-6 as well as an ordinary one-button stick.
+
+### What is not in the Amiga version
+
+- **Texture filtering.** The software rasteriser point-samples, which is what
+  a 68k can afford; the filtering options are hidden from the Amiga setup menu.
+- **Hi-res replacement textures.** Same reason.
+- **Stereoscopic 3D.** It needs OpenGL framebuffer objects.
+- **General MIDI music.** Music is Adlib emulation, or off. The mixing rate is
+  chosen from the CPU (11025 Hz on an 020/030, 22050 Hz on an 040, 28 kHz on an
+  060); turning music off in the setup menu frees up a lot of CPU on slower
+  machines.
+- **Compressed demo files.** `-recordx` (uncompressed) and `-play` work;
+  gzip-compressed demos are refused with a message rather than misread.
+
 # Program arguments
 
 Command-line parameters for the executable (these override settings chosen in setup):
@@ -108,6 +179,8 @@ Argument | Effect |
 -load `s``	|	Immediately load a savegame slot (1-8)
 -record `demo` `s` |	Start recording a demo file starting at savegame slot `s`
 -play <demo>	|	Play back a demo file
+-keepmode	|	(Amiga) Reuse the saved screen mode instead of showing the requester.
+-askmode	|	(Amiga) Always show the screen mode requester.
 
 To activate cheat codes, the last parameter must be either "snausty" (normal
 cheat mode) or "cheaton" (cheat codes use [LSHIFT]-[LCTRL] instead of both
@@ -213,6 +286,28 @@ Run `make` in the source directory.
 Run `make -f Makefile.NoMIDI` in the source directory. Note that General MIDI
 music is not available if you do this (not much of a loss).
 
+## Amiga
+
+Building uses the same Docker image as AmigaGPT, so no local m68k toolchain is
+needed:
+
+```
+./build-amiga.sh
+```
+
+This produces all four CPU variants in `dist/amiga/` along with a ready-to-copy
+`dist/amiga/Kens-Labyrinth/` drawer containing the executables, the game data
+and a readme. `CLEAN=1 ./build-amiga.sh` wipes the build directory first,
+`DEBUG=1 ./build-amiga.sh` makes a debug build, and naming variants builds only
+those:
+
+```
+./build-amiga.sh 060
+```
+
+Behind the script is `Makefile.Amiga`, which can be used directly with any
+installation of bebbo's `m68k-amigaos-gcc`.
+
 ## Nintendo Switch
 
 - Install [devkitPro](https://devkitpro.org/wiki/Getting_Started)
@@ -238,13 +333,13 @@ it to something like 800x600.
 
 ### Q: Why doesn't LAB3D/SDL have a fast software renderer like the original Ken's
 Labyrinth?
-A: Very few computers are sold nowadays without 3D acceleration and most games
-require 3D acceleration. Therefore, most people who would play LAB3D/SDL
-already have a 3D accelerator. To these people, software rendering is not of
-any use. The original Ken's Labyrinth software renderer is very fast but
-relies heavily on being able to access specific hardware directly (8086 or
-compatible with VGA) in a very specific manner (VGA Mode X, maximum resolution
-360x240). A rewritten software renderer may appear in future versions.
+A: It does now, on the platform that needs one. Very few computers are sold
+nowadays without 3D acceleration, so on the desktop ports a software renderer
+would be of no use to anybody. The Amiga is a different matter, and that port
+ships one: see `src/amiga/render_soft.c`. It takes the same geometry graphx.c
+hands to OpenGL and draws it as vertical textured spans with a
+one-entry-per-column depth buffer, which works because the camera only ever
+yaws and walls always run the full height of a cell.
 
 ### Q: Why doesn't LAB3D/SDL support Direct3D?
 A: OpenGL is a more widely supported 3D graphics API than Microsoft's
