@@ -10,6 +10,7 @@
 
 #include "lab3d.h"
 #include "amiga/amiga_video.h"
+#include "amiga/amiga_audio.h"
 
 extern ULONG amiga_cfg_modeid;
 extern int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
@@ -40,6 +41,9 @@ void amiga_lock_mode(ULONG modeid, int w, int h, int d) {
 }
 
 void amiga_settings_loaded(void) {
+    if (amiga_cfg_audio < 0 || amiga_cfg_audio >= AMIGA_AUDIO_MODES)
+        amiga_cfg_audio = AMIGA_AUDIO_AUTO;
+
     if (amiga_mode_locked) {
         amiga_cfg_modeid = locked_modeid;
         amiga_cfg_width  = locked_w;

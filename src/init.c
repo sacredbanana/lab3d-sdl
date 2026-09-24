@@ -319,6 +319,9 @@ void initaudio()
 
     speed = 240;
     musicstatus=0;
+
+    soundratio = 1;
+    soundratioshift = 0;
     
     mute = 0;
 
@@ -373,6 +376,29 @@ void initaudio()
                                    musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
                                   ? 44100 : 11025,
                                   channels, soundblocksize);
+
+        /*
+         * Work out how far the sound buffer runs below the output rate.
+         *
+         * The mixer interpolates the digital sound buffer up to the output
+         * rate, and the sound effects in sounds.kzp are 11025Hz, so the
+         * buffer wants to run as close to 11025Hz as a power of two division
+         * of the output rate allows.  At 44100Hz that is the historical
+         * factor of four; on an Amiga running the device at 22050Hz it is
+         * two, and at 11025Hz it is one.  Getting this wrong decimates the
+         * effects - speech turns into noise - while leaving the music, which
+         * is synthesised straight into the output stream, untouched.
+         */
+        soundratio = 1;
+        soundratioshift = 0;
+        if (musicsource == MUSIC_SOURCE_ADLIB ||
+            musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
+            while (soundratio < 4 &&
+                   samplerate / (soundratio * 2) >= SOUNDNATIVERATE) {
+                soundratio <<= 1;
+                soundratioshift++;
+            }
+        }
 
         soundbytespertick = channels * samplerate * 2 / 240;
         soundtimerbytes = 0;

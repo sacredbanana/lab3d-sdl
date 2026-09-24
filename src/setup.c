@@ -13,11 +13,13 @@
 #include "lab3d.h"
 #ifdef PLATFORM_AMIGA
 #include "amiga/amiga_video.h"
+#include "amiga/amiga_audio.h"
 extern int amiga_cfg_modeid_i;
 extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
 extern int amiga_cfg_scale, amiga_cfg_askmode;
 void amigascreenmodemenu(void);
 void setupamigascaling(void);
+void setupamigaaudio(void);
 void amiga_lock_mode(unsigned long modeid, int w, int h, int d);
 #endif
 
@@ -427,6 +429,11 @@ static char *okmenu[] = { "OK" };
 #ifdef PLATFORM_AMIGA
 static char *amigaokmenu[] = { "OK" };
 static char *amigascalemenu[] = { "Automatic", "Off (1x)", "On (2x)" };
+static char *amigaaudiomenu[] = {
+    "Automatic",
+    "Paula (8 bit)",
+    "AHI (16 bit)"
+};
 
 /* Open the ASL screen mode requester from the setup menu.  The display is
    already running, so the new mode is remembered and used next time. */
@@ -447,6 +454,15 @@ void amigascreenmodemenu(void) {
 
 void setupamigascaling(void) {
     selectionmenu(3, amigascalemenu, &amiga_cfg_scale, "Pixel doubling");
+}
+
+/* Paula or AHI.  Automatic takes AHI on an 040 or better, where the software
+   mixing it costs is affordable, and Paula below that. */
+void setupamigaaudio(void) {
+    int old = amiga_cfg_audio;
+    selectionmenu(AMIGA_AUDIO_MODES, amigaaudiomenu, &amiga_cfg_audio,
+                  "Sound output");
+    if ((inlauncher || setup_ingame) && amiga_cfg_audio != old) resetaudio();
 }
 #endif
 
@@ -1107,6 +1123,11 @@ static void draw_mainmenu(void) {
     strcpy(textbuf,"Pixel doubling: ");
     strcat(textbuf,amigascalemenu[amiga_cfg_scale > 2 ? 0 : amiga_cfg_scale]);
     n += 12; textprint(51,n,64);
+    strcpy(textbuf,"Sound output: ");
+    strcat(textbuf,amigaaudiomenu[(amiga_cfg_audio < 0 ||
+                                   amiga_cfg_audio >= AMIGA_AUDIO_MODES)
+                                  ? 0 : amiga_cfg_audio]);
+    n += 12; textprint(51,n,96);
 #else
     #ifdef __SWITCH__
     sprintf(textbuf,"Window size: %dx%d %s", screenwidth,
@@ -1182,11 +1203,12 @@ void setupmenu(int ingame) {
     draw_ptr[++drawStackTopIndex] = draw_mainmenu;
 
 #ifdef PLATFORM_AMIGA
-    /* Twelve rows: the window, filtering, stereo, texture depth and view
+    /* Thirteen rows: the window, filtering, stereo, texture depth and view
        options of the desktop builds do not apply to a software renderer on a
-       fixed size screen, and the screen mode settings take their place. */
+       fixed size screen, and the screen mode and sound output settings take
+       their place. */
     while (!quit) {
-        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 12)) < 0) {
+        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 13)) < 0) {
             quit = 1;
         } else {
             switch (sel) {
@@ -1195,13 +1217,14 @@ void setupmenu(int ingame) {
             case 2:  amigascreenmodemenu();    break;
             case 3:  amiga_cfg_askmode = !amiga_cfg_askmode; break;
             case 4:  setupamigascaling();      break;
-            case 5:  setupsetmusic();          break;
-            case 6:  setupsetsound();          break;
-            case 7:  setupsetsoundchannels();  break;
-            case 8:  setupsetmusicchannels();  break;
-            case 9:  setupcheatmenu();         break;
-            case 10: setupsoundblockmenu();    break;
-            case 11: quit = 1;                 break;
+            case 5:  setupamigaaudio();        break;
+            case 6:  setupsetmusic();          break;
+            case 7:  setupsetsound();          break;
+            case 8:  setupsetsoundchannels();  break;
+            case 9:  setupsetmusicchannels();  break;
+            case 10: setupcheatmenu();         break;
+            case 11: setupsoundblockmenu();    break;
+            case 12: quit = 1;                 break;
             }
         }
     }
@@ -1642,7 +1665,7 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
 /* Screen mode chosen through the ASL requester at startup. */
 extern int amiga_cfg_modeid_i;
 extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
-extern int amiga_cfg_scale, amiga_cfg_askmode;
+extern int amiga_cfg_scale, amiga_cfg_askmode, amiga_cfg_audio;
 void amiga_settings_loaded(void);
 void amiga_settings_saving(void);
 
@@ -1653,6 +1676,7 @@ static setting_t amiga_settings[] = {
     INTSETTING(depth, amiga_cfg_depth),
     INTSETTING(scale, amiga_cfg_scale),
     INTSETTING(askmode, amiga_cfg_askmode),
+    INTSETTING(audio, amiga_cfg_audio),
     { NULL }
 };
 #endif
@@ -1788,7 +1812,6 @@ void loadsettings(void) {
             newformat = 1;
             cursection = sections;
             while (1) {
-                printf("Cursection: %s\n", cursection->name);
                 if (!cursection->name) {
                     fprintf(stderr, "%s:%d: Invalid config section: %s", "settings.ini", curline, key);
                     return;
@@ -1803,7 +1826,6 @@ void loadsettings(void) {
             }
             cursetting = cursection->settings;
             while (1) {
-                printf("Cursetting: %s\n", cursetting->name);
                 if (!cursetting->name) {
                     fprintf(stderr, "%s:%d: Unknown config setting in section %s: %s", "settings.ini", curline, cursection->name, key);
                 }

@@ -83,7 +83,10 @@ else
 OPTFLAGS = -O2 -fomit-frame-pointer
 endif
 
-CFLAGS  = $(BASEFLAGS) $(OPTFLAGS) $(WARNINGS)
+# -MMD -MP writes a .d file next to each object so a header change rebuilds
+# everything that includes it; without it an edit to lab3d.h silently leaves
+# stale objects behind and the link fails (or worse, succeeds).
+CFLAGS  = $(BASEFLAGS) $(OPTFLAGS) $(WARNINGS) -MMD -MP
 LDLIBS  = -lm -lamiga
 
 .PHONY: all clean dirs $(VARIANTS)
@@ -101,6 +104,8 @@ $(1)_OBJS = $$(patsubst $$(SRC_DIR)/%.c,$$(BUILD)/$(1)/%.o,$$(SOURCES))
 $$(BUILD)/$(1)/%.o: $$(SRC_DIR)/%.c
 	@mkdir -p $$(dir $$@)
 	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) -c $$< -o $$@
+
+-include $$($(1)_OBJS:.o=.d)
 
 $(1): dirs $$($(1)_OBJS)
 	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) -o $$(OUT_DIR)/$$(PROGRAM).$(1) \

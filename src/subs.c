@@ -749,13 +749,74 @@ void preparesound(void *dasnd, long numbytestoprocess)
     }
 }
 
-/* SDL audio callback. Feed a chunk from sound buffer. */
+/* Audio callback. Feed a chunk from the sound buffer. */
+
+/*
+ * Mix one run out of the digital sound buffer into the output stream, adding
+ * the Adlib music underneath it when that is the music source.
+ *
+ * The sound buffer runs at samplerate/soundratio and holds one K_INT16 per
+ * output channel, so `len` stream bytes cover len/(2*soundratio) entries of
+ * it.  A run stops at the end of the buffer; the caller comes back for the
+ * part that wrapped.  Returns the number of stream bytes produced.
+ */
+static int mixblock(unsigned char *stream, int len) {
+    const int ratio = soundratio;
+    const int chans = channels;
+    int rl, i, t;
+
+    len /= 2*ratio;
+
+    rl = len;
+    if (FeedPoint+rl > 65536) rl = 65536-FeedPoint;
+
+    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
+        /* mute=2: stop music, but don't mute. */
+        if ((mute!=1)&&musicstatus)
+            preparesound(stream, rl*2*ratio);
+        else
+            memset(stream, 0, rl*2*ratio);
+
+        if (mute!=1) {
+            /* Linearly interpolate the sound buffer up by `ratio`: j1 is the
+               frame being left, j2 the one being approached, k the position
+               between them. */
+            int total = rl*ratio;       /* output K_INT16s in this run */
+            int j1 = FeedPoint;
+            int j2 = (FeedPoint+chans)&65535;
+            int k = 0;
+
+            for(i=0;i<total;) {
+                int lane;
+                for(lane=0;lane<chans;lane++,i++) {
+                    t = ((SoundBuffer[j1+lane]*(ratio-k) +
+                          SoundBuffer[j2+lane]*k) >> soundratioshift) +
+                        ((K_INT16 *)stream)[i];
+                    if (t<-32768) t=-32768;
+                    if (t>32767) t=32767;
+                    ((K_INT16 *)stream)[i]=t;
+                }
+                if (++k == ratio) {
+                    k = 0;
+                    j1 += chans;
+                    j2 = (j2+chans)&65535;
+                }
+            }
+        }
+    }
+    else
+        memcpy(stream, SoundBuffer+FeedPoint, rl*2);
+
+    memset(SoundBuffer+FeedPoint, 0, rl*2);
+
+    FeedPoint+=rl;
+    FeedPoint&=65535;
+
+    return rl*2*ratio;
+}
 
 void AudioCallback(void *userdata, unsigned char *stream, int len) {
-    int rl;
-    int i;
-    int t=0;
-    int j1, j2;
+    (void)userdata;
 
     if (quitgame) return;
 
@@ -770,97 +831,13 @@ void AudioCallback(void *userdata, unsigned char *stream, int len) {
     }
 
     PL_LockSound();
-
-    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) len>>=2;
-
-    len>>=1;
-    rl=len;
-
-    if (FeedPoint+rl>=65536) rl=65536-FeedPoint;
-
-    if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
-        /* mute=2: stop music, but don't mute. */
-        if ((mute!=1)&&musicstatus)
-            preparesound(stream, rl*2*4);
-        else
-            memset(stream, 0, rl*2*4);
-        j1=FeedPoint;
-        j2=(FeedPoint+channels)&65535;
-
-        if (mute!=1) {
-            for(i=0;i<(len<<2);i++) {
-                if (channels==1)
-                    switch(i&3) {
-                        case 0:
-                            t=SoundBuffer[j1]+((K_INT16 *)stream)[i];
-                            break;
-                        case 1:
-                            t=3*(SoundBuffer[j1]>>2)+(SoundBuffer[j2]>>2)+
-                                ((K_INT16 *)stream)[i];
-                            break;
-                        case 2:
-                            t=(SoundBuffer[j1]>>1)+(SoundBuffer[j2]>>1)+
-                                ((K_INT16 *)stream)[i];
-                            break;
-                        case 3:
-                            t=(SoundBuffer[j1]>>2)+3*(SoundBuffer[j2]>>2)+
-                                ((K_INT16 *)stream)[i];
-                            j1++;
-                            j2++;
-                            j2&=65535;
-                            break;
-                    }
-                else
-                    switch(i&7) {
-                        case 0:
-                        case 1:
-                            t=SoundBuffer[j1+(i&1)]+((K_INT16 *)stream)[i];
-                            break;
-                        case 2:
-                        case 3:
-                            t=3*(SoundBuffer[j1+(i&1)]>>2)+
-                                (SoundBuffer[j2+(i&1)]>>2)+
-                                ((K_INT16 *)stream)[i];
-                            break;
-                        case 4:
-                        case 5:
-                            t=(SoundBuffer[j1+(i&1)]>>1)+
-                                (SoundBuffer[j2+(i&1)]>>1)+
-                                ((K_INT16 *)stream)[i];
-                            break;
-                        case 6:
-                        case 7:
-                            t=(SoundBuffer[j1+(i&1)]>>2)+
-                                3*(SoundBuffer[j2+(i&1)]>>2)+
-                                ((K_INT16 *)stream)[i];
-                            if ((i&7)==7) {
-                                j1+=2;
-                                j2+=2;
-                                j2&=65535;
-                            }
-                            break;
-                    }
-                if (t<-32768) t=-32768;
-                if (t>32767) t=32767;
-                ((K_INT16 *)stream)[i]=t;
-            }
-        }
+    while (len > 0) {
+        int done = mixblock(stream, len);
+        if (done <= 0) break;          /* nothing left to feed; bail out */
+        stream += done;
+        len    -= done;
     }
-    else
-        memcpy(stream, SoundBuffer+FeedPoint, rl*2);
-    memset(SoundBuffer+FeedPoint, 0, rl*2);
-
-    FeedPoint+=rl;
-    FeedPoint&=65535;
-
     PL_UnlockSound();
-
-    if (rl<len) {
-        if (musicsource == MUSIC_SOURCE_ADLIB || musicsource == MUSIC_SOURCE_ADLIB_RANDOM)
-            AudioCallback(userdata, stream+rl, len-rl);
-        else
-            AudioCallback(userdata, stream+(rl<<2), (len-rl)<<2);
-    }
 }
 
 /* Copy sound to sound buffer. */
@@ -868,20 +845,23 @@ void AudioCallback(void *userdata, unsigned char *stream, int len) {
 void DumpSound(unsigned char *sound, K_UINT16 length, K_UINT32 playpoint, int pan) {
     K_INT32 adjustedVolume;
     K_UINT32 i, p;
-    int cvtmax, cvtlen, srcrate;
+    int cvtmax, cvtlen, dstrate;
     unsigned char *cvtbuf;
 
-    /* Sound effects are stored at the rate the music source implies; convert
-       them to whatever rate the audio device actually gave us. */
-    srcrate = (musicsource == MUSIC_SOURCE_ADLIB ||
-               musicsource == MUSIC_SOURCE_ADLIB_RANDOM) ? 44100 : 11025;
+    /* The effects in sounds.kzp are 11025Hz.  The sound buffer they land in
+       runs at samplerate/soundratio - the mixer interpolates it back up to
+       the output rate - so that, not the output rate, is what they have to be
+       converted to. */
+    dstrate = samplerate / soundratio;
+    if (dstrate <= 0) dstrate = SOUNDNATIVERATE;
 
-    cvtmax = (int)(((long)length * (long)samplerate) / srcrate) + 16;
+    cvtmax = (int)(((long)length * (long)dstrate) / SOUNDNATIVERATE) + 16;
     cvtbuf = malloc(cvtmax);
     if (cvtbuf == NULL)
         return;
 
-    cvtlen = PL_ResampleU8(sound, length, srcrate, cvtbuf, cvtmax, samplerate);
+    cvtlen = PL_ResampleU8(sound, length, SOUNDNATIVERATE,
+                           cvtbuf, cvtmax, dstrate);
 
     /* SoundBuffer holds 65536 signed 16 bit samples and wraps. */
     p = playpoint & 65535;

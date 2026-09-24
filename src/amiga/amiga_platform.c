@@ -16,6 +16,7 @@
 
 #include "lab3d.h"
 #include "amiga/amiga_video.h"
+#include "amiga/amiga_audio.h"
 
 /* ------------------------------------------------------------ library bases */
 
@@ -31,9 +32,6 @@ static struct MsgPort  *timerport;
 static ULONG            eclock_freq;
 static struct EClockVal start_eclock;
 static int              timer_ok;
-
-extern void amiga_audio_service(void);
-extern void amiga_audio_close(void);
 
 /* Settings owned by amiga_video.c. */
 extern ULONG amiga_cfg_modeid;

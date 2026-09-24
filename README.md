@@ -91,8 +91,8 @@ WITHOUT including the gamedata directory.)
 
 The Amiga port is a separate build of the same game: it uses no SDL and no
 OpenGL, drawing the labyrinth with its own software renderer and talking to
-intuition.library, graphics.library, cybergraphics.library, audio.device and
-lowlevel.library directly.
+intuition.library, graphics.library, cybergraphics.library, audio.device or
+ahi.device, and lowlevel.library directly.
 
 Four executables are supplied, one per CPU class:
 
@@ -144,6 +144,21 @@ Keyboard, mouse and joystick all work and are configurable from
 through lowlevel.library on port 1, so a CD32 pad's extra buttons are
 available as buttons 0-6 as well as an ordinary one-button stick.
 
+### Sound output
+
+*Setup -> Sound output* chooses between Paula and AHI:
+
+Setting | Meaning |
+--------|---------|
+`Automatic` | AHI on a 68040 or better, Paula below that. |
+`Paula (8 bit)` | audio.device, two hardware channels. Always available. |
+`AHI (16 bit)` | Sends 16 bit samples to ahi.device unit 0, using the player's AHI preferences. Actual output resolution depends on the selected driver. |
+
+*Automatic* selects Paula on 020 and 030 machines to leave more CPU time for
+the game. Anyone with a sound card in a slower machine can select AHI
+explicitly. If ahi.device V4 cannot be opened the game falls back to Paula
+and says so on stderr.
+
 ### What is not in the Amiga version
 
 - **Texture filtering.** The software rasteriser point-samples, which is what
@@ -153,7 +168,9 @@ available as buttons 0-6 as well as an ordinary one-button stick.
 - **General MIDI music.** Music is Adlib emulation, or off. The mixing rate is
   chosen from the CPU (11025 Hz on an 020/030, 22050 Hz on an 040, 28 kHz on an
   060); turning music off in the setup menu frees up a lot of CPU on slower
-  machines.
+  machines. The digital sound effects are unaffected by that choice - they are
+  11025 Hz in the game data and are played at 11025 Hz whatever the mixing rate
+  turns out to be.
 - **Compressed demo files.** `-recordx` (uncompressed) and `-play` work;
   gzip-compressed demos are refused with a message rather than misread.
 

@@ -484,6 +484,13 @@ EXTERN char textbuf[52];
 EXTERN K_INT16 musicsource, midiscrap;
 EXTERN K_UINT32 musicstatus, count, countstop;
 EXTERN K_UINT16 samplerate;
+/* The digital sound buffer runs at samplerate/soundratio; the mixer stretches
+   it back up to the output rate.  Adlib music is synthesised at the full
+   output rate, so on a machine that cannot run the device at 44100Hz only
+   this ratio may shrink - the effects themselves stay at their native
+   11025Hz.  Always a power of two; soundratioshift is its log2. */
+EXTERN int soundratio, soundratioshift;
+#define SOUNDNATIVERATE 11025
 EXTERN K_UINT16 numnotes, speed, drumstat, numchans, nownote;
 EXTERN K_UINT32* note;
 EXTERN K_UINT32 chanage[18];

@@ -22,6 +22,7 @@
 
 #include <devices/timer.h>
 #include <devices/audio.h>
+#include <devices/ahi.h>
 #include <devices/inputevent.h>
 
 #include <graphics/gfx.h>
@@ -40,6 +41,7 @@
 #include <utility/tagitem.h>
 
 #include <proto/exec.h>
+#include <clib/alib_protos.h>   /* BeginIO() and friends from amiga.lib */
 #include <proto/dos.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>

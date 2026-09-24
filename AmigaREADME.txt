@@ -4,8 +4,8 @@ Ken's Labyrinth for AmigaOS 3.x
 This is LAB3D/SDL's Amiga port.  It is the same game as the desktop versions,
 but it uses no SDL and no OpenGL: the labyrinth is drawn by a software
 renderer, and the display, sound and input go straight through
-intuition.library, graphics.library, cybergraphics.library, audio.device and
-lowlevel.library.
+intuition.library, graphics.library, cybergraphics.library, audio.device or
+ahi.device, and lowlevel.library.
 
 
 Requirements
@@ -18,6 +18,7 @@ Requirements
   * Optional: CyberGraphX or Picasso96, for RTG screen modes.  Without it the
     game runs on a native OCS/ECS/AGA screen instead.
   * Optional: a joystick or CD32 pad in port 1.
+  * Optional: ahi.device V4 or later, for 16 bit sound - see Sound below.
 
 
 Which executable?
@@ -64,6 +65,28 @@ Controls
 Keyboard, mouse and joystick all work, and all of them can be rebound from
 Setup -> Configure Input.  The joystick is read from port 1, and a CD32 pad's
 extra buttons show up as buttons 0 to 6.
+
+
+Sound
+-----
+
+Setup -> Sound output picks how the game reaches the speakers:
+
+  Automatic       AHI on a 68040 or better, Paula below that.
+  Paula (8 bit)   audio.device, two hardware channels.  Always available.
+  AHI (16 bit)    ahi.device, using whatever unit 0 is set to in AHI
+                  preferences.  With a sound card this is real 16 bit
+                  output.  The actual resolution with other AHI drivers
+                  depends on their hardware and configuration.
+
+Automatic selects Paula on 020 and 030 machines to leave more CPU time for the
+game.  If you have a sound card in a slower machine, choose AHI explicitly. If
+ahi.device cannot be opened the game falls back to Paula and says so.
+
+The mixing rate is chosen from the CPU - 11025 Hz below an 040, 22050 Hz on an
+040 and 28000 Hz on an 060 - because the Adlib emulation is synthesised at
+that rate and is what costs the time.  The digital sound effects are 11025 Hz
+in the game data and are played at that rate whatever the output rate is.
 
 
 Performance
