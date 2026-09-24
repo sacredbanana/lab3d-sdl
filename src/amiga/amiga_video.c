@@ -36,15 +36,23 @@ struct Library *AslBase;
 
 static struct ScreenBuffer *sbuf[2];
 static struct MsgPort      *dispport, *safeport;
-static int                  sbcurrent;
+static int                  sbcurrent;     /* the one we draw into */
+static int                  frontbuf;      /* the one Intuition is showing */
 static int                  safe_to_write = 1, safe_to_change = 1;
 static int                  doublebuffered;
+
+/* Sprite data for the blanked mouse pointer.  Intuition does not copy this -
+   it becomes the sprite DMA source - so it has to live in chip RAM. */
+static UWORD               *blankpointer;
 
 /* Scaled copy used when amiga_mode.scale == 2. */
 static UBYTE   *scalebuf;
 
 /* Colour table for WriteLUTPixelArray() on deep RTG screens. */
 static ULONG    lut[256];
+
+/* Defined further down; amiga_video_open() needs it before its definition. */
+void amiga_build_penmap(void);
 
 /* Chunky to planar helper tables (see amiga_c2p.c). */
 extern void amiga_c2p_init(void);
@@ -124,6 +132,10 @@ static void amiga_describe(const amiga_videomode *m) {
     fprintf(stderr, "Showing %dx%d of the %dx%d view at (%d,%d), %dx scale.\n",
             m->srcw, m->srch, AMIGA_VIEW_W, AMIGA_VIEW_H,
             m->destx, m->desty, m->scale);
+    if (!m->rtg)
+        fprintf(stderr, "Chip RAM free: %lu bytes (largest block %lu).\n",
+                (unsigned long)AvailMem(MEMF_CHIP),
+                (unsigned long)AvailMem(MEMF_CHIP | MEMF_LARGEST));
 }
 
 /* Fill in the RTG/depth details of a mode id the player chose. */
@@ -135,6 +147,12 @@ static void amiga_probe(amiga_videomode *m) {
         m->rtg = 1;
         m->pixfmt = (int)GetCyberIDAttr(CYBRIDATTR_PIXFMT, m->modeid);
         m->depth  = (int)GetCyberIDAttr(CYBRIDATTR_DEPTH, m->modeid);
+    } else {
+        /* Native screens are planar and AGA stops at eight bitplanes.  The
+           requester will happily hand back a deeper value for a mode it
+           thinks is promotable; asking Intuition for it just fails. */
+        if (m->depth > 8) m->depth = 8;
+        if (m->depth < 1) m->depth = 1;
     }
     amiga_layout(m);
 }
@@ -178,24 +196,68 @@ int amiga_select_screenmode(amiga_videomode *out) {
 
 /* ---------------------------------------------------------- screen opening */
 
+/*
+ * Take one message off a double buffering port.
+ *
+ * WaitPort() only peeks: it returns as soon as the port is non-empty and
+ * leaves the message queued, so waiting twice without a GetMsg() in between
+ * is satisfied by the same stale message and we carry on while the display
+ * is still reading the buffer.
+ */
+static void amiga_wait_msg(struct MsgPort *port) {
+    if (!port) return;
+    while (!GetMsg(port))
+        WaitPort(port);
+}
+
+/* Block until the last ChangeScreenBuffer() has been through both stages. */
+static void amiga_sync_buffers(void) {
+    if (!doublebuffered) return;
+
+    if (!safe_to_change) { amiga_wait_msg(dispport); safe_to_change = 1; }
+    if (!safe_to_write)  { amiga_wait_msg(safeport); safe_to_write  = 1; }
+}
+
 static void amiga_free_buffers(void) {
     int i;
 
     if (doublebuffered) {
-        /* Let any pending flips finish before we pull the buffers away. */
-        if (!safe_to_change && dispport) WaitPort(dispport);
-        if (!safe_to_write  && safeport) WaitPort(safeport);
+        /* Let any pending flip finish before we pull the buffers away. */
+        amiga_sync_buffers();
+
+        /*
+         * CloseScreen() frees whatever bitmap the screen is displaying, and
+         * that has to be the screen's own one.  If we leave sbuf[1] on show,
+         * CloseScreen() frees the bitmap FreeScreenBuffer() has already
+         * released and the screen's real bitplanes are never given back -
+         * on a native screen that is hundreds of KB of chip RAM gone until
+         * the next reboot, which is why OpenScreen() starts failing for
+         * everything (this game, ScreenMode's Test gadget) after a few runs.
+         */
+        if (frontbuf != 0 && amiga_screen && sbuf[0]) {
+            if (ChangeScreenBuffer(amiga_screen, sbuf[0])) {
+                frontbuf       = 0;
+                safe_to_change = 0;
+                safe_to_write  = 0;
+                amiga_sync_buffers();
+            } else {
+                fprintf(stderr, "Warning: could not restore the original "
+                                "screen buffer before closing.\n");
+            }
+        }
     }
 
     for (i = 0; i < 2; i++) {
         if (sbuf[i]) {
-            FreeScreenBuffer(amiga_screen, sbuf[i]);
+            if (amiga_screen)
+                FreeScreenBuffer(amiga_screen, sbuf[i]);
             sbuf[i] = NULL;
         }
     }
     if (dispport) { DeleteMsgPort(dispport); dispport = NULL; }
     if (safeport) { DeleteMsgPort(safeport); safeport = NULL; }
     doublebuffered = 0;
+    frontbuf = 0;
 }
 
 static void amiga_setup_buffers(void) {
@@ -217,7 +279,10 @@ static void amiga_setup_buffers(void) {
         sbuf[i]->sb_DBufInfo->dbi_DispMessage.mn_ReplyPort = dispport;
     }
 
-    sbcurrent = 0;
+    /* sbuf[0] wraps the screen's own bitmap and is what Intuition is already
+       showing, so the first frame belongs in sbuf[1]. */
+    frontbuf  = 0;
+    sbcurrent = 1;
     safe_to_write = safe_to_change = 1;
     doublebuffered = 1;
 }
@@ -288,12 +353,11 @@ int amiga_video_open(void) {
 
     /* The game draws its own crosshair and menus; Intuition's pointer would
        just sit on top of them. */
-    {
-        static const UWORD __attribute__((aligned(4))) blankpointer[] = {
-            0, 0, 0, 0
-        };
-        SetPointer(amiga_window, (UWORD *)blankpointer, 1, 1, 0, 0);
-    }
+    /* Six zero words: position/control pair, one line of image, terminator.
+       Four would leave the sprite DMA reading past the end of the array. */
+    blankpointer = AllocVec(6 * sizeof(UWORD), MEMF_CHIP | MEMF_CLEAR);
+    if (blankpointer)
+        SetPointer(amiga_window, blankpointer, 1, 1, 0, 0);
 
     amiga_setup_buffers();
 
@@ -332,16 +396,26 @@ int amiga_video_open(void) {
 }
 
 void amiga_video_close(void) {
-    amiga_free_buffers();
-
+    /* Order matters: the window's layer hangs off the screen's bitmap, so it
+       goes first; then the buffers (which needs the screen to still exist);
+       then the screen itself. */
     if (amiga_window) {
         ClearPointer(amiga_window);
         CloseWindow(amiga_window);
         amiga_window = NULL;
     }
+    if (blankpointer) { FreeVec(blankpointer); blankpointer = NULL; }
+
+    amiga_free_buffers();
+
     if (amiga_screen) { CloseScreen(amiga_screen); amiga_screen = NULL; }
     if (amiga_chunky) { FreeVec(amiga_chunky);     amiga_chunky = NULL; }
     if (scalebuf)     { FreeVec(scalebuf);         scalebuf = NULL; }
+
+    fprintf(stderr, "Display closed.  Chip RAM free: %lu bytes "
+                    "(largest block %lu).\n",
+            (unsigned long)AvailMem(MEMF_CHIP),
+            (unsigned long)AvailMem(MEMF_CHIP | MEMF_LARGEST));
 }
 
 /* ---------------------------------------------------------------- palette */
@@ -538,6 +612,7 @@ void amiga_blit_frame(void) {
         }
 
         if (ChangeScreenBuffer(amiga_screen, sbuf[sbcurrent])) {
+            frontbuf       = sbcurrent;
             safe_to_change = 0;
             safe_to_write  = 0;
             sbcurrent ^= 1;
