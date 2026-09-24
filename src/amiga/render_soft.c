@@ -86,6 +86,27 @@ void softtri(double *sx, double *sy, double *tu, double *tv,
 
 /* --------------------------------------------------------------- helpers */
 
+/* Round a double to the nearest integer rather than toward zero.  Every fixed
+   point step below is rounded once and then added hundreds of times, so a step
+   that is half an ulp out drags the far end of the span badly off. */
+static K_INT32 fxround(double v) {
+    return (K_INT32)(v < 0.0 ? v - 0.5 : v + 0.5);
+}
+
+/* Round to nearest and reduce modulo 2^32.  Converting an out of range double
+   to an integer is undefined and, on most hardware, saturates rather than
+   wrapping - so an accumulator that is meant to wrap has to have its starting
+   value reduced here rather than by the cast.  The range test keeps the
+   expensive path off the common case. */
+static K_UINT32 fxwrap(double v) {
+    if (v > -2147483008.0 && v < 2147483008.0)
+        return (K_UINT32)fxround(v);
+    v = fmod(v, 4294967296.0);
+    if (v < 0.0) v += 4294967296.0;
+    if (v >= 4294967296.0) v = 0.0;          /* only reachable via NaN */
+    return (K_UINT32)v;
+}
+
 static void build_shadetab(void) {
     int i;
 
@@ -421,6 +442,10 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
     double near = (double)neardist;
     double sx1, sx2, invd1, invd2, tovd1, tovd2;
     double topk, botk;
+    double spaninv, didx;
+#define SEGLEN 16
+    double zstep, ytstep, ybstep;
+    K_INT32 Z, dZ, YT, dYT, YB, dYB;
     const unsigned char *texbase;
     int xa, xb, x, seg;
 
@@ -472,27 +497,69 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
 
     texbase = walseg[texnum];
 
-    /* Perspective correction is exact every 16 columns and interpolated in
-       between, which is invisible at this resolution and saves a divide per
-       pixel column. */
-#define SEGLEN 16
+    /*
+     * 1/d is linear in screen x, and the depth value, the top row and the
+     * bottom row are each an affine function of 1/d - so all three are linear
+     * in x and can be walked with one 32 bit add apiece.  Only the texture
+     * column needs a real perspective divide, and that is still done once per
+     * 16 column segment and interpolated in between.
+     *
+     * Doing it the obvious way instead costs about eleven soft float calls per
+     * column, which is what made this loop the second most expensive thing in
+     * the renderer on a machine with no FPU.
+     */
+    spaninv = 1.0 / (sx2 - sx1);
+    didx    = (invd2 - invd1) * spaninv;
+
+    /* The three steps are constant over the whole quad; the values themselves
+       are reseeded at each segment boundary from the exactly computed 1/d
+       there, which keeps a rounded step from accumulating across 360 columns
+       and stops the depth values drifting at the far end of a long wall. */
+    zstep  = ZSCALE * didx;
+    ytstep = topk * didx * 65536.0;
+    ybstep = botk * didx * 65536.0;
+
+    /* Each of these has to survive as a 32 bit accumulator, so bound them over
+       the whole span rather than at its first column: 1/d is monotonic along
+       the quad, so it is largest at one of the two ends.  A camera height or
+       projection far outside the range the game uses would not fit, and a
+       garbage span is worse than a missing wall. */
+    {
+        double idmax = (invd1 > invd2 ? invd1 : invd2) * 1.05;
+        double hrow  = fabs((double)horizon_row) * 65536.0;
+
+        if (!(ZSCALE * idmax                      + fabs(zstep)  * SEGLEN < 2.0e9 &&
+              hrow + fabs(topk) * idmax * 65536.0 + fabs(ytstep) * SEGLEN < 2.0e9 &&
+              hrow + fabs(botk) * idmax * 65536.0 + fabs(ybstep) * SEGLEN < 2.0e9))
+            return;
+    }
+
+    dZ  = fxround(zstep);
+    dYT = fxround(ytstep);
+    dYB = fxround(ybstep);
+
 
     for (seg = xa; seg < xb; seg += SEGLEN) {
         int xe = seg + SEGLEN;
-        double a0, a1, id0, id1, idstep, tv0, tv1, tc0, tc1;
+        double a0, a1, id0, id1, tv0, tv1, tc0, tc1;
         K_INT32 tcur, tinc;
-        double id;
         int n;
 
         if (xe > xb) xe = xb;
         n = xe - seg;
 
-        a0 = ((double)seg + 0.5 - sx1) / (sx2 - sx1);
-        a1 = ((double)(xe - 1) + 0.5 - sx1) / (sx2 - sx1);
+        a0 = ((double)seg + 0.5 - sx1) * spaninv;
+        a1 = ((double)(xe - 1) + 0.5 - sx1) * spaninv;
 
         id0 = invd1 + (invd2 - invd1) * a0;
         id1 = invd1 + (invd2 - invd1) * a1;
-        if (id0 <= 0.0 || id1 <= 0.0) continue;
+
+        if (id0 <= 0.0 || id1 <= 0.0)
+            continue;
+
+        Z  = fxround(ZSCALE * id0);
+        YT = fxround(((double)horizon_row + topk * id0) * 65536.0);
+        YB = fxround(((double)horizon_row + botk * id0) * 65536.0);
 
         tv0 = tovd1 + (tovd2 - tovd1) * a0;
         tv1 = tovd1 + (tovd2 - tovd1) * a1;
@@ -500,29 +567,22 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         tc0 = tv0 / id0;
         tc1 = tv1 / id1;
 
-        tcur   = (K_INT32)(tc0 * 65536.0);
-        tinc   = (n > 1) ? (K_INT32)((tc1 - tc0) * 65536.0 / (n - 1)) : 0;
-        id     = id0;
-        idstep = (n > 1) ? (id1 - id0) / (n - 1) : 0.0;
+        /* tcur is a texture column that is about to be floored to a whole
+           texel, so truncating it is exactly right and rounding it to nearest
+           would pick the wrong texel just below a boundary.  tinc is a step
+           that gets added up, so that one does want rounding. */
+        tcur = (K_INT32)(tc0 * 65536.0);
+        tinc = (n > 1) ? fxround((tc1 - tc0) * 65536.0 / (n - 1)) : 0;
 
-        for (x = seg; x < xe; x++, tcur += tinc, id += idstep) {
-            K_INT32 z, ytop, ybot;
-            int tcol;
-
-            if (id <= 0.0) continue;
-
-            z = (K_INT32)(ZSCALE * id);
-
-            if (testz && z <= zbuf[x]) continue;
-            if (writez) zbuf[x] = z;
+        for (x = seg; x < xe;
+             x++, tcur += tinc, Z += dZ, YT += dYT, YB += dYB) {
+            if (Z <= 0) continue;
+            if (testz && Z <= zbuf[x]) continue;
+            if (writez) zbuf[x] = Z;
             if (depthonly) continue;
 
-            ytop = (K_INT32)(((double)horizon_row + topk * id) * 65536.0);
-            ybot = (K_INT32)(((double)horizon_row + botk * id) * 65536.0);
-
-            tcol = (tcur >> 16) & 63;
-            draw_span(amiga_chunky + x, texbase + (tcol << 6),
-                      ytop, ybot, shaded, keycolour);
+            draw_span(amiga_chunky + x, texbase + (((tcur >> 16) & 63) << 6),
+                      YT, YB, shaded, keycolour);
         }
     }
 #undef SEGLEN
@@ -662,103 +722,302 @@ void R_DrawBillboard(K_INT32 x1, K_INT32 y1, K_INT32 x2, K_INT32 y2,
     }
 }
 
-/* Affine textured triangle with a single depth value, used only for the
-   spinning sprites and the 2D overlay sprites. */
+/*
+ * Affine textured triangle with a single depth value, used by the spinning
+ * sprites and by every 2D overlay sprite.
+ *
+ * The barycentric coordinates and the two texture coordinates are all affine
+ * functions of the screen position, so each one is evaluated once at the top
+ * left of the bounding box and then stepped by a constant per pixel and per
+ * row.  That leaves the inner loop with five 32 bit adds and no division at
+ * all, which matters enormously on a 68k with no FPU: the straightforward
+ * formulation costs two __divdf3 calls and about twenty soft float calls per
+ * pixel, and a close up spinning warp covers thousands of pixels.
+ *
+ * Both scales are chosen per triangle from how large the quantities actually
+ * get over the clipped bounding box, so the accumulators cannot overflow and
+ * every bit left over goes to the fraction.  That matters: the step values are
+ * rounded once and then added up to 600 times, so a step that is half an ulp
+ * out drags the last column 300 ulps off.  The barycentrics are only ever sign
+ * tested, so scaling them by any positive constant is free.
+ */
+
 void softtri(double *sx, double *sy, double *tu, double *tv,
              int a, int b, int c, int texnum, K_INT32 z)
 {
     const unsigned char *tex = walseg[texnum];
     double x0 = sx[a], y0 = sy[a], x1 = sx[b], y1 = sy[b], x2 = sx[c], y2 = sy[c];
     double det = (x1-x0)*(y2-y0) - (x2-x0)*(y1-y0);
+    double iu0 = tu[a], iu1 = tu[b], iu2 = tu[c];
+    double iv0 = tv[a], iv1 = tv[b], iv2 = tv[c];
+    double inv;
+    double a0, b0, c0, a1, b1, c1, a2, b2, c2;
+    double au, bu, cu, av, bv, cv;
     double miny, maxy, minx, maxx;
-    double iu[3], iv[3];
-    int yi, xi, ytop, ybot;
+    double px0, py0, lmax, lscale, dmax, tscale;
+    K_INT32 l0row, l1row, l2row;
+    K_INT32 dl0dx, dl1dx, dl2dx, dl0dy, dl1dy, dl2dy;
+    K_UINT32 urow, vrow, dudx, dvdx, dudy, dvdy;
+    int xlo, xhi, ylo, yhi, xi, yi, i, tshift;
 
     if (fabs(det) < 1e-9) return;
-
-    /* Barycentric setup: u,v as linear functions of screen position. */
-    iu[0] = tu[a]; iu[1] = tu[b]; iu[2] = tu[c];
-    iv[0] = tv[a]; iv[1] = tv[b]; iv[2] = tv[c];
 
     miny = y0; if (y1 < miny) miny = y1; if (y2 < miny) miny = y2;
     maxy = y0; if (y1 > maxy) maxy = y1; if (y2 > maxy) maxy = y2;
     minx = x0; if (x1 < minx) minx = x1; if (x2 < minx) minx = x2;
     maxx = x0; if (x1 > maxx) maxx = x1; if (x2 > maxx) maxx = x2;
 
-    ytop = (int)floor(miny); if (ytop < VIEW_TOP) ytop = VIEW_TOP;
-    ybot = (int)ceil(maxy);  if (ybot > VIEW_BOT) ybot = VIEW_BOT;
-    if (minx < 0) minx = 0;
-    if (maxx > VW) maxx = VW;
+    /* Written so that a NaN coordinate fails the test and bails out rather
+       than reaching an undefined double to int conversion below. */
+    if (!(minx > -1.0e6 && maxx < 1.0e6 && miny > -1.0e6 && maxy < 1.0e6))
+        return;
 
-    for (yi = ytop; yi < ybot; yi++) {
-        double py = yi + 0.5;
-        for (xi = (int)minx; xi < (int)maxx; xi++) {
-            double px = xi + 0.5;
-            double l1 = ((px-x0)*(y2-y0) - (x2-x0)*(py-y0)) / det;
-            double l2 = ((x1-x0)*(py-y0) - (px-x0)*(y1-y0)) / det;
-            double l0 = 1.0 - l1 - l2;
-            double u, v;
-            int tc, tr;
+    xlo = (int)floor(minx); if (xlo < 0) xlo = 0;
+    xhi = (int)ceil(maxx);  if (xhi > VW) xhi = VW;
+    ylo = (int)floor(miny); if (ylo < VIEW_TOP) ylo = VIEW_TOP;
+    yhi = (int)ceil(maxy);  if (yhi > VIEW_BOT) yhi = VIEW_BOT;
+    if (xlo >= xhi || ylo >= yhi) return;
+
+    /* l1 and l2 written out as a*x + b*y + c, and l0 from l0+l1+l2 == 1. */
+    inv = 1.0 / det;
+    a1 =  (y2 - y0) * inv;
+    b1 = -(x2 - x0) * inv;
+    c1 =  (x2*y0 - x0*y2) * inv;
+    a2 = -(y1 - y0) * inv;
+    b2 =  (x1 - x0) * inv;
+    c2 =  (x0*y1 - x1*y0) * inv;
+    a0 = -(a1 + a2);
+    b0 = -(b1 + b2);
+    c0 = 1.0 - (c1 + c2);
+
+    au = a0*iu0 + a1*iu1 + a2*iu2;
+    bu = b0*iu0 + b1*iu1 + b2*iu2;
+    cu = c0*iu0 + c1*iu1 + c2*iu2;
+    av = a0*iv0 + a1*iv1 + a2*iv2;
+    bv = b0*iv0 + b1*iv1 + b2*iv2;
+    cv = c0*iv0 + c1*iv1 + c2*iv2;
+
+    px0 = xlo + 0.5;
+    py0 = ylo + 0.5;
+
+    /* Largest barycentric magnitude over the four corners of the clipped box.
+       They are affine, so their extremes over a rectangle are at its corners. */
+    lmax = 1.0;
+    for (i = 0; i < 4; i++) {
+        double px = (i & 1) ? (xhi - 0.5) : px0;
+        double py = (i & 2) ? (yhi - 0.5) : py0;
+        double t1 = a1*px + b1*py + c1;
+        double t2 = a2*px + b2*py + c2;
+        double t0 = 1.0 - t1 - t2;
+        if (fabs(t0) > lmax) lmax = fabs(t0);
+        if (fabs(t1) > lmax) lmax = fabs(t1);
+        if (fabs(t2) > lmax) lmax = fabs(t2);
+    }
+
+    /* 2^29 rather than 2^31 so that a row step can be added 240 times and a
+       column step 360 times without the accumulator leaving 32 bits. */
+    lscale = 536870912.0 / lmax;
+
+    l0row = fxround((a0*px0 + b0*py0 + c0) * lscale);
+    l1row = fxround((a1*px0 + b1*py0 + c1) * lscale);
+    l2row = fxround((a2*px0 + b2*py0 + c2) * lscale);
+    dl0dx = fxround(a0 * lscale); dl0dy = fxround(b0 * lscale);
+    dl1dx = fxround(a1 * lscale); dl1dy = fxround(b1 * lscale);
+    dl2dx = fxround(a2 * lscale); dl2dy = fxround(b2 * lscale);
+
+    /*
+     * u and v get shifted back to whole texels, so their scale is a power of
+     * two, and it is chosen from the size of the *steps* rather than from how
+     * large u and v get over the box.  Sizing it by the values would be a
+     * trap: on a sliver triangle the box corners lie far outside it, so the
+     * values there blow up, the scale collapses, and precision is lost in the
+     * middle of the triangle where it is the only thing that matters.
+     *
+     * The values themselves may then overflow out at those corners.  That is
+     * harmless and deliberate - the accumulators are unsigned, so they wrap
+     * as exact modular arithmetic, and by the time the walk re-enters the
+     * triangle (the only place u and v are ever read) the true value is back
+     * inside 32 bits and the low bits are exactly right.
+     */
+    dmax = 1.0;
+    if (fabs(au) > dmax) dmax = fabs(au);
+    if (fabs(bu) > dmax) dmax = fabs(bu);
+    if (fabs(av) > dmax) dmax = fabs(av);
+    if (fabs(bv) > dmax) dmax = fabs(bv);
+
+    tshift = 24;
+    while (tshift > 8 && dmax * (double)(1UL << tshift) > 1073741824.0)
+        tshift--;
+    tscale = (double)(1UL << tshift);
+
+    urow = fxwrap((au*px0 + bu*py0 + cu) * tscale);
+    vrow = fxwrap((av*px0 + bv*py0 + cv) * tscale);
+    dudx = (K_UINT32)fxround(au * tscale); dudy = (K_UINT32)fxround(bu * tscale);
+    dvdx = (K_UINT32)fxround(av * tscale); dvdy = (K_UINT32)fxround(bv * tscale);
+
+    for (yi = ylo; yi < yhi; yi++) {
+        K_INT32 l0 = l0row, l1 = l1row, l2 = l2row;
+        K_UINT32 u = urow, v = vrow;
+        unsigned char *dst = amiga_chunky + (size_t)yi * VW;
+
+        for (xi = xlo; xi < xhi;
+             xi++, l0 += dl0dx, l1 += dl1dx, l2 += dl2dx, u += dudx, v += dvdx) {
+            K_INT32 tc, tr;
             unsigned char col;
 
-            if (l0 < 0.0 || l1 < 0.0 || l2 < 0.0) continue;
+            /* All three non-negative, i.e. no sign bit set in any of them. */
+            if ((l0 | l1 | l2) < 0) continue;
             if (z && z <= zbuf[xi]) continue;
 
-            u = l0*iu[0] + l1*iu[1] + l2*iu[2];
-            v = l0*iv[0] + l1*iv[1] + l2*iv[2];
-
-            tc = (int)u; if (tc < 0) tc = 0; if (tc > 63) tc = 63;
-            tr = (int)v; if (tr < 0) tr = 0; if (tr > 63) tr = 63;
+            tc = (K_INT32)u >> tshift; if ((K_UINT32)tc > 63) tc = (tc < 0) ? 0 : 63;
+            tr = (K_INT32)v >> tshift; if ((K_UINT32)tr > 63) tr = (tr < 0) ? 0 : 63;
 
             col = tex[(tc << 6) + tr];
             if (col != 255)
-                amiga_chunky[yi * VW + xi] = col;
+                dst[xi] = col;
         }
+
+        l0row += dl0dy; l1row += dl1dy; l2row += dl2dy;
+        urow  += dudy;  vrow  += dvdy;
     }
 }
 
-/* Floor decals: a 1024x1024 texture lying flat on the floor.  With no pitch
-   every screen row is at a constant distance, so one division per row and a
-   linear walk across it is all this needs. */
+/* Integer floor and ceiling division; C's own division truncates toward zero,
+   which gives the wrong span edge for a negative numerator. */
+static K_INT32 fdiv(K_INT32 a, K_INT32 b) {
+    K_INT32 q = a / b, r = a % b;
+    if (r != 0 && ((r < 0) != (b < 0))) q--;
+    return q;
+}
+
+static K_INT32 cdiv(K_INT32 a, K_INT32 b) {
+    K_INT32 q = a / b, r = a % b;
+    if (r != 0 && ((r < 0) == (b < 0))) q++;
+    return q;
+}
+
+/* Round to nearest, positive divisor only.  The quotients below are a start
+   value and a step that is then added up to 360 times, so rounding the step
+   rather than truncating it halves the drift across a row. */
+static K_INT32 rdivp(K_INT32 a, K_INT32 b) {
+    return (a < 0) ? -(((-a) + (b >> 1)) / b) : (a + (b >> 1)) / b;
+}
+
+/*
+ * Floor decals: a 1024x1024 texture lying flat on the floor.
+ *
+ * With no pitch every screen row sits at a constant distance, so the world
+ * position walks linearly across the row.  Writing the distance to row
+ * horizon_row + r as kdist/r makes every per-row quantity a constant over r,
+ * which leaves one integer division each for the start and the step instead
+ * of the floating point divide and multiply the obvious form needs.
+ *
+ * The columns the decal actually covers are then solved for directly rather
+ * than testing all 360 of them, which matters because a decal usually covers
+ * a small part of the screen and the old loop paid full price for every row
+ * from the horizon down whether it drew anything or not.
+ */
 void R_DrawFloorSprite(K_UINT16 x, K_UINT16 y, K_INT16 j) {
     const unsigned char *tex = walseg[j];
     double zfloor = 1024.0 - cam_ez;
-    int row;
+    double kdist, axd, ayd, bxd, byd, oxd, oyd, m, scale;
+    K_INT32 AX, AY, BX, BY, OX, OY, HALF, zmul;
+    int shift, rmax, row, rlast;
 
     if (zfloor <= 0.0) return;
 
-    for (row = horizon_row + 1; row < VIEW_BOT; row++) {
-        double d = proj_y * zfloor / (row - horizon_row);
-        double wx, wy, stepx, stepy;
-        K_INT32 z;
-        int col;
+    kdist = proj_y * zfloor;
+    /* Below this the nearest row is already inside the near plane, so the
+       loop would draw nothing; it also keeps zmul below in range. */
+    if (kdist < (double)neardist) return;
 
-        if (d < (double)neardist) continue;
+    /* World position at screen (horizon_row + r, col):
+         rx = oxd + axd/r + col * bxd/r,  and likewise for y.  */
+    axd =  kdist * (cam_fx + 179.5 * cam_fy / proj_x);
+    bxd = -cam_fy * kdist / proj_x;
+    ayd =  kdist * (cam_fy - 179.5 * cam_fx / proj_x);
+    byd =  cam_fx * kdist / proj_x;
+    oxd =  cam_ex - (double)x;
+    oyd =  cam_ey - (double)y;
 
-        z = (K_INT32)(ZSCALE / d);
+    /* Largest magnitude any of the fixed point quantities has to hold, and
+       the biggest binary scale that keeps it inside 30 bits. */
+    m = 512.0 + fabs(oxd) + fabs(axd);
+    if (512.0 + fabs(oyd) + fabs(ayd) > m) m = 512.0 + fabs(oyd) + fabs(ayd);
+    shift = 16;
+    while (shift > 4 && m * (double)(1UL << shift) > 1.0e9)
+        shift--;
+    scale = (double)(1UL << shift);
 
-        /* World position at the left edge of the row, and the step per pixel. */
-        {
-            double e0 = (0.5 - 180.0) * d / proj_x;
-            double estep = d / proj_x;
+    AX = fxround(axd * scale); BX = fxround(bxd * scale); OX = fxround(oxd * scale);
+    AY = fxround(ayd * scale); BY = fxround(byd * scale); OY = fxround(oyd * scale);
+    HALF = (K_INT32)512 << shift;
 
-            wx = cam_ex + cam_fx*d - cam_fy*e0;
-            wy = cam_ey + cam_fy*d + cam_fx*e0;
-            stepx = -cam_fy * estep;
-            stepy =  cam_fx * estep;
+    /* z is 2^24/d and d is kdist/r, so z is simply proportional to r. */
+    zmul = (K_INT32)(ZSCALE / kdist * 256.0);
+
+    /* Rows past this one are nearer than the near plane. */
+    rmax = (int)(kdist / (double)neardist);
+    rlast = horizon_row + 1 + rmax;
+    if (rlast > VIEW_BOT) rlast = VIEW_BOT;
+
+    for (row = horizon_row + 1; row < rlast; row++) {
+        int r = row - horizon_row;
+        K_INT32 rx0 = OX + rdivp(AX, r), sx = rdivp(BX, r);
+        K_INT32 ry0 = OY + rdivp(AY, r), sy = rdivp(BY, r);
+        K_INT32 rx, ry, z;
+        unsigned char *dst;
+        int lo = 0, hi = VW, t0, t1, col;
+
+        /* Columns where the world position is inside the decal square. */
+        if (sx > 0) {
+            t0 = cdiv(-HALF - rx0, sx); t1 = cdiv(HALF - rx0, sx);
+        } else if (sx < 0) {
+            t0 = fdiv(HALF - rx0, sx) + 1; t1 = fdiv(-HALF - rx0, sx) + 1;
+        } else {
+            if (rx0 < -HALF || rx0 >= HALF) continue;
+            t0 = 0; t1 = VW;
         }
+        if (t0 > lo) lo = t0;
+        if (t1 < hi) hi = t1;
 
-        for (col = 0; col < VW; col++, wx += stepx, wy += stepy) {
-            int lx = (int)(wx - (double)x) + 512;
-            int ly = (int)(wy - (double)y) + 512;
+        if (sy > 0) {
+            t0 = cdiv(-HALF - ry0, sy); t1 = cdiv(HALF - ry0, sy);
+        } else if (sy < 0) {
+            t0 = fdiv(HALF - ry0, sy) + 1; t1 = fdiv(-HALF - ry0, sy) + 1;
+        } else {
+            if (ry0 < -HALF || ry0 >= HALF) continue;
+            t0 = 0; t1 = VW;
+        }
+        if (t0 > lo) lo = t0;
+        if (t1 < hi) hi = t1;
+
+        if (lo < 0) lo = 0;
+        if (hi > VW) hi = VW;
+        if (lo >= hi) continue;
+
+        z   = (zmul * r) >> 8;
+        rx  = rx0 + lo * sx;
+        ry  = ry0 + lo * sy;
+        dst = amiga_chunky + (size_t)row * VW;
+
+        for (col = lo; col < hi; col++, rx += sx, ry += sy) {
+            /* A shift floors, where the old double code's (int) cast
+               truncated toward zero and so made the texel straddling the
+               middle of the decal one world unit wider than the rest.  A
+               shift is the convention the wall renderer already uses. */
+            K_INT32 lx = ((rx >> shift) + 512) >> 4;
+            K_INT32 ly = ((ry >> shift) + 512) >> 4;
             unsigned char c;
 
-            if (lx < 0 || lx >= 1024 || ly < 0 || ly >= 1024) continue;
+            /* The span is exact in real arithmetic; this catches the one
+               texel either end that rounding can push outside. */
+            if ((K_UINT32)lx > 63 || (K_UINT32)ly > 63) continue;
             if (z <= zbuf[col]) continue;
 
-            c = tex[((lx >> 4) << 6) + (ly >> 4)];
+            c = tex[(lx << 6) + ly];
             if (c != 255)
-                amiga_chunky[row * VW + col] = c;
+                dst[col] = c;
         }
     }
 }
