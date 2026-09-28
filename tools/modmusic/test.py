@@ -1,9 +1,49 @@
 #!/usr/bin/env python3
-"""Host sanitizer tests of the shipped modules, player, and real game mixer."""
+"""Host tests of the shipped modules: player and real game mixer under the
+sanitizers, malformed-file rejection, and a fidelity check of every module
+against the Adlib emulator playing the same KSM song."""
 from pathlib import Path
+import json
 import subprocess
 import tempfile
-from generate import ROOT, function
+import numpy as np
+import generate as g
+from generate import ROOT
+
+PLAYER = r'''
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include "modmusic.h"
+int main(int argc, char **argv) {
+    int rate=atoi(argv[2]); long frames=atol(argv[3]), done=0; int16_t buf[4096];
+    if(modmusic_load(argv[1])) return 1;
+    while(done<frames) {
+        long n=frames-done; if(n>4096) n=4096;
+        modmusic_render(buf,(int)n,rate,1,64); fwrite(buf,2,n,stdout); done+=n;
+    }
+    return 0;
+}
+'''
+
+def log_spectrogram(x, rate, frame):
+    n = len(x) // frame
+    x = x[:n*frame].reshape(n, frame) * np.hanning(frame)
+    spec = np.abs(np.fft.rfft(x, axis=1))**2
+    freqs = np.fft.rfftfreq(frame, 1/rate)
+    edges = np.geomspace(80, 8000, 49)
+    bands = np.zeros((n, 48))
+    for i in range(48):
+        m = (freqs >= edges[i]) & (freqs < edges[i+1])
+        bands[:, i] = spec[:, m].sum(axis=1) if m.any() else 0
+    return 10*np.log10(bands + 1e3)
+
+def similarity(a, b, rate):
+    """(log-spectrogram correlation, RMS level difference in dB) of two renders."""
+    n = min(len(a), len(b)); a, b = a[:n], b[:n]
+    corr = np.corrcoef(log_spectrogram(a, rate, rate//30).ravel(),
+                       log_spectrogram(b, rate, rate//30).ravel())[0, 1]
+    return corr, 20*np.log10(np.sqrt((b**2).mean()) / np.sqrt((a**2).mean()))
 
 HARNESS = r'''
 #include <assert.h>
@@ -31,7 +71,8 @@ HARNESS+=r'''
 static int16_t alone[8192], together[8192], scratch[2048];
 int main(int argc,char **argv) {
     int file, ratio, stereo, i, loops;
-    for(file=1;file<argc;file++) {
+    for(file=1;file<argc;file+=2) {
+        int seconds=atoi(argv[file+1]);
         assert(!modmusic_load(argv[file]));
         for(ratio=1;ratio<=4;ratio*=2) for(stereo=1;stereo<=2;stereo++) {
             int len=4096, n;
@@ -61,7 +102,7 @@ int main(int argc,char **argv) {
         /* Longer than two loops of the longest song, including sample
            boundaries, sequence jump and fractional timing accumulation. */
         modmusic_start();
-        for(loops=0;loops<3000;loops++) modmusic_render(scratch,1024,22050,1,64);
+        for(loops=0;loops<(seconds*2+2)*22050/1024;loops++) modmusic_render(scratch,1024,22050,1,64);
         modmusic_start();
         modmusic_render(alone,2048,22050,1,64);
         modmusic_start();
@@ -84,9 +125,23 @@ with tempfile.TemporaryDirectory() as tmp:
     src=tmp/'test.c'; src.write_text(HARNESS)
     exe=tmp/'test'
     subprocess.run(['cc','-O1','-g','-fsanitize=address,undefined','-I'+str(ROOT/'include'),str(src),str(ROOT/'src/modmusic.c'),'-o',str(exe)],check=True)
-    mods=sorted((ROOT/'gamedata').glob('*/mods/*.mod'))
+    report=json.loads((ROOT/'tools/modmusic/manifest.json').read_text())
+    mods=[ROOT/x['path'] for x in report]
     assert len(mods)==121
-    subprocess.run([str(exe),*map(str,mods)],check=True)
+    assert all(p.is_file() for p in mods)
+    args=[str(exe)]
+    for p,x in zip(mods,report):
+        b=p.read_bytes()
+        assert b[1080:1084]==b'12CH' and 2<=x['samples']<=31 and x['loudest']<=64.5
+        assert b[:20].rstrip(b'\0')==x['track'].encode()
+        pattern=b[1084:1084+b[950]*3072]
+        notes=sum(bool(pattern[i]&15 or pattern[i+2]>>4) for i in range(0,len(pattern),4))
+        assert notes>10
+        # Row 0 carries speed 1 and tempo 150; the last row loops with B00.
+        row0={(pattern[i+2]&15,pattern[i+3]) for i in range(0,48,4)}
+        assert (15,1) in row0 and (15,150) in row0
+        args.extend((str(p),str(int(x['seconds'])+1)))
+    subprocess.run(args,check=True)
     # Reject truncated headers, samples, invalid orders, and unsupported effects.
     valid=mods[0].read_bytes()
     cases=[valid[:100],valid[:-100],valid[:1084]]
@@ -99,3 +154,26 @@ with tempfile.TemporaryDirectory() as tmp:
         path=tmp/f'bad{i}.mod';path.write_bytes(data)
         subprocess.run([str(tmp/'reject'),str(path)],check=True)
     print('121 modules and',len(cases),'malformed-file cases passed under ASan/UBSan.')
+
+    # Fidelity: every shipped module, played by the game's player, must sound
+    # like the Adlib emulator playing the KSM song it was made from.
+    renderer=g.build_renderer(tmp)
+    (tmp/'player.c').write_text(PLAYER)
+    subprocess.run(['cc','-O2','-I'+str(ROOT/'include'),str(tmp/'player.c'),str(ROOT/'src/modmusic.c'),'-o',str(tmp/'player')],check=True)
+    rate=22050
+    worst=(1.0,0.0,'')
+    checked=set()
+    for x in report:
+        if x['path'] in checked:
+            continue
+        checked.add(x['path'])
+        folder=ROOT/'gamedata'/x['version']
+        frames=int(x['seconds']*rate)
+        opl=g.render(renderer,'song',folder,x['track'],rate,int(x['seconds']*240)+240)[:frames]
+        pcm=np.frombuffer(subprocess.check_output([str(tmp/'player'),str(ROOT/x['path']),str(rate),str(frames)]),dtype='<i2').astype(float)
+        corr,level=similarity(opl,pcm,rate)
+        assert corr>0.9 and abs(level)<2.0, (x['path'],corr,level)
+        if corr<worst[0]:
+            worst=(corr,level,x['path'])
+    print(f'{len(checked)} modules match the Adlib emulator; worst spectrogram correlation '
+          f'{worst[0]:.3f} ({worst[2]}, level {worst[1]:+.2f} dB).')

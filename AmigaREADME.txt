@@ -124,15 +124,25 @@ versions 1.0, 1.1, 2.0 and 2.1 are included. The build script copies them
 automatically. A missing or invalid MOD silences that track and logs its path;
 effects keep working, and the next available track can still play.
 
-These are standard four-channel ProTracker files containing the original
-Adlib mix in sequential samples, rather than newly arranged instruments.
-They preserve the original melodies, chords and percussion, with mono 8-bit
-samples at approximately 16.6 kHz. Shared storage saves about 27 MB across all
-four versions; the current track uses at most 1.1 MB of ordinary RAM. Only one
-sample voice is active; no additional Paula hardware channels are reserved.
-Loop timing is rounded to the nearest 1/60 second. Random instrument/panning
-variations from Adlib mode are not reproduced. The built-in player supports
-the supplied modules, not arbitrary tracker effects in replacement MODs.
+These are twelve-channel MOD files with short samples of the original Adlib
+instruments and percussion, rendered by the game's own Adlib emulator. Their
+patterns are the game's actual note sequences, placed on the same six melodic
+and five rhythm channels the KSM sequencer uses, at 60 rows per second, which
+is the grid the songs are quantised to. Each instrument's decay and release
+are measured and reproduced with volume commands, so sustains, fades and
+release tails match the FM originals; only the timbre is shared between notes
+of the same octave, since one sample is repitched across that range. Every
+track has been checked against the Adlib emulator playing the same song and
+matches it closely in both spectrum and loudness. The default output remains
+centered mono.
+
+The 121 tracks occupy about 8.6 MB on disk after shared-track deduplication;
+the largest MOD needs about 290 KB of ordinary RAM while playing. The twelve
+MOD voices are mixed in software into the existing Paula/AHI output, alongside
+the digital sound effects. They do not reserve additional hardware channels.
+The built-in player supports these supplied modules, including their note,
+sample offset, volume, speed and loop commands. A third-party player must
+support 12CH MODs.
 
 
 
