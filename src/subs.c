@@ -1170,6 +1170,8 @@ void loadwalls(int replace, int showprogress)
 
         for (i = 0; i < rnumwalls; i++)
         {
+            /* Keep the intro music fed on platforms without an audio thread. */
+            PL_PumpClock();
             readLE16(fil, &strtot, 2);
             if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
                 readLE16(fil, &compleng, 2);
