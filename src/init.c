@@ -43,7 +43,7 @@ void initialize()
     slotpos[2] = 0;
     skilevel = 0;
 
-    initgraphics();
+    initgraphics(1);
 
     if (!introskip)
     {
@@ -385,19 +385,19 @@ void initaudio()
          * buffer wants to run as close to 11025Hz as a power of two division
          * of the output rate allows.  At 44100Hz that is the historical
          * factor of four; on an Amiga running the device at 22050Hz it is
-         * two, and at 11025Hz it is one.  Getting this wrong decimates the
+         * two, and at 11025Hz it is one.  Without Adlib music the output
+         * can still run faster than 11025Hz - AHI on an Amiga renders at
+         * the unit's own mixing rate - so this applies to every music
+         * source, not just Adlib.  Getting this wrong decimates the
          * effects - speech turns into noise - while leaving the music, which
          * is synthesised straight into the output stream, untouched.
          */
         soundratio = 1;
         soundratioshift = 0;
-        if (musicsource == MUSIC_SOURCE_ADLIB ||
-            musicsource == MUSIC_SOURCE_ADLIB_RANDOM) {
-            while (soundratio < 4 &&
-                   samplerate / (soundratio * 2) >= SOUNDNATIVERATE) {
-                soundratio <<= 1;
-                soundratioshift++;
-            }
+        while (soundratio < 4 &&
+               samplerate / (soundratio * 2) >= SOUNDNATIVERATE) {
+            soundratio <<= 1;
+            soundratioshift++;
         }
 
         soundbytespertick = channels * samplerate * 2 / 240;
@@ -422,7 +422,11 @@ void initaudio()
     }
 }
 
-void initgraphics()
+/* showlogos=0 is used before the launcher menu: load the palette and
+   textures it needs, but save the Epic Megagames and Ken's Labyrinth
+   logos (and the wait on them) for when a game is actually launched. */
+
+void initgraphics(int showlogos)
 {
     K_INT16 i, j, k, oclockspeed;
 
@@ -441,20 +445,23 @@ void initgraphics()
                 spritepalette[k++] = (opaldef[i][2]*j)/17;
             }
         fprintf(stderr,"Loading old graphics...\n");
-        loadwalls(0);
+        loadwalls(0, 1);
     } else {
         /* The ingame palette is stored in this GIF! */
         kgif(1);
         memcpy(spritepalette,palette,768);
 
         /* Show the Epic Megagames logo while loading... */
-        kgif(0);
+        if (showlogos)
+            kgif(0);
+        else
+            memset(screenbuffer, 0, screenbufferwidth*screenbufferheight);
         fprintf(stderr,"Loading graphics...\n");
 
-        loadwalls(1);
+        loadwalls(1, showlogos);
 
         /* Ken's Labyrinth logo. */
-        if (!kgif(2))
+        if (showlogos && !kgif(2))
             kgif(1);
 
         fade(63);
@@ -474,7 +481,7 @@ void initgraphics()
 
     if (moustat == 0)
             moustat = setupmouse();
-    if (!introskip)
+    if (showlogos && !introskip)
     {
         PL_LockTimer();
         oclockspeed = clockspeed;

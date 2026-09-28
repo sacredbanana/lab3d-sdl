@@ -434,6 +434,13 @@ static char *amigaaudiomenu[] = {
     "Paula (8 bit)",
     "AHI (16 bit)"
 };
+static char *amigaratemenu[] = {
+    "11025 Hz",
+    "22050 Hz",
+    "28000 Hz",
+    "44100 Hz",
+    "48000 Hz"
+};
 
 /* Open the ASL screen mode requester from the setup menu.  The display is
    already running, so the new mode is remembered and used next time. */
@@ -463,6 +470,18 @@ void setupamigaaudio(void) {
     selectionmenu(AMIGA_AUDIO_MODES, amigaaudiomenu, &amiga_cfg_audio,
                   "Sound output");
     if ((inlauncher || setup_ingame) && amiga_cfg_audio != old) resetaudio();
+}
+
+/* Output sample rate.  Higher rates cost more CPU, mostly for the Adlib
+   music emulation, and Paula plays anything above 28000Hz at 28000Hz. */
+void setupamigarate(void) {
+    int old = amiga_cfg_rate;
+    int sel = amiga_rate_index(amiga_cfg_rate);
+
+    if (sel < 0) sel = amiga_rate_index(AMIGA_RATE_DEFAULT);
+    selectionmenu(AMIGA_RATES, amigaratemenu, &sel, "Sample rate");
+    amiga_cfg_rate = amiga_rate_hz(sel);
+    if ((inlauncher || setup_ingame) && amiga_cfg_rate != old) resetaudio();
 }
 #endif
 
@@ -1128,6 +1147,8 @@ static void draw_mainmenu(void) {
                                    amiga_cfg_audio >= AMIGA_AUDIO_MODES)
                                   ? 0 : amiga_cfg_audio]);
     n += 12; textprint(51,n,96);
+    sprintf(textbuf,"Sample rate: %d Hz", amiga_cfg_rate);
+    n += 12; textprint(51,n,96);
 #else
     #ifdef __SWITCH__
     sprintf(textbuf,"Window size: %dx%d %s", screenwidth,
@@ -1203,12 +1224,12 @@ void setupmenu(int ingame) {
     draw_ptr[++drawStackTopIndex] = draw_mainmenu;
 
 #ifdef PLATFORM_AMIGA
-    /* Thirteen rows: the window, filtering, stereo, texture depth and view
+    /* Fourteen rows: the window, filtering, stereo, texture depth and view
        options of the desktop builds do not apply to a software renderer on a
-       fixed size screen, and the screen mode and sound output settings take
-       their place. */
+       fixed size screen, and the screen mode, sound output and sample rate
+       settings take their place. */
     while (!quit) {
-        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 13)) < 0) {
+        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 14)) < 0) {
             quit = 1;
         } else {
             switch (sel) {
@@ -1218,13 +1239,14 @@ void setupmenu(int ingame) {
             case 3:  amiga_cfg_askmode = !amiga_cfg_askmode; break;
             case 4:  setupamigascaling();      break;
             case 5:  setupamigaaudio();        break;
-            case 6:  setupsetmusic();          break;
-            case 7:  setupsetsound();          break;
-            case 8:  setupsetsoundchannels();  break;
-            case 9:  setupsetmusicchannels();  break;
-            case 10: setupcheatmenu();         break;
-            case 11: setupsoundblockmenu();    break;
-            case 12: quit = 1;                 break;
+            case 6:  setupamigarate();         break;
+            case 7:  setupsetmusic();          break;
+            case 8:  setupsetsound();          break;
+            case 9:  setupsetsoundchannels();  break;
+            case 10: setupsetmusicchannels();  break;
+            case 11: setupcheatmenu();         break;
+            case 12: setupsoundblockmenu();    break;
+            case 13: quit = 1;                 break;
             }
         }
     }
@@ -1677,6 +1699,7 @@ static setting_t amiga_settings[] = {
     INTSETTING(scale, amiga_cfg_scale),
     INTSETTING(askmode, amiga_cfg_askmode),
     INTSETTING(audio, amiga_cfg_audio),
+    INTSETTING(rate, amiga_cfg_rate),
     { NULL }
 };
 #endif
@@ -2013,7 +2036,7 @@ void setup(void) {
                 spritepalette[k++] = (opaldef[i][2]*j)/17;
             }
         fprintf(stderr,"Loading old graphics...\n");
-        loadwalls(0);
+        loadwalls(0, 1);
         fade(63);
         k=0;
         for(i=0;i<16;i++)
@@ -2035,7 +2058,7 @@ void setup(void) {
         kgif(0);
         settransferpalette();
         fprintf(stderr,"Loading graphics...\n");
-        loadwalls(0);
+        loadwalls(0, 1);
 
         kgif(1);
         fade(63);

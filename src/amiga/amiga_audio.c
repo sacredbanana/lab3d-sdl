@@ -396,23 +396,6 @@ static void ahi_service(void) {
 
 /* ------------------------------------------------------------------- setup */
 
-/*
- * Cap the mixing rate by what the CPU can keep up with.  The shared mixer
- * asks for 44100Hz whenever Adlib music is enabled, and emulating an OPL2 in
- * software at that rate would eat an 020 alive.  Music can also simply be
- * turned off in the setup menu, which removes the synthesis cost entirely.
- */
-static int cpu_cap(int freq) {
-    UWORD attn = SysBase->AttnFlags;
-    int cap;
-
-    if (attn & AFF_68060)      cap = 28000;
-    else if (attn & AFF_68040) cap = 22050;
-    else                       cap = 11025;
-
-    return (freq > cap) ? cap : freq;
-}
-
 static int want_ahi(void) {
     switch (amiga_cfg_audio) {
         case AMIGA_AUDIO_PAULA: return 0;
@@ -422,19 +405,58 @@ static int want_ahi(void) {
     }
 }
 
+/* Buffers are sized for the rate the game asked for; stretch them when the
+   device runs faster so each one still covers the same length of time. */
+static void set_blocksamples(int samples, int reqfreq, int freq) {
+    blocksamples = samples > 0 ? samples : 512;
+    if (freq > reqfreq)
+        blocksamples = (int)(((long)blocksamples * freq + reqfreq - 1) /
+                             reqfreq);
+    if (blocksamples < 256) blocksamples = 256;
+    /* The mixer works in whole steps of the sound buffer, up to 4 output
+       frames each; a ragged end would be left silent and click. */
+    blocksamples = (blocksamples + 3) & ~3;
+}
+
+/*
+ * The output rate is the player's choice from the setup menu (Amiga/rate in
+ * lab3d.cfg) rather than whatever the game asks for: 44100Hz Adlib synthesis
+ * is too much for most real machines, and 11025Hz without it sounds rough
+ * through AHI, which resamples it to the unit's own rate without
+ * interpolation.  22050Hz is the default everywhere.
+ */
+int amiga_cfg_rate = AMIGA_RATE_DEFAULT;
+
+static const int amiga_rates[AMIGA_RATES] = {
+    11025, 22050, 28000, 44100, 48000
+};
+
+int amiga_rate_hz(int index) {
+    if (index < 0 || index >= AMIGA_RATES) return AMIGA_RATE_DEFAULT;
+    return amiga_rates[index];
+}
+
+int amiga_rate_index(int hz) {
+    int i;
+
+    for (i = 0; i < AMIGA_RATES; i++)
+        if (amiga_rates[i] == hz) return i;
+    return -1;
+}
+
 int PL_OpenAudio(int freq, int chans, int samples) {
     int got = 0;
+    int reqfreq = freq;
 
     amiga_audio_close();
 
     outchannels  = (chans >= 2) ? 2 : 1;
-    blocksamples = samples > 0 ? samples : 512;
-    if (blocksamples < 256) blocksamples = 256;
 
-    freq = cpu_cap(freq);
-    if (freq < 4000) freq = 4000;
+    freq = (amiga_rate_index(amiga_cfg_rate) >= 0)
+           ? amiga_cfg_rate : AMIGA_RATE_DEFAULT;
 
     if (want_ahi()) {
+        set_blocksamples(samples, reqfreq, freq);
         got = ahi_open(freq);
         if (got) {
             backend = BACKEND_AHI;
@@ -445,6 +467,7 @@ int PL_OpenAudio(int freq, int chans, int samples) {
     }
 
     if (!got) {
+        set_blocksamples(samples, reqfreq, freq);
         got = paula_open(freq);
         if (got) backend = BACKEND_PAULA;
     }
@@ -498,9 +521,9 @@ void amiga_audio_service(void) {
 
 /* ------------------------------------------------------------- resampling */
 
-/* Nearest-neighbour rate conversion for the 8 bit unsigned sound effects.
-   The effects are short and this runs once per effect, not per frame, so a
-   simple resampler is the right trade. */
+/* Linear rate conversion for the 8 bit unsigned sound effects.  The effects
+   are short and this runs once per effect, not per frame, so it can afford
+   to interpolate rather than repeat samples. */
 int PL_ResampleU8(const unsigned char *in, int inlen, int infreq,
                   unsigned char *out, int outmax, int outfreq) {
     long step, pos;
@@ -523,7 +546,16 @@ int PL_ResampleU8(const unsigned char *in, int inlen, int infreq,
 
     for (i = 0; i < n; i++) {
         long idx = pos >> 16;
-        out[i] = (idx < inlen) ? in[idx] : 128;
+        int  a, b, frac;
+
+        if (idx >= inlen) {
+            out[i] = 128;
+        } else {
+            frac = (int)(pos & 0xffff) >> 8;
+            a = in[idx];
+            b = (idx + 1 < inlen) ? in[idx + 1] : a;
+            out[i] = (unsigned char)(a + (((b - a) * frac) >> 8));
+        }
         pos += step;
     }
     return n;

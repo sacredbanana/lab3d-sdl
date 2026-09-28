@@ -559,7 +559,7 @@ int main(int argc,char **argv)
         loadmusic("BEGIN");
         musicon();
     }
-    initgraphics();
+    initgraphics(0);
 
     if (!legacyload) {
         gamelaunchermenu();

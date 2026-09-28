@@ -14,6 +14,16 @@
 
 extern int amiga_cfg_audio;
 
+/* Output sample rate, in Hz, picked in the setup menu.  Paula is limited to
+   28000Hz and plays anything faster at that. */
+#define AMIGA_RATES         5
+#define AMIGA_RATE_DEFAULT  22050
+
+extern int amiga_cfg_rate;
+
+int amiga_rate_hz(int index);     /* menu entry -> Hz                     */
+int amiga_rate_index(int hz);     /* Hz -> menu entry, -1 if not offered  */
+
 /* Called from PL_PumpClock() to keep the output buffers fed. */
 void amiga_audio_service(void);
 void amiga_audio_close(void);

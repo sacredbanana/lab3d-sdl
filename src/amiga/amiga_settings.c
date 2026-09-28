@@ -43,6 +43,8 @@ void amiga_lock_mode(ULONG modeid, int w, int h, int d) {
 void amiga_settings_loaded(void) {
     if (amiga_cfg_audio < 0 || amiga_cfg_audio >= AMIGA_AUDIO_MODES)
         amiga_cfg_audio = AMIGA_AUDIO_AUTO;
+    if (amiga_rate_index(amiga_cfg_rate) < 0)
+        amiga_cfg_rate = AMIGA_RATE_DEFAULT;
 
     if (amiga_mode_locked) {
         amiga_cfg_modeid = locked_modeid;

@@ -753,7 +753,10 @@ void preparesound(void *dasnd, long numbytestoprocess)
 
 /*
  * Mix one run out of the digital sound buffer into the output stream, adding
- * the Adlib music underneath it when that is the music source.
+ * the Adlib music underneath it when that is the music source.  Without
+ * Adlib the output can still run faster than the sound buffer (AHI on an
+ * Amiga renders at the unit's mixing rate), so it is interpolated up the
+ * same way.
  *
  * The sound buffer runs at samplerate/soundratio and holds one K_INT16 per
  * output channel, so `len` stream bytes cover len/(2*soundratio) entries of
@@ -764,6 +767,7 @@ static int mixblock(unsigned char *stream, int len) {
     const int ratio = soundratio;
     const int chans = channels;
     int rl, i, t;
+    int mixin = 1;              /* interpolate the sound buffer in */
 
     len /= 2*ratio;
 
@@ -776,36 +780,40 @@ static int mixblock(unsigned char *stream, int len) {
             preparesound(stream, rl*2*ratio);
         else
             memset(stream, 0, rl*2*ratio);
+    }
+    else if (ratio == 1) {
+        memcpy(stream, SoundBuffer+FeedPoint, rl*2);
+        mixin = 0;
+    }
+    else
+        memset(stream, 0, rl*2*ratio);
 
-        if (mute!=1) {
-            /* Linearly interpolate the sound buffer up by `ratio`: j1 is the
-               frame being left, j2 the one being approached, k the position
-               between them. */
-            int total = rl*ratio;       /* output K_INT16s in this run */
-            int j1 = FeedPoint;
-            int j2 = (FeedPoint+chans)&65535;
-            int k = 0;
+    if (mixin && mute!=1) {
+        /* Linearly interpolate the sound buffer up by `ratio`: j1 is the
+           frame being left, j2 the one being approached, k the position
+           between them. */
+        int total = rl*ratio;       /* output K_INT16s in this run */
+        int j1 = FeedPoint;
+        int j2 = (FeedPoint+chans)&65535;
+        int k = 0;
 
-            for(i=0;i<total;) {
-                int lane;
-                for(lane=0;lane<chans;lane++,i++) {
-                    t = ((SoundBuffer[j1+lane]*(ratio-k) +
-                          SoundBuffer[j2+lane]*k) >> soundratioshift) +
-                        ((K_INT16 *)stream)[i];
-                    if (t<-32768) t=-32768;
-                    if (t>32767) t=32767;
-                    ((K_INT16 *)stream)[i]=t;
-                }
-                if (++k == ratio) {
-                    k = 0;
-                    j1 += chans;
-                    j2 = (j2+chans)&65535;
-                }
+        for(i=0;i<total;) {
+            int lane;
+            for(lane=0;lane<chans;lane++,i++) {
+                t = ((SoundBuffer[j1+lane]*(ratio-k) +
+                      SoundBuffer[j2+lane]*k) >> soundratioshift) +
+                    ((K_INT16 *)stream)[i];
+                if (t<-32768) t=-32768;
+                if (t>32767) t=32767;
+                ((K_INT16 *)stream)[i]=t;
+            }
+            if (++k == ratio) {
+                k = 0;
+                j1 += chans;
+                j2 = (j2+chans)&65535;
             }
         }
     }
-    else
-        memcpy(stream, SoundBuffer+FeedPoint, rl*2);
 
     memset(SoundBuffer+FeedPoint, 0, rl*2);
 
@@ -1043,7 +1051,7 @@ typedef struct {
 
 /* Load textures. Use LZW without a license. */
 
-void loadwalls(int replace)
+void loadwalls(int replace, int showprogress)
 {
     unsigned char bitcnt, numbits;
     wallparam wparams[numwalls];
@@ -1248,52 +1256,55 @@ void loadwalls(int replace)
                 lborder[i + 1] = 0;
                 rborder[i + 1] = 4096;
             }
-            if (i < 127) {
-                if (debugmode)
-                    fprintf(stderr, "Trying to draw screen buffer.\n");
-                fade(64 + (i >> 1));
-                if (debugmode)
-                    fprintf(stderr, "Screen buffer draw OK.\n");
-            }
-            else {
-                fade(63);
-            }
-
-            j = (160 - (rnumwalls >> 2) + i);
-
-            const unsigned int SCREEN_BUFFER_SIZE = screenbufferwidth * screenbufferheight;
-
-            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
-                if (i < (rnumwalls >> 1)) {
-                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+            /* Loading bar; skipped before the launcher so it loads faster. */
+            if (showprogress) {
+                if (i < 127) {
+                    if (debugmode)
+                        fprintf(stderr, "Trying to draw screen buffer.\n");
+                    fade(64 + (i >> 1));
+                    if (debugmode)
+                        fprintf(stderr, "Screen buffer draw OK.\n");
                 }
                 else {
-                    j -= rnumwalls >> 1;
-                    screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
+                    fade(63);
                 }
-                UploadPartialOverlay(j, 219, 1, 1);
-            }
-            else {
-                if (i < (rnumwalls >> 1)) {
-                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+
+                j = (160 - (rnumwalls >> 2) + i);
+
+                const unsigned int SCREEN_BUFFER_SIZE = screenbufferwidth * screenbufferheight;
+
+                if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+                    if (i < (rnumwalls >> 1)) {
+                        screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+                    }
+                    else {
+                        j -= rnumwalls >> 1;
+                        screenbuffer[min(screenbufferwidth * 219 + j, SCREEN_BUFFER_SIZE - 1)] = 0;
+                    }
+                    UploadPartialOverlay(j, 219, 1, 1);
                 }
                 else {
-                    j -= rnumwalls >> 1;
-                    screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
+                    if (i < (rnumwalls >> 1)) {
+                        screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 255;
+                    }
+                    else {
+                        j -= rnumwalls >> 1;
+                        screenbuffer[min(screenbufferwidth * 199 + j, SCREEN_BUFFER_SIZE - 1)] = 63;
+                    }
+                    if (debugmode)
+                        fprintf(stderr, "Trying to update screen buffer.\n");
+                    UploadPartialOverlay(j, 199, 2, 1);
+                    if (debugmode)
+                        fprintf(stderr, "Screen buffer update OK.\n");
                 }
-                if (debugmode)
-                    fprintf(stderr, "Trying to update screen buffer.\n");
-                UploadPartialOverlay(j, 199, 2, 1);
-                if (debugmode)
-                    fprintf(stderr, "Screen buffer update OK.\n");
-            }
 
-            /* Use double buffer when fading, single buffer when not.
-               Yes, I know I'm too clever for my own good.
-               Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
-            SetVisibleScreenOffset(0);
-            PL_PumpEvents();
-            PL_SwapBuffers();
+                /* Use double buffer when fading, single buffer when not.
+                   Yes, I know I'm too clever for my own good.
+                   Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
+                SetVisibleScreenOffset(0);
+                PL_PumpEvents();
+                PL_SwapBuffers();
+            }
             cwparam = &wparams[i];
             int minfilt = cwparam->minfilt;
             int magfilt = cwparam->magfilt;
