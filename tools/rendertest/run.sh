@@ -19,7 +19,7 @@ python3 "$HERE/extract.py" . "$HERE/generated" || exit 1
 ${CC:-cc} -O2 -Wall -Wextra -Wno-unused-parameter -I"$HERE" \
     -o "$OUT/harness" "$HERE/harness.c" -lm || exit 1
 
-TESTS=${*:-softtri floor wall castray raycast}
+TESTS=${*:-softtri floor wall span castray raycast}
 SEEDS=${SEEDS:-1 7 31337}
 fail=0
 

@@ -677,6 +677,129 @@ static int test_raycast(int ntrials, unsigned seed) {
     return 0;
 }
 
+/* ------------------------------------------------------------------ spans */
+
+/*
+ * draw_span() against the plain C loops it had before its 68k assembler
+ * versions, which it still falls back to off the 68k and for the wrapped
+ * tail.  Built for the 68k and run under vamos this compares the assembler
+ * with the C, pixel for pixel; there is no rounding in it, so nothing may
+ * differ.  Spans are random in height, position, clipping and fixed point
+ * scale, with a quarter of them tuned to hit the wrap at texel 64.
+ */
+static void c_span(unsigned char *dstcol, const unsigned char *tex,
+                   K_INT32 ytop, K_INT32 ybot, int yshift,
+                   int shaded, int skipkey) {
+    int y0, y1, y, height;
+    K_INT32 v, vstep;
+
+    height = (int)((ybot - ytop) >> yshift);
+    if (height <= 0) return;
+    vstep = (height < RECIP_MAX) ? vrecip[height] : (K_INT32)((64L << 16) / height);
+    y0 = (int)(ytop >> yshift);
+    y1 = (int)(ybot >> yshift);
+    v = 0;
+    if (y0 < VIEW_TOP) { v = (K_INT32)((VIEW_TOP - y0) * (long)vstep); y0 = VIEW_TOP; }
+    if (y1 > VIEW_BOT) y1 = VIEW_BOT;
+    if (y0 >= y1) return;
+    dstcol += (size_t)y0 * VW;
+    for (y = y0; y < y1; y++, dstcol += VW, v += vstep) {
+        unsigned char c = tex[(v >> 16) & 63];
+        if (skipkey && c == 255) continue;
+        *dstcol = shaded ? shadetab[c] : c;
+    }
+}
+
+static int test_span(int ntrials, unsigned seed) {
+    long drawn = 0, diff = 0;
+    int trial, i;
+    srand(seed);
+
+    for (trial = 0; trial < ntrials; trial++) {
+        int yshift = 4 + rand() % 13;
+        int shaded = rand() & 1, skipkey = rand() & 1, x = rand() % VW;
+        long top, bot;
+        const unsigned char *tex = texbuf + ((rand() & 63) << 6);
+
+        if (rand() & 3) {
+            top = (long)(rand() % (VH * 3)) - VH;
+            bot = top + 1 + rand() % (VH * 2);
+        } else {
+            /* A fraction just under a row at the top and just over at the
+               bottom: the rounding that lets the coordinate reach 64. */
+            top = (long)(rand() % VH) - 20;
+            bot = top + 2 + rand() % 60;
+        }
+        top = (top << yshift) + rand() % (1 << yshift);
+        bot = (bot << yshift) + rand() % (1 << yshift);
+
+        blank();
+        c_span(fbA + x, tex, (K_INT32)top, (K_INT32)bot, yshift, shaded, skipkey);
+        draw_span(fbB + x, tex, (K_INT32)top, (K_INT32)bot, yshift, shaded, skipkey);
+        for (i = 0; i < VW * VH; i++) {
+            drawn += fbA[i] != UNSET;
+            diff  += fbA[i] != fbB[i];
+        }
+    }
+    printf("draw_span against the C loops\n  pixels drawn %ld, differing %ld (limit 0)\n",
+           drawn, diff);
+    if (diff) { printf("  FAIL\n"); return 1; }
+    printf("  ok\n");
+    return 0;
+}
+
+/* ------------------------------------------------------------ benchmarks */
+
+/*
+ * The wall test's geometry through one version only, for timing: `live`
+ * runs the lifted code, `ref` the frozen original, `none` just the setup, so
+ * the difference is the drawing alone.  `depth` is `live` drawing nothing,
+ * which leaves the cost of the pixels out, and `count` reports how many
+ * pixels a trial draws.  bench68k.sh builds this for a 68020 and counts the
+ * cycles under vamos.
+ */
+static int bench_wall(const char *which, int ntrials, unsigned seed) {
+    int trial, i, mode = !strcmp(which, "live") ? 1 : !strcmp(which, "ref") ? 2 :
+                         !strcmp(which, "depth") ? 3 : !strcmp(which, "count") ? 4 : 0;
+    long pixels = 0;
+    srand(seed);
+
+    for (trial = 0; trial < ntrials; trial++) {
+        double ang = frand(0, 2 * M_PI);
+        double wx1, wy1, wx2, wy2;
+        double cx, cy;
+        int shaded = trial & 1;
+
+        cam_fx = cos(ang); cam_fy = sin(ang);
+        cam_ex = frand(2048, 63488);
+        cam_ey = frand(2048, 63488);
+        cam_ez = frand(0, 1024);
+        proj_x = 180.0;
+        proj_y = 160.0;
+        horizon_row = 120;
+
+        /* Cell edges near enough to be a few columns to most of the view. */
+        cx = cam_ex + frand(-4096, 4096); cy = cam_ey + frand(-4096, 4096);
+        if (rand() & 1) { wx1 = cx; wx2 = cx + 1024; wy1 = wy2 = cy; }
+        else            { wy1 = cy; wy2 = cy + 1024; wx1 = wx2 = cx; }
+
+        for (i = 0; i < VW; i++) zbufA[i] = 0;
+        amiga_chunky = fbA; zbuf = zbufA;
+        if (mode == 4) memset(fbA, UNSET, sizeof fbA);
+        if (mode == 1 || mode == 4)
+            draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,1,1,0,0);
+        else if (mode == 2)
+            ref_draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,1,1,0,0);
+        else if (mode == 3)
+            draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,1,1,0,1);
+        if (mode == 4)
+            for (i = 0; i < VW * VH; i++) pixels += fbA[i] != UNSET;
+    }
+    if (mode == 4)
+        printf("%.1f pixels per trial\n", (double)pixels / ntrials);
+    return 0;
+}
+
 /* ------------------------------------------------------------------- main */
 
 int main(int argc, char **argv) {
@@ -691,6 +814,9 @@ int main(int argc, char **argv) {
     if (!strcmp(which, "wall"))    return test_wall   (ntrials ? ntrials : 15000, seed);
     if (!strcmp(which, "castray")) return test_castray(ntrials ? ntrials : 400,   seed);
     if (!strcmp(which, "raycast")) return test_raycast(ntrials ? ntrials : 300,   seed);
+    if (!strcmp(which, "span"))    return test_span   (ntrials ? ntrials : 3000,  seed);
+    if (!strncmp(which, "benchwall-", 10))
+        return bench_wall(which + 10, ntrials, seed);
 
     fprintf(stderr, "usage: %s softtri|floor|wall|castray|raycast [trials] [seed]\n", argv[0]);
     return 2;

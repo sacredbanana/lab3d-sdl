@@ -40,7 +40,7 @@
 
 /* The 68020 and up take unaligned longword accesses, and the Amiga is big
    endian, so the first chunky pixel lands in the top byte for free. */
-#define load32(p)     (*(const ULONG *)(p))
+#define load16(p)     (*(const UWORD *)(p))
 #define store32(p, v) (*(ULONG *)(p) = (v))
 #else
 /* Host build, for the correctness test in tools/c2ptest. */
@@ -58,9 +58,8 @@ struct BitMap {
 };
 
 /* Spell out the big endian order the Amiga has natively. */
-static ULONG load32(const UBYTE *p) {
-    return ((ULONG)p[0] << 24) | ((ULONG)p[1] << 16) |
-           ((ULONG)p[2] << 8)  |  (ULONG)p[3];
+static ULONG load16(const UBYTE *p) {
+    return ((ULONG)p[0] << 8) | p[1];
 }
 static void store32(UBYTE *p, ULONG v) {
     p[0] = (UBYTE)(v >> 24); p[1] = (UBYTE)(v >> 16);
@@ -152,7 +151,7 @@ static const UBYTE *c2p_groups(const UBYTE *s, UBYTE *const *pl, int o,
         (a) ^= t_ << (s);                           \
     } while (0)
 
-/* Four pixels through the pen map, packed as load32() would pack them. */
+/* Four pixels through the pen map, packed big endian into a longword. */
 #define MAP4(p) (((ULONG)map[(p)[0]] << 24) | ((ULONG)map[(p)[1]] << 16) | \
                  ((ULONG)map[(p)[2]] << 8)  |  (ULONG)map[(p)[3]])
 
@@ -169,23 +168,45 @@ static const UBYTE *c2p_groups(const UBYTE *s, UBYTE *const *pl, int o,
  * number up into the index, and ~p's bottom two bits across - and the planes
  * come out in a0,a2,a4,a6,a1,a3,a5,a7 because of the order that happens in.
  */
-#define C2P_LOAD(s) do {                                            \
+/*
+ * Load, and do round 1 on the way.  Round 1 only trades 16 bit halves
+ * between longwords, so without a pen map it is the same as loading the
+ * pixels a word at a time straight into the halves they end up in: two word
+ * loads and a swap each, where the long loads and the merges cost about
+ * four times as much.
+ */
+#ifdef __m68k__
+/* Spelled out, because gcc builds it with seven instructions rather than
+   these three, which is slower than the merges it saves. */
+static __inline__ ULONG W2(const UBYTE *hi, const UBYTE *lo) {
+    ULONG r;
+    __asm__("move.w %1,%0\n\tswap %0\n\tmove.w %2,%0"
+            : "=&d" (r)
+            : "m" (*(const UWORD *)hi), "m" (*(const UWORD *)lo));
+    return r;
+}
+#else
+#define W2(hi, lo) ((load16(hi) << 16) | load16(lo))
+#endif
+#define C2P_LOAD_ROUND_1(s) do {                                    \
         if (map) {                                                  \
             a7 = MAP4(s);        a6 = MAP4((s) + 4);                \
             a5 = MAP4((s) + 8);  a4 = MAP4((s) + 12);               \
             a3 = MAP4((s) + 16); a2 = MAP4((s) + 20);               \
             a1 = MAP4((s) + 24); a0 = MAP4((s) + 28);               \
+            MERGE(a0, a4, 16, 0x0000ffffUL);                        \
+            MERGE(a1, a5, 16, 0x0000ffffUL);                        \
+            MERGE(a2, a6, 16, 0x0000ffffUL);                        \
+            MERGE(a3, a7, 16, 0x0000ffffUL);                        \
         } else {                                                    \
-            a7 = load32(s);        a6 = load32((s) + 4);            \
-            a5 = load32((s) + 8);  a4 = load32((s) + 12);           \
-            a3 = load32((s) + 16); a2 = load32((s) + 20);           \
-            a1 = load32((s) + 24); a0 = load32((s) + 28);           \
+            a0 = W2((s) + 14, (s) + 30); a4 = W2((s) + 12, (s) + 28); \
+            a1 = W2((s) + 10, (s) + 26); a5 = W2((s) + 8,  (s) + 24); \
+            a2 = W2((s) + 6,  (s) + 22); a6 = W2((s) + 4,  (s) + 20); \
+            a3 = W2((s) + 2,  (s) + 18); a7 = W2((s),      (s) + 16); \
         }                                                           \
     } while (0)
 
-#define C2P_ROUNDS_1_TO_4 do {                                          \
-        MERGE(a0, a4, 16, 0x0000ffffUL);  MERGE(a1, a5, 16, 0x0000ffffUL); \
-        MERGE(a2, a6, 16, 0x0000ffffUL);  MERGE(a3, a7, 16, 0x0000ffffUL); \
+#define C2P_ROUNDS_2_TO_4 do {                                          \
         MERGE(a0, a2,  8, 0x00ff00ffUL);  MERGE(a1, a3,  8, 0x00ff00ffUL); \
         MERGE(a4, a6,  8, 0x00ff00ffUL);  MERGE(a5, a7,  8, 0x00ff00ffUL); \
         MERGE(a0, a1,  4, 0x0f0f0f0fUL);  MERGE(a2, a3,  4, 0x0f0f0f0fUL); \
@@ -199,16 +220,162 @@ static const UBYTE *c2p_groups(const UBYTE *s, UBYTE *const *pl, int o,
         MERGE(a4, a6,  1, 0x55555555UL);  MERGE(a5, a7,  1, 0x55555555UL); \
     } while (0)
 
+#ifdef __m68k__
+/*
+ * The 32 pixel block loop in 68020 assembler, for the common case: no pen
+ * map, all eight planes, and planes a constant distance `delta` apart - true
+ * of every bitmap graphics.library hands out in one piece, and of the
+ * blitter's staging area.  With `full` it does all five rounds and writes
+ * bitplanes; without, rounds 1-4 and the eight pre-planes the blitter
+ * finishes (see "Blitter assist").
+ *
+ * gcc's version of the same loop spends a good part of its time moving
+ * values to and from the stack: eight longwords, a temporary and eight plane
+ * pointers do not fit in the registers.  Here the longwords stay in d0-d7;
+ * each round borrows d7 as the temporary by parking one value in a6 and
+ * swapping it back with exg when its pair comes up; and the planes are
+ * reached from four base registers and one index register holding delta,
+ * stepping as they are stored.  About two thirds the cycles of the C.
+ *
+ * Which value is in which register after each round (V0..V7 are a0..a7 of
+ * the C version):
+ *
+ *   load   d0-d7 = V0-V7
+ *   2      d0=V7 d1=V1 d2=V2 d3=V3 d4=V4 d5=V5 d6=V6 a6=V0
+ *   3      d0=V7 d1=V1 d2=V0 d3=V3 d4=V4 d5=V5 d6=V6 a6=V2
+ *   4      d0=V7 d1=V2 d2=V0 d3=V3 d4=V4 d5=V5 d6=V6 a6=V1
+ *   5      d0=V7 d1=V2 d2=V1 d3=V3 d4=V4 d5=V5 d6=V6 a6=V0
+ */
+void c2p32_asm(const UBYTE *src, UBYTE *dst, long delta, long n, long full);
+
+__asm__(
+"       .text\n"
+"       .even\n"
+"       .macro  C2PM a,b,s,m\n"                /* MERGE(a,b,s,m), t = d7 */
+"       move.l  \\a,d7\n"
+"       lsr.l   #\\s,d7\n"
+"       eor.l   \\b,d7\n"
+"       and.l   #\\m,d7\n"
+"       eor.l   d7,\\b\n"
+"       lsl.l   #\\s,d7\n"
+"       eor.l   d7,\\a\n"
+"       .endm\n"
+"       .macro  C2PW off1,off2,r\n"            /* r = word(off1):word(off2) */
+"       move.w  (\\off1,a0),\\r\n"
+"       swap    \\r\n"
+"       move.w  (\\off2,a0),\\r\n"
+"       .endm\n"
+"       .macro  C2P14\n"                       /* load, round 1, rounds 2-4 */
+"       C2PW    14,30,d0\n"
+"       C2PW    10,26,d1\n"
+"       C2PW    6,22,d2\n"
+"       C2PW    2,18,d3\n"
+"       C2PW    12,28,d4\n"
+"       C2PW    8,24,d5\n"
+"       C2PW    4,20,d6\n"
+"       C2PW    0,16,d7\n"
+"       lea     (32,a0),a0\n"
+"       move.l  d7,a6\n"                       /* round 2: 8 bits */
+"       C2PM    d0,d2,8,0x00ff00ff\n"
+"       C2PM    d1,d3,8,0x00ff00ff\n"
+"       C2PM    d4,d6,8,0x00ff00ff\n"
+"       exg     d0,a6\n"
+"       C2PM    d5,d0,8,0x00ff00ff\n"
+"       C2PM    d2,d3,4,0x0f0f0f0f\n"          /* round 3: 4 bits */
+"       C2PM    d4,d5,4,0x0f0f0f0f\n"
+"       C2PM    d6,d0,4,0x0f0f0f0f\n"
+"       exg     d2,a6\n"
+"       C2PM    d2,d1,4,0x0f0f0f0f\n"
+"       C2PM    d2,d4,2,0x33333333\n"          /* round 4: 2 bits */
+"       C2PM    d1,d5,2,0x33333333\n"
+"       C2PM    d3,d0,2,0x33333333\n"
+"       exg     d1,a6\n"
+"       C2PM    d1,d6,2,0x33333333\n"
+"       .endm\n"
+"       .globl  _c2p32_asm\n"
+"_c2p32_asm:\n"
+"       movem.l d2-d7/a2-a6,-(sp)\n"
+"       move.l  (48,sp),a0\n"                  /* src */
+"       move.l  (52,sp),a1\n"                  /* plane 0 */
+"       move.l  (56,sp),a2\n"                  /* delta */
+"       move.l  (60,sp),d0\n"                  /* blocks */
+"       move.l  (64,sp),d1\n"                  /* full */
+"       lea     (0,a1,a2.l*2),a3\n"            /* plane 2 */
+"       lea     (0,a1,a2.l*4),a4\n"            /* plane 4 */
+"       lea     (0,a3,a2.l*4),a5\n"            /* plane 6 */
+"       move.l  d0,-(sp)\n"
+"       tst.l   d1\n"
+"       jeq     .Lc2p_stage\n"
+".Lc2p_full:\n"
+"       C2P14\n"
+"       C2PM    d2,d1,1,0x55555555\n"          /* round 5: 1 bit */
+"       C2PM    d4,d6,1,0x55555555\n"
+"       C2PM    d5,d0,1,0x55555555\n"
+"       exg     d2,a6\n"
+"       C2PM    d2,d3,1,0x55555555\n"
+"       move.l  d1,(a1,a2.l)\n"                /* planes: V0 V2 V4 V6 V1 V3 V5 V7 */
+"       move.l  a6,(a1)+\n"
+"       move.l  d6,(a3,a2.l)\n"
+"       move.l  d4,(a3)+\n"
+"       move.l  d3,(a4,a2.l)\n"
+"       move.l  d2,(a4)+\n"
+"       move.l  d0,(a5,a2.l)\n"
+"       move.l  d5,(a5)+\n"
+"       subq.l  #1,(sp)\n"
+"       jne     .Lc2p_full\n"
+"       jra     .Lc2p_done\n"
+".Lc2p_stage:\n"
+"       C2P14\n"
+"       move.l  a6,(a1,a2.l)\n"                /* pre-planes: V0 .. V7 */
+"       move.l  d2,(a1)+\n"
+"       move.l  d3,(a3,a2.l)\n"
+"       move.l  d1,(a3)+\n"
+"       move.l  d5,(a4,a2.l)\n"
+"       move.l  d4,(a4)+\n"
+"       move.l  d0,(a5,a2.l)\n"
+"       move.l  d6,(a5)+\n"
+"       subq.l  #1,(sp)\n"
+"       jne     .Lc2p_stage\n"
+".Lc2p_done:\n"
+"       addq.l  #4,sp\n"
+"       movem.l (sp)+,d2-d7/a2-a6\n"
+"       rts\n"
+);
+
+/* The distance between consecutive planes if it is the same for all eight,
+   else 0. */
+static long plane_delta(UBYTE *const *pl) {
+    long d = pl[1] - pl[0];
+    int p;
+
+    if (!d) return 0;
+    for (p = 2; p < 8; p++)
+        if (pl[p] - pl[p - 1] != d)
+            return 0;
+    return d;
+}
+#endif
+
 /* Convert n blocks of 32 pixels into plane longwords pl[p][o...]. */
 static const UBYTE *c2p_blocks(const UBYTE *s, UBYTE *const *pl, int o,
                                int n, int depth) {
     const UBYTE *map = c2p_penmap;
 
+#ifdef __m68k__
+    if (n > 0 && !map && depth == 8) {
+        long delta = plane_delta(pl);
+        if (delta) {
+            c2p32_asm(s, pl[0] + o, delta, n, 1);
+            return s + 32 * n;
+        }
+    }
+#endif
+
     for (; n > 0; n--, o += 4, s += 32) {
         ULONG a0, a1, a2, a3, a4, a5, a6, a7;
 
-        C2P_LOAD(s);
-        C2P_ROUNDS_1_TO_4;
+        C2P_LOAD_ROUND_1(s);
+        C2P_ROUNDS_2_TO_4;
         C2P_ROUND_5;
 
         switch (depth) {
@@ -489,11 +656,18 @@ void amiga_c2p_blitter_changed(void) {
 static const UBYTE *c2p_stage(const UBYTE *s, UBYTE *const *tp, int o, int n) {
     const UBYTE *map = c2p_penmap;
 
+#ifdef __m68k__
+    if (n > 0 && !map) {                /* the pre-planes are st_plane apart */
+        c2p32_asm(s, tp[0] + o, (long)st_plane, n, 0);
+        return s + 32 * n;
+    }
+#endif
+
     for (; n > 0; n--, o += 4, s += 32) {
         ULONG a0, a1, a2, a3, a4, a5, a6, a7;
 
-        C2P_LOAD(s);
-        C2P_ROUNDS_1_TO_4;
+        C2P_LOAD_ROUND_1(s);
+        C2P_ROUNDS_2_TO_4;
 
         store32(tp[0] + o, a0); store32(tp[1] + o, a1);
         store32(tp[2] + o, a2); store32(tp[3] + o, a3);

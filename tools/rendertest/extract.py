@@ -18,6 +18,10 @@ WANTED = {
     "src/amiga/render_soft.c": [
     "fxround",
     "fxwrap",
+    "dexp2",
+    "dpow2",
+    "udiv64",
+    "tcdiv",
     "fdiv",
     "cdiv",
     "rdivp",
@@ -43,7 +47,8 @@ WANTED = {
 # than copied, so they cannot drift.
 # Blocks of constants and file-local state the lifted functions need, marked
 # in the source with rendertest:begin-<tag> / rendertest:end-<tag>.
-BLOCKS = {"src/graphx.c": ["fixedpoint"]}
+BLOCKS = {"src/graphx.c": ["fixedpoint"],
+          "src/amiga/render_soft.c": ["dbits"]}
 
 TILE_MACROS = ["fountain", "map", "gameover",
                "doorside1", "doorside2", "doorside3", "doorside4", "doorside5",

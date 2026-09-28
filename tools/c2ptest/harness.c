@@ -159,11 +159,17 @@ static void layout(target *t, int rowbytes, int rows, int depth, int interleaved
         for (p = 0; p < depth; p++)
             t->bm.Planes[p] = t->arena + at + (size_t)p * rowbytes;
     } else {
+        /* Half the time the planes are evenly spaced, as graphics.library
+           allocates them and as the 68k assembler path needs; the other
+           half they are not, which must fall back to the C. */
+        int even = rnd(2);
+        size_t gap = (size_t)rowbytes * rows + 16 + rnd(4);
+
         t->bm.BytesPerRow = (UWORD)rowbytes;
         for (p = 0; p < depth; p++) {
-            at += rnd(4);
+            if (!even) at += rnd(4);
             t->bm.Planes[p] = t->arena + at;
-            at += (size_t)rowbytes * rows + 16;
+            at += even ? gap : (size_t)rowbytes * rows + 16;
         }
     }
 }
@@ -177,6 +183,23 @@ static void convert(target *got, target *want, const UBYTE *src, int srcmod,
     ref_c2p(src, srcmod, &want->bm, destx, desty, w, h, depth, map);
 }
 
+/* `bench N`: N conversions of a whole 320x256 frame into 8 planes, for
+   timing on an emulated 68k (see tools/rendertest/bench68k.sh). */
+static int bench(int n) {
+    static UBYTE frame[320 * 256], planes[8][40 * 256];
+    static struct BitMap bm;
+    int i;
+
+    for (i = 0; i < 320 * 256; i++) frame[i] = (UBYTE)(i * 37 + (i >> 9));
+    bm.BytesPerRow = 40;
+    bm.Rows = 256;
+    bm.Depth = 8;
+    for (i = 0; i < 8; i++) bm.Planes[i] = planes[i];
+    for (i = 0; i < n; i++)
+        amiga_c2p(frame, 320, &bm, 0, 0, 320, 256, 8);
+    return planes[3][100] == 0x5a;      /* keep the work observable */
+}
+
 int main(int argc, char **argv) {
     int trials = argc > 1 ? atoi(argv[1]) : 0;
     unsigned long seed = argc > 2 ? strtoul(argv[2], NULL, 10) : 1;
@@ -185,6 +208,8 @@ int main(int argc, char **argv) {
     int i, t, fails = 0;
     long pixels = 0;
 
+    if (argc > 1 && !strcmp(argv[1], "bench"))
+        return bench(argc > 2 ? atoi(argv[2]) : 1) * 0;
     if (trials <= 0) trials = 20000;
     rng_state = seed;
 

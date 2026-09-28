@@ -142,6 +142,70 @@ static K_UINT32 fxwrap(double v) {
     return (K_UINT32)v;
 }
 
+/* The binary exponent of a positive, normal double, and 2^k as a double,
+   straight from the bits - on a machine without an FPU a frexp() or a
+   halving loop costs soft float calls for what is just a field in the word. */
+/* rendertest:begin-dbits  (tools/rendertest lifts this block verbatim) */
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define DHI 0
+#else
+#define DHI 1
+#endif
+typedef union { double d; K_UINT32 w[2]; } dbits;
+/* rendertest:end-dbits */
+
+static int dexp2(double v) {
+    dbits u;
+    u.d = v;
+    return (int)((u.w[DHI] >> 20) & 0x7ff) - 1023;
+}
+
+static double dpow2(int k) {
+    dbits u;
+    u.w[DHI]     = (K_UINT32)(k + 1023) << 20;
+    u.w[1 - DHI] = 0;
+    return u.d;
+}
+
+/* (hi:lo) / d for a quotient known to fit in 32 bits.  The 68020, 030 and
+   040 do that in one divu.l; the 060 dropped the 64 bit forms, and gcc would
+   otherwise call a library routine for it everywhere. */
+static K_UINT32 udiv64(K_UINT32 hi, K_UINT32 lo, K_UINT32 d) {
+#if defined(__mc68020__) || defined(__mc68030__) || defined(__mc68040__)
+    __asm__("divu.l %2,%0:%1" : "+d"(hi), "+d"(lo) : "dm"(d) : "cc");
+    return lo;
+#else
+    return (K_UINT32)((((unsigned long long)hi << 32) | lo) / d);
+#endif
+}
+
+/*
+ * (tv << sh) / z, truncated, for z > 0: a texture column in 16.16 from its
+ * perspective numerator t/d and 1/d, each at its own power of two scale,
+ * with sh making up the difference plus the 16 fraction bits.  One 64 by 32
+ * bit divide, where the double version it replaced was a soft float divide.
+ */
+static K_INT32 tcdiv(K_INT32 tv, K_INT32 z, int sh) {
+    K_UINT32 t, hi, lo, q;
+    int neg = tv < 0;
+
+    t = neg ? (K_UINT32)-tv : (K_UINT32)tv;
+    if (sh <= 0) {
+        hi = 0;
+        lo = sh > -32 ? t >> -sh : 0;
+    } else if (sh < 32) {
+        hi = t >> (32 - sh);
+        lo = t << sh;
+    } else {
+        hi = sh < 64 ? t << (sh - 32) : 0;
+        lo = 0;
+    }
+    if (hi >= (K_UINT32)z >> 1)             /* 32768 texels or more */
+        return neg ? -0x7fffffff : 0x7fffffff;
+    q = udiv64(hi, lo, (K_UINT32)z);
+    return neg ? -(K_INT32)q : (K_INT32)q;
+}
+
 static void build_shadetab(void) {
     int i;
 
@@ -473,6 +537,79 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
 
     dstcol += (size_t)y0 * stride;
 
+#ifdef __m68k__
+    {
+        /*
+         * The 68k inner loops.  The texture coordinate is kept as a whole
+         * word and a fraction word: add.w steps the fraction and leaves the
+         * carry in X, addx.w adds it to the whole part with the step's whole
+         * part, and the texel index is then already sitting in a register -
+         * no shift, no bit field extract, no mask.
+         *
+         * Going without the mask means stopping before the coordinate
+         * reaches 64.  The span's height and its first and last rows are
+         * rounded separately, so the last pixel or two can get there; those
+         * few go through the C loops below, which wrap exactly as before.
+         */
+        int n = y1 - y0;
+        K_INT32 vlast = v + (K_INT32)(n - 1) * vstep;
+
+        while (n > 0 && vlast >= (64L << 16)) {
+            n--;
+            vlast -= vstep;
+        }
+        if (n > 0) {
+            short vi = (short)(v >> 16), vf = (short)v;
+            short is = (short)(vstep >> 16), fs = (short)vstep;
+            short one = (short)((n & 3) - 1), four = (short)((n >> 2) - 1);
+            long  st = stride, c = 0;   /* c: upper bytes stay clear */
+            unsigned char *d = dstcol;
+
+            /* One pixel of each kind; the loops below run n & 3 of them one
+               at a time and then the rest four to a dbra. */
+#define PX_STEP  "add.l %[st],%[d]\n\tadd.w %[fs],%[vf]\n\taddx.w %[is],%[vi]\n\t"
+#define PX_PLAIN "move.b (%[tex],%[vi].w),(%[d])\n\t" PX_STEP
+#define PX_SHADE "move.b (%[tex],%[vi].w),%[c]\n\t" \
+                 "move.b (%[sh],%[c].w),(%[d])\n\t" PX_STEP
+#define PX_KEY   "move.b (%[tex],%[vi].w),%[c]\n\tcmp.b #-1,%[c]\n\tjeq 2f\n\t" \
+                 "move.b %[c],(%[d])\n2:\n\t" PX_STEP
+#define PX_KEYSH "move.b (%[tex],%[vi].w),%[c]\n\tcmp.b #-1,%[c]\n\tjeq 2f\n\t" \
+                 "move.b (%[sh],%[c].w),(%[d])\n2:\n\t" PX_STEP
+#define PX_LOOPS(PX)                                                    \
+    __asm__ volatile (                                                  \
+        "tst.w %[one]\n\t"                                             \
+        "jmi 3f\n"                                                      \
+        "1:\n\t" PX "dbra %[one],1b\n"                                 \
+        "3:\n\t"                                                       \
+        "tst.w %[four]\n\t"                                            \
+        "jmi 5f\n"                                                      \
+        "4:\n\t" PX PX PX PX "dbra %[four],4b\n"                       \
+        "5:"                                                            \
+        : [d] "+a" (d), [vi] "+d" (vi), [vf] "+d" (vf),                 \
+          [one] "+d" (one), [four] "+d" (four), [c] "+d" (c)             \
+        : [tex] "a" (tex), [sh] "a" (shadetab), [st] "d" (st),          \
+          [fs] "d" (fs), [is] "d" (is)                                  \
+        : "cc", "memory")
+
+            if (!skipkey)
+                if (!shaded) PX_LOOPS(PX_PLAIN); else PX_LOOPS(PX_SHADE);
+            else
+                if (!shaded) PX_LOOPS(PX_KEY);   else PX_LOOPS(PX_KEYSH);
+#undef PX_LOOPS
+#undef PX_KEYSH
+#undef PX_KEY
+#undef PX_SHADE
+#undef PX_PLAIN
+#undef PX_STEP
+            y0 += n;
+            if (y0 >= y1)               /* the usual case: no tail */
+                return;
+            dstcol = d;
+            v += (K_INT32)n * vstep;
+        }
+    }
+#endif
+
     if (skipkey) {
         if (shaded) {
             for (y = y0; y < y1; y++) {
@@ -533,6 +670,11 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
 #define SEGLEN 16
     double zstep, ytstep, ybstep, yscale;
     K_INT32 Z, dZ, YT, dYT, YB, dYB;
+    K_INT32 sYT, sYB, sID, sTV;         /* at the start of each segment */
+    K_INT32 gYT, gYB, gID, gTV;         /* from one segment to the next */
+    K_INT32 dID, dTV;
+    int zk;                             /* depth = sID >> zk */
+    int tsh;                            /* column = (sTV << tsh) / sID */
     int yshift;
     const unsigned char *texbase;
     int xa, xb, x, seg;
@@ -642,41 +784,95 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
     dYT = fxround(ytstep);
     dYB = fxround(ybstep);
 
+    /*
+     * The segments are reseeded from these rather than from doubles: depth,
+     * top and bottom row, and the texture column's perspective pair t/d and
+     * 1/d are all linear in x, so each segment's starting values are the
+     * last one's plus a step worked out once here, rounded once.  That
+     * leaves no floating point at all per segment - on a 68020 without an
+     * FPU the dozen soft float calls there cost as much as the columns they
+     * set up.  The rounding of a segment step adds up, but by half a unit a
+     * segment it stays far below anything that shows.
+     *
+     * The perspective pair gets scales of its own rather than the depth
+     * buffer's.  At that scale a far wall's depth is only a couple of
+     * hundred, and dividing by a value rounded that coarsely moves the
+     * texture column by a fair part of a texel.  Each of the two is scaled
+     * by the power of two that puts its largest value near 2^29, so both
+     * keep eight or nine significant digits however far away the wall is and
+     * however many texels it spans; the divide's shift makes up the
+     * difference.  The depth buffer's scale is a power of two as well, so
+     * each segment's depth comes from the finer 1/d by a shift and does not
+     * collect the rounding a step at the coarse scale would.
+     */
+    {
+        double x0   = (double)xa + 0.5 - sx1;
+        double dtv  = (tovd2 - tovd1) * spaninv;
+        double id_a = invd1 + didx * x0;
+        double tv_a = tovd1 + dtv * x0;
+        double tbig = fabs(tovd1) > fabs(tovd2) ? fabs(tovd1) : fabs(tovd2);
+        double ibig = invd1 > invd2 ? invd1 : invd2;
+        double pscale, tscale, g;
+        int pk, tk;
 
-    for (seg = xa; seg < xb; seg += SEGLEN) {
+        /* Powers of two putting each largest value in [2^28, 2^29). */
+        pk = 28 - dexp2(ibig);
+        tk = tbig > 1e-30 ? 28 - dexp2(tbig) : pk;
+        pscale = dpow2(pk);
+        tscale = dpow2(tk);
+        zk  = pk - 24;                  /* ZSCALE is 2^24 */
+        tsh = 16 + pk - tk;
+        if (zk < 0)                     /* nearer than the near plane */
+            return;
+
+        sYT = fxround(((double)horizon_row + topk * id_a) * yscale);
+        sYB = fxround(((double)horizon_row + botk * id_a) * yscale);
+        sID = fxround(pscale * id_a);
+        sTV = fxround(tscale * tv_a);
+
+        gYT = fxround(ytstep * SEGLEN);
+        gYB = fxround(ybstep * SEGLEN);
+        /* A quad more than a column or a segment wide keeps these bounded by
+           the values themselves; a sliver narrower than that can have a
+           huge slope, and never uses it, so it only must not overflow. */
+        g = pscale * didx;
+        dID = fabs(g) < 2.0e9 ? fxround(g) : 0;
+        g = tscale * dtv;
+        dTV = fabs(g) < 2.0e9 ? fxround(g) : 0;
+        g = pscale * didx * SEGLEN;
+        gID = fabs(g) < 2.0e9 ? fxround(g) : 0;
+        g = tscale * dtv * SEGLEN;
+        gTV = fabs(g) < 2.0e9 ? fxround(g) : 0;
+    }
+
+    for (seg = xa; seg < xb; seg += SEGLEN,
+         sYT += gYT, sYB += gYB, sID += gID, sTV += gTV) {
         int xe = seg + SEGLEN;
-        double a0, a1, id0, id1, tv0, tv1, tc0, tc1;
         K_INT32 tcur, tinc;
         int n;
 
         if (xe > xb) xe = xb;
         n = xe - seg;
 
-        a0 = ((double)seg + 0.5 - sx1) * spaninv;
-        a1 = ((double)(xe - 1) + 0.5 - sx1) * spaninv;
-
-        id0 = invd1 + (invd2 - invd1) * a0;
-        id1 = invd1 + (invd2 - invd1) * a1;
-
-        if (id0 <= 0.0 || id1 <= 0.0)
+        Z = zk ? (sID + (1L << (zk - 1))) >> zk : sID;
+        if (Z <= 0 || Z + dZ * (n - 1) <= 0)
             continue;
 
-        Z  = fxround(ZSCALE * id0);
-        YT = fxround(((double)horizon_row + topk * id0) * yscale);
-        YB = fxround(((double)horizon_row + botk * id0) * yscale);
-
-        tv0 = tovd1 + (tovd2 - tovd1) * a0;
-        tv1 = tovd1 + (tovd2 - tovd1) * a1;
-
-        tc0 = tv0 / id0;
-        tc1 = tv1 / id1;
+        YT = sYT;
+        YB = sYB;
 
         /* tcur is a texture column that is about to be floored to a whole
            texel, so truncating it is exactly right and rounding it to nearest
            would pick the wrong texel just below a boundary.  tinc is a step
            that gets added up, so that one does want rounding. */
-        tcur = (K_INT32)(tc0 * 65536.0);
-        tinc = (n > 1) ? fxround((tc1 - tc0) * 65536.0 / (n - 1)) : 0;
+        tcur = tcdiv(sTV, sID, tsh);
+        tinc = 0;
+        if (n > 1) {
+            K_INT32 d = tcdiv(sTV + dTV * (n - 1), sID + dID * (n - 1), tsh) - tcur;
+            int m = n - 1;
+
+            tinc = (d + (d >= 0 ? m / 2 : -(m / 2))) / m;
+        }
 
         for (x = seg; x < xe;
              x++, tcur += tinc, Z += dZ, YT += dYT, YB += dYB) {
