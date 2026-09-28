@@ -35,6 +35,21 @@ static void draw_gamelaunchermenu(void) {
     finalisemenu();
 }
 
+void whatsnew430() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.3.0 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Ported to the Commodore Amiga");
+    textprint(30, 58, 96);
+
+    finalisemenu();
+    PL_SwapBuffers();
+    pressakey();
+}
+
 void whatsnew421() {
     drawmenu(320, 172, menu);
 
@@ -524,6 +539,7 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
+                    whatsnew430();
                     whatsnew421();
                     whatsnew420();
                     whatsnew418();
