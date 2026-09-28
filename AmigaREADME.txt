@@ -109,10 +109,31 @@ Automatic selects Paula on 020 and 030 machines to leave more CPU time for the
 game.  If you have a sound card in a slower machine, choose AHI explicitly. If
 ahi.device cannot be opened the game falls back to Paula and says so.
 
-The mixing rate is chosen from the CPU - 11025 Hz below an 040, 22050 Hz on an
-040 and 28000 Hz on an 060 - because the Adlib emulation is synthesised at
-that rate and is what costs the time.  The digital sound effects are 11025 Hz
-in the game data and are played at that rate whatever the output rate is.
+Setup -> Sample rate selects the output rate (22050 Hz by default). Digital
+sound effects retain their original timing at every output rate.
+
+Setup -> Music -> MOD sampled music avoids live Adlib synthesis and needs no
+FPU. Music and game sound effects are mixed together through either Paula or
+AHI. The music volume controls still work; Effects can be disabled separately.
+The saved setting is [Music] enable = 3 on the Amiga.
+
+Keep the entire gamedata drawer together. Each version's mods drawer contains
+its unique tracks; byte-identical tracks live once in gamedata/shared/mods or
+gamedata/shared/Ken1/mods and gamedata/shared/Ken2/mods. All tracks needed by
+versions 1.0, 1.1, 2.0 and 2.1 are included. The build script copies them
+automatically. A missing or invalid MOD silences that track and logs its path;
+effects keep working, and the next available track can still play.
+
+These are standard four-channel ProTracker files containing the original
+Adlib mix in sequential samples, rather than newly arranged instruments.
+They preserve the original melodies, chords and percussion, with mono 8-bit
+samples at approximately 16.6 kHz. Shared storage saves about 27 MB across all
+four versions; the current track uses at most 1.1 MB of ordinary RAM. Only one
+sample voice is active; no additional Paula hardware channels are reserved.
+Loop timing is rounded to the nearest 1/60 second. Random instrument/panning
+variations from Adlib mode are not reproduced. The built-in player supports
+the supplied modules, not arbitrary tracker effects in replacement MODs.
+
 
 
 Performance
@@ -121,9 +142,8 @@ Performance
 If the game is too slow:
 
   * Use an RTG screen rather than a native one.
-  * Turn music off (Setup -> Music).  The Adlib emulation is software FM
-    synthesis and it is the single most expensive thing running besides the
-    renderer.
+  * Select MOD sampled music (Setup -> Music) to avoid live Adlib synthesis.
+    Turn music off entirely for the smallest audio CPU cost.
   * Shrink the view (Setup -> View size).  This is the biggest saving on a
     slow machine with a native screen: it cuts the drawing and the
     chunky-to-planar conversion together.

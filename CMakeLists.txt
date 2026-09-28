@@ -117,12 +117,16 @@ if (UNIX AND (NOT APPLE))
 endif ()
 
 if (APPLE)
-  file(GLOB GAME_DATA1_0 ${CMAKE_SOURCE_DIR}/gamedata/Ken1.0/*)
-  file(GLOB GAME_DATA1_1 ${CMAKE_SOURCE_DIR}/gamedata/Ken1.1/*)
-  file(GLOB GAME_DATA2_0 ${CMAKE_SOURCE_DIR}/gamedata/Ken2.0/*)
-  file(GLOB GAME_DATA2_0_HIRES ${CMAKE_SOURCE_DIR}/gamedata/Ken2.0/hires/*)
-  file(GLOB GAME_DATA2_1 ${CMAKE_SOURCE_DIR}/gamedata/Ken2.1/*)
-  file(GLOB GAME_DATA2_1_HIRES ${CMAKE_SOURCE_DIR}/gamedata/Ken2.1/hires/*)
+  file(GLOB_RECURSE GAME_DATA_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/gamedata/*)
+  foreach (GAME_DATA_FILE IN LISTS GAME_DATA_FILES)
+    if (NOT IS_DIRECTORY "${GAME_DATA_FILE}")
+      file(RELATIVE_PATH GAME_DATA_REL "${CMAKE_SOURCE_DIR}/gamedata" "${GAME_DATA_FILE}")
+      get_filename_component(GAME_DATA_DIR "${GAME_DATA_REL}" DIRECTORY)
+      set_source_files_properties("${GAME_DATA_FILE}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION "Resources/kenfiles/gamedata/${GAME_DATA_DIR}")
+      list(APPEND BUNDLE_GAME_DATA "${GAME_DATA_FILE}")
+    endif ()
+  endforeach ()
   set(RESOURCE_FILES
   ${ICONS_DIR}/ken.bmp
   ${CMAKE_SOURCE_DIR}/ksmmidi.txt
@@ -132,37 +136,7 @@ if (APPLE)
     PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources/kenfiles
   )
-  set_source_files_properties(
-      ${GAME_DATA1_0}
-      PROPERTIES
-      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken1.0
-  )
-  set_source_files_properties(
-      ${GAME_DATA1_1}
-      PROPERTIES
-      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken1.1
-  )
-  set_source_files_properties(
-      ${GAME_DATA2_0}
-      PROPERTIES
-      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.0
-  )
-  set_source_files_properties(
-      ${GAME_DATA2_0_HIRES}
-      PROPERTIES
-      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.0/hires
-  )
-  set_source_files_properties(
-      ${GAME_DATA2_1}
-      PROPERTIES
-      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.1
-  )
-  set_source_files_properties(
-      ${GAME_DATA2_1_HIRES}
-      PROPERTIES
-      MACOSX_PACKAGE_LOCATION Resources/kenfiles/gamedata/Ken2.1/hires
-  )
-  add_executable (${KEN_EXE_NAME} MACOSX_BUNDLE ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${APP_ICON_MACOSX} ${ICONS_DIR}/ken.rc ${RESOURCE_FILES} ${GAME_DATA1_0} ${GAME_DATA1_1} ${GAME_DATA2_0} ${GAME_DATA2_1} ${GAME_DATA2_0_HIRES} ${GAME_DATA2_1_HIRES})
+  add_executable (${KEN_EXE_NAME} MACOSX_BUNDLE ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${APP_ICON_MACOSX} ${ICONS_DIR}/ken.rc ${RESOURCE_FILES} ${BUNDLE_GAME_DATA})
 else ()
   add_executable (${KEN_EXE_NAME} ${LAB3D_PROJECT_INCLUDES} ${LAB3D_PROJECT_SOURCES} ${ICONS_DIR}/ken.rc)
 endif()

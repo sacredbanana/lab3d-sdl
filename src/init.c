@@ -1,5 +1,8 @@
 #include "lab3d.h"
 #include "adlibemu.h"
+#ifdef PLATFORM_AMIGA
+#include "modmusic.h"
+#endif
 
 /* Size of sounds.kzp should be this in normal cases. */
 // SND_FILE_LENGTH (lab3dversion==2?196423:(lab3dversion?309037:294352))
@@ -236,6 +239,9 @@ void initvideo()
 void freememory()
 {
     PL_CloseAudio();
+#ifdef PLATFORM_AMIGA
+    modmusic_free();
+#endif
     free(lzwbuf);
     free(lzwbuf2);
     free(pic);
@@ -335,10 +341,10 @@ void initaudio()
         }
     }
 
-    if (speechstatus >= 2)
+    if (speechstatus >= 2 || musicsource == MUSIC_SOURCE_MOD)
     {
-        sprintf(filepath, "%ssounds.kzp", gameroot);
-        sprintf(filepathUpper, "%sSOUNDS.KZP", gameroot);
+        game_data_path(filepath, sizeof(filepath), "sounds.kzp");
+        game_data_path(filepathUpper, sizeof(filepathUpper), "SOUNDS.KZP");
         if (((i = open(filepath,O_BINARY|O_RDONLY,0)) != -1)||
             ((i = open(filepathUpper,O_BINARY|O_RDONLY,0)) != -1)) {
             fstat(i, &fstats);
@@ -622,6 +628,9 @@ void initgameversion()
 void resetaudio()
 {
     PL_CloseAudio();
+#ifdef PLATFORM_AMIGA
+    modmusic_free();
+#endif
     musicoff();
     configure();
     if (SoundFile) {

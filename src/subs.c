@@ -1,5 +1,8 @@
 #include "lab3d.h"
 #include "adlibemu.h"
+#ifdef PLATFORM_AMIGA
+#include "modmusic.h"
+#endif
 #include <math.h>
 #include <ctype.h>
 #ifdef ENABLE_HIRES_TEXTURES
@@ -29,6 +32,45 @@ SEQ_DEFINEBUF (2048);
 #endif
 
 static char BADNAME[13]="MESTINXBADLY";
+
+/* Version files take precedence over shared, byte-identical game assets. */
+void game_data_path(char *out, size_t size, const char *name)
+{
+    char local[1024], root[1024], candidate[1024];
+    char *slash;
+    struct stat st;
+    const char *family;
+
+    snprintf(local, sizeof(local), "%s%s", gameroot, name);
+    snprintf(out, size, "%s", local);
+    if (legacyload || stat(local, &st) == 0)
+        return;
+
+    /* These two frames have identical image data in both Ken 2 versions. */
+    if (strcmp(name, "hires/bee-4.png") == 0)
+        name = "hires/bee-2.png";
+
+    snprintf(root, sizeof(root), "%s", gameroot);
+    slash = strrchr(root, '/');
+    if (!slash || slash == root)
+        return;
+    *slash = '\0';
+    slash = strrchr(root, '/');
+    if (!slash)
+        return;
+    *slash = '\0';
+
+    family = (lab3dversion == KENS_LABYRINTH_1_0 ||
+              lab3dversion == KENS_LABYRINTH_1_1) ? "Ken1" : "Ken2";
+    snprintf(candidate, sizeof(candidate), "%s/shared/%s/%s", root, family, name);
+    if (stat(candidate, &st) == 0) {
+        snprintf(out, size, "%s", candidate);
+        return;
+    }
+    snprintf(candidate, sizeof(candidate), "%s/shared/%s", root, name);
+    if (stat(candidate, &st) == 0)
+        snprintf(out, size, "%s", candidate);
+}
 
 void fatal_error(const char* fmt, ...) {
     char txt[1024];
@@ -594,8 +636,8 @@ void loadtables()
 
     printf("%s", gameroot);
 
-    sprintf(filepath, "%stables.dat", gameroot);
-    sprintf(filepathUpper, "%sTABLES.DAT", gameroot);
+    game_data_path(filepath, sizeof(filepath), "tables.dat");
+    game_data_path(filepathUpper, sizeof(filepathUpper), "TABLES.DAT");
     if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) != -1)||
         ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) != -1))
     {
@@ -781,6 +823,14 @@ static int mixblock(unsigned char *stream, int len) {
         else
             memset(stream, 0, rl*2*ratio);
     }
+#ifdef PLATFORM_AMIGA
+    else if (musicsource == MUSIC_SOURCE_MOD) {
+        if (mute == 0 && musicstatus)
+            modmusic_render((int16_t *)stream, rl*ratio/chans, samplerate, chans, musicvolume);
+        else
+            memset(stream, 0, rl*2*ratio);
+    }
+#endif
     else if (ratio == 1) {
         memcpy(stream, SoundBuffer+FeedPoint, rl*2);
         mixin = 0;
@@ -1106,7 +1156,7 @@ void loadwalls(int replace, int showprogress)
 
 #ifdef ENABLE_HIRES_TEXTURES
     // This will crash SDL_Image when building from Xcode. Building outside Xcode works though...
-    sprintf(filepath, "%swallparams.ini", gameroot);
+    game_data_path(filepath, sizeof(filepath), "wallparams.ini");
     if (replace && (params = fopen(filepath, "rt")) != NULL) {
         dotransition = 0;
         int curwall = 0;
@@ -2275,10 +2325,24 @@ K_INT16 loadmusic(char *filename)
     K_INT16 i, j, k, numfiles;
     K_INT32 filoffs;
 
-    sprintf(lastPlayedMusicFile, "%s", filename);
+    if (filename != lastPlayedMusicFile)
+        sprintf(lastPlayedMusicFile, "%s", filename);
 
     FILE *file;
 
+#ifdef PLATFORM_AMIGA
+    if (musicsource == MUSIC_SOURCE_MOD) {
+        int result;
+        char modname[32];
+        snprintf(modname, sizeof(modname), "mods/%.8s.mod", filename);
+        game_data_path(filepath, sizeof(filepath), modname);
+        PL_LockSound();
+        result = modmusic_load(filepath);
+        PL_UnlockSound();
+        if (result) fprintf(stderr, "MOD music unavailable: %s\n", filepath);
+        return result;
+    }
+#endif
     if (musicsource == MUSIC_SOURCE_NONE)
         return(-1);
     if (firstime == 1)
@@ -2429,6 +2493,17 @@ void musicon()
     unsigned char instbuf[11];
     K_UINT32 templong;
 
+#ifdef PLATFORM_AMIGA
+    if (musicsource == MUSIC_SOURCE_MOD) {
+        PL_LockSound();
+        modmusic_start();
+        musicstatus = 1;
+        lastTick = PL_GetTicks();
+        PL_StartClock();
+        PL_UnlockSound();
+        return;
+    }
+#endif
     if (musicsource != MUSIC_SOURCE_NONE)
     {
         for(i=0;i<numchans;i++)
@@ -2519,7 +2594,7 @@ void updateclock(void) {
 
     while(((lastTick+(4+(tickFrac==0)))<=now)||(lastTick>now)) {
         if (!soundtimer) clockspeed = clockspeed < 32767 ? clockspeed + 1 : clockspeed;
-        if (musicsource != MUSIC_SOURCE_ADLIB && musicsource != MUSIC_SOURCE_ADLIB_RANDOM) ksmhandler();
+        if (musicsource != MUSIC_SOURCE_ADLIB && musicsource != MUSIC_SOURCE_ADLIB_RANDOM && musicsource != MUSIC_SOURCE_MOD) ksmhandler();
         lastTick+=4+(tickFrac==0);
         tickFrac++;
         if (tickFrac==6) tickFrac=0;
@@ -3285,8 +3360,8 @@ K_INT16 kgif(K_INT16 filenum)
     if (filenum<0) {
         switch(filenum) {
             case -1:
-                sprintf(filepath, "%slab3d.gif", gameroot);
-                sprintf(filepathUpper, "%sLAB3D.GIF", gameroot);
+                game_data_path(filepath, sizeof(filepath), "lab3d.gif");
+                game_data_path(filepathUpper, sizeof(filepathUpper), "LAB3D.GIF");
                 if (((fil = open(filepath, O_RDONLY|O_BINARY, 0)) == -1)&&
                     ((fil = open(filepathUpper, O_RDONLY|O_BINARY, 0)) == -1))
                     return(-1);
@@ -5623,12 +5698,15 @@ void quit() {
 
     musicoff();
 
-    if (speechstatus >= 2) {
+    if (SoundBuffer) {
         /* The platform layer waits for the mixing callback to stop before
            it returns. */
 
         PL_CloseAudio();
         free(SoundBuffer);
+#ifdef PLATFORM_AMIGA
+        modmusic_free();
+#endif
     }
 
     free(screenbuffer);

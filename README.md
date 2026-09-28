@@ -84,8 +84,11 @@ Or
 - Compile the game yourself (see the Nintendo Switch compiling instructions above)
 
 Navigate to the Switch folder inside your Nintendo Switch SD card and create a new folder
-called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and all of Ken's Labyrinth's data files. (This is the "gamedata" directory if you wish to have the game launcher. Otherwise just copy a single version of Ken's Labyrinth to the directory containing the executable
-WITHOUT including the gamedata directory.)
+called Kens-Labyrinth. Inside this folder, transfer Kens-Labyrinth.nro and the
+entire `gamedata` directory, including `gamedata/shared`. To run without the
+launcher using only one version's files, copy that version into the executable's
+directory and also copy its needed files from `gamedata/shared`, preserving
+their names.
 
 ## Amiga (AmigaOS 3.x, 68020+)
 
@@ -105,6 +108,8 @@ Executable | For |
 
 Copy the one that matches your machine, together with the `gamedata` drawer,
 into a directory of your choice and run it from a Shell or from Workbench.
+Keep `gamedata/shared` with the four version drawers. It holds identical music,
+images, and game files used by more than one version.
 The ray caster does a lot of floating point work per frame, so the FPU builds
 are considerably faster than the plain 020 one - use `.020` only on a machine
 that genuinely has no FPU.

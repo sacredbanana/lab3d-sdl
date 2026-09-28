@@ -6,7 +6,11 @@
 #include "objbase.h"
 #include "shlobj.h"
 #else
+#ifdef PLATFORM_AMIGA
+#define MUSIC_SOURCES 4
+#else
 #define MUSIC_SOURCES 3
+#endif
 #endif
 #endif
 #include <ctype.h>
@@ -627,7 +631,11 @@ static char *musicmenu[] = {
     "No music",
     "Adlib emulation",
     "Adlib random instruments",
+#ifdef PLATFORM_AMIGA
+    "MOD sampled music"
+#else
     "General MIDI"
+#endif
 };
 
 static char *soundmenu[] = {
@@ -1445,7 +1453,11 @@ void configure(void) {
     speechstatus = sound?2:0;
     switch(music) {
         case 3:
+#ifdef PLATFORM_AMIGA
+            musicsource = MUSIC_SOURCE_MOD;
+#else
             musicsource = MUSIC_SOURCE_MIDI;
+#endif
             break;
         case 2:
             musicsource = MUSIC_SOURCE_ADLIB_RANDOM;

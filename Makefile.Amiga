@@ -39,6 +39,7 @@ SOURCES = \
 	$(SRC_DIR)/launcher.c \
 	$(SRC_DIR)/demo.c \
 	$(SRC_DIR)/adlibemu.c \
+	$(SRC_DIR)/modmusic.c \
 	$(SRC_DIR)/amiga/amiga_platform.c \
 	$(SRC_DIR)/amiga/amiga_video.c \
 	$(SRC_DIR)/amiga/amiga_c2p.c \

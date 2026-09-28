@@ -315,7 +315,8 @@ enum {
     MUSIC_SOURCE_NONE,
     MUSIC_SOURCE_MIDI,
     MUSIC_SOURCE_ADLIB,
-    MUSIC_SOURCE_ADLIB_RANDOM
+    MUSIC_SOURCE_ADLIB_RANDOM,
+    MUSIC_SOURCE_MOD
 };
 
 typedef enum {
@@ -519,6 +520,7 @@ EXTERN K_UINT16 convavailpages, convwalls;
 EXTERN unsigned char gamehead[8][27], gamexist[8];
 EXTERN K_INT16 legacyload;
 EXTERN char gameroot[512], filepath[1024], filepathUpper[512];
+void game_data_path(char *out, size_t size, const char *name);
 EXTERN K_INT16 texturecreationneeded;
 EXTERN int stereo;
 EXTERN int mouseverticalmovement;
