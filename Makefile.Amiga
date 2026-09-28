@@ -56,7 +56,11 @@ SOURCES = \
 # -m68881 has to be spelled out or the 040/060 builds end up slower than the
 # 020 FPU one.  With it, gcc emits the 040/060 double-rounding forms
 # (fdmul/fddiv) rather than the extended precision 68881 ones.
-CPUFLAGS_020    = -m68020 -msoft-float
+#
+# Only the plain 020 build shares the chunky to planar conversion with the
+# blitter (see src/amiga/amiga_c2p.c).  Anything with an FPU is almost
+# certainly also fast enough, or JIT emulated, for the CPU alone to win.
+CPUFLAGS_020    = -m68020 -msoft-float -DAMIGA_BLITTER_C2P
 CPUFLAGS_020FPU = -m68020 -m68881
 CPUFLAGS_040    = -m68040 -m68881
 CPUFLAGS_060    = -m68060 -m68881

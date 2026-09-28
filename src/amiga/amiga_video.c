@@ -29,6 +29,7 @@
 
 #include "lab3d.h"
 #include "amiga/amiga_video.h"
+#include "amiga/amiga_c2p.h"
 
 #include <math.h>
 
@@ -74,12 +75,6 @@ static ULONG    lut[256];
 
 /* Defined further down; amiga_video_open() needs it before its definition. */
 void amiga_build_penmap(void);
-
-/* Chunky to planar helper tables (see amiga_c2p.c). */
-extern void amiga_c2p_init(void);
-extern void amiga_c2p(const UBYTE *src, int srcmod,
-                      struct BitMap *bm, int destx, int desty,
-                      int w, int h, int depth);
 
 /* Maps a 256 colour game index onto a pen when the screen has fewer than
    256 of them. */
@@ -514,6 +509,8 @@ static void amiga_sync_buffers(void) {
 static void amiga_free_buffers(void) {
     int i;
 
+    amiga_c2p_sync();
+
     if (doublebuffered) {
         /* Let any pending flip finish before we pull the buffers away. */
         amiga_sync_buffers();
@@ -613,12 +610,26 @@ static int amiga_alloc_frame(const amiga_videomode *m) {
     return 0;
 }
 
+/* Give the blitter assisted chunky to planar conversion (68020 build only)
+   a staging area covering the part of the screen the frame lands on. */
+static void amiga_stage_area(void) {
+    const amiga_videomode *m = &amiga_mode;
+
+    if (m->rtg)
+        amiga_c2p_blit_area(0, 0, 0, 0);
+    else
+        amiga_c2p_blit_area(m->destx, m->desty,
+                            m->vieww * m->divisor, m->viewh * m->divisor);
+}
+
 /* Black out both buffers, so nothing from the last layout is left in the
    borders round a smaller one. */
 static void amiga_clear_display(void) {
     struct RastPort rp;
     int i;
 
+    /* SetRast() blits, and the conversion may still own the blitter. */
+    amiga_c2p_sync();
     amiga_sync_buffers();
 
     rp = amiga_screen->RastPort;
@@ -720,6 +731,7 @@ int amiga_video_open(void) {
 
     if (!amiga_mode.rtg)
         amiga_c2p_init();
+    amiga_stage_area();
 
     /* Blank the screen so the borders are black rather than whatever
        Intuition left behind. */
@@ -762,6 +774,7 @@ int amiga_video_relayout(void) {
     }
 
     amiga_describe(&amiga_mode);
+    amiga_stage_area();
     amiga_clear_display();
     amiga_video_invalidate();
     amiga_apply_view();
@@ -779,6 +792,7 @@ void amiga_video_close(void) {
     }
     if (blankpointer) { FreeVec(blankpointer); blankpointer = NULL; }
 
+    amiga_c2p_blit_area(0, 0, 0, 0);    /* waits for any blits, too */
     amiga_free_buffers();
 
     if (amiga_screen) { CloseScreen(amiga_screen); amiga_screen = NULL; }
@@ -1093,6 +1107,7 @@ static void amiga_blit_rect(struct RastPort *rp, int x0, int y0, int x1, int y1)
 
 void amiga_blit_frame(void) {
     struct RastPort rp;
+    K_UINT32 t0;
     int i;
 
     if (!amiga_screen || !amiga_chunky) return;
@@ -1105,6 +1120,7 @@ void amiga_blit_frame(void) {
 
     rp = amiga_screen->RastPort;
     rp.BitMap = amiga_drawbitmap();
+    t0 = PL_GetTicks();
 
     /* Everything, unless the view is shrunk and nothing says otherwise:
        at full size the view covers the frame and is redrawn every frame
@@ -1120,6 +1136,14 @@ void amiga_blit_frame(void) {
             for (i = 0; i < dirty_last.n; i++)
                 amiga_blit_rect(&rp, dirty_last.r[i].x0, dirty_last.r[i].y0,
                                 dirty_last.r[i].x1, dirty_last.r[i].y1);
+    }
+
+    /* The blitter may still be finishing the conversion; the frame has to
+       be complete before it is shown, and the staging area free for the
+       next one.  How long all that took goes to the blitter's Auto setting. */
+    if (!amiga_mode.rtg) {
+        amiga_c2p_sync();
+        amiga_c2p_frame_done(PL_GetTicks() - t0);
     }
 
     dirty_last = dirty_now;

@@ -1061,17 +1061,24 @@ typedef struct {
  * which keeps the display to about a third of the load however fast the
  * machine is.  The fade still runs every wall; on the Amiga it goes straight
  * into the hardware palette, so it stays smooth across the skipped frames.
+ *
+ * The opposite problem turns up under a JIT, which decodes the lot in a
+ * blink and would leave the bar no time on screen at all.  So each wall is
+ * also held back to its share of PROGRESS_MIN_TOTAL_MS: a fast machine fills
+ * the bar steadily over that time, and a slow one, already taking longer,
+ * never waits.
  */
 #ifdef PLATFORM_AMIGA
 #define PROGRESS_SKIP_FRAMES 1
 #define PROGRESS_MIN_MS      40     /* no point going faster than 25 fps */
+#define PROGRESS_MIN_TOTAL_MS 2000
 #else
 #define PROGRESS_SKIP_FRAMES 0
 #endif
 
 void loadwalls(int replace, int showprogress)
 {
-    K_UINT32 progress_shown = 0, progress_wait = 0;
+    K_UINT32 progress_shown = 0, progress_wait = 0, progress_start;
     unsigned char bitcnt, numbits;
     wallparam wparams[numwalls];
     //imgcache* cache=NULL;
@@ -1187,6 +1194,7 @@ void loadwalls(int replace, int showprogress)
         lzwbuf2[0]=0;
         lzwbuf[0]=0;
 
+        progress_start = PL_GetTicks();
         for (i = 0; i < rnumwalls; i++)
         {
             /* Keep the intro music fed on platforms without an audio thread. */
@@ -1324,6 +1332,16 @@ void loadwalls(int replace, int showprogress)
                 /* Use double buffer when fading, single buffer when not.
                    Yes, I know I'm too clever for my own good.
                    Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
+#if PROGRESS_SKIP_FRAMES
+                {
+                    K_UINT32 due = progress_start +
+                        (K_UINT32)PROGRESS_MIN_TOTAL_MS * (i + 1) / rnumwalls;
+
+                    now = PL_GetTicks();
+                    if ((K_INT32)(due - now) > 0)
+                        PL_Delay(due - now);    /* keeps the music fed */
+                }
+#endif
                 now = PL_GetTicks();
                 if (i == 0 || i == rnumwalls - 1 ||
                     now - progress_shown >= progress_wait) {

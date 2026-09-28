@@ -14,6 +14,7 @@
 #ifdef PLATFORM_AMIGA
 #include "amiga/amiga_video.h"
 #include "amiga/amiga_audio.h"
+#include "amiga/amiga_c2p.h"
 extern int amiga_cfg_modeid_i;
 extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
 extern int amiga_cfg_render, amiga_cfg_askmode;
@@ -560,6 +561,22 @@ void setupamigarate(void) {
     amiga_cfg_rate = amiga_rate_hz(sel);
     if ((inlauncher || setup_ingame) && amiga_cfg_rate != old) resetaudio();
 }
+
+#ifdef AMIGA_BLITTER_C2P
+/* Whether the plain 68020 build shares the chunky to planar conversion with
+   the blitter.  Auto times it both ways and keeps the faster, which is what
+   tells a real 14MHz 020 from a JIT or a fast FPGA core. */
+static char *amigablittermenu[] = { "Off", "Auto", "On" };
+
+void setupamigablitter(void) {
+    int old = amiga_cfg_blitter;
+    selectionmenu(3, amigablittermenu, &amiga_cfg_blitter, "Blitter assist");
+    if (amiga_cfg_blitter != old) amiga_c2p_blitter_changed();
+}
+#define AMIGA_BLT_ROW 1
+#else
+#define AMIGA_BLT_ROW 0
+#endif
 #endif
 
 
@@ -1228,6 +1245,11 @@ static void draw_mainmenu(void) {
     n += 12; textprint(51,n,96);
     sprintf(textbuf,"Sample rate: %d Hz", amiga_cfg_rate);
     n += 12; textprint(51,n,96);
+#ifdef AMIGA_BLITTER_C2P
+    strcpy(textbuf,"Blitter assist: ");
+    strcat(textbuf,amiga_c2p_blitter_status());
+    n += 12; textprint(51,n,64);
+#endif
 #else
     #ifdef __SWITCH__
     sprintf(textbuf,"Window size: %dx%d %s", screenwidth,
@@ -1306,9 +1328,11 @@ void setupmenu(int ingame) {
     /* Fifteen rows: the window, filtering, stereo, texture depth and view
        options of the desktop builds do not apply to a software renderer on a
        fixed size screen, and the screen mode, render size, view size, sound
-       output and sample rate settings take their place. */
+       output and sample rate settings take their place.  The plain 68020
+       build has a sixteenth, for the blitter. */
     while (!quit) {
-        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 15)) < 0) {
+        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel,
+                                15 + AMIGA_BLT_ROW)) < 0) {
             quit = 1;
         } else {
             switch (sel) {
@@ -1320,13 +1344,16 @@ void setupmenu(int ingame) {
             case 5:  setupamigaviewsize();     break;
             case 6:  setupamigaaudio();        break;
             case 7:  setupamigarate();         break;
-            case 8:  setupsetmusic();          break;
-            case 9:  setupsetsound();          break;
-            case 10: setupsetsoundchannels();  break;
-            case 11: setupsetmusicchannels();  break;
-            case 12: setupcheatmenu();         break;
-            case 13: setupsoundblockmenu();    break;
-            case 14: quit = 1;                 break;
+#ifdef AMIGA_BLITTER_C2P
+            case 8:  setupamigablitter();      break;
+#endif
+            case 8 + AMIGA_BLT_ROW:  setupsetmusic();          break;
+            case 9 + AMIGA_BLT_ROW:  setupsetsound();          break;
+            case 10 + AMIGA_BLT_ROW: setupsetsoundchannels();  break;
+            case 11 + AMIGA_BLT_ROW: setupsetmusicchannels();  break;
+            case 12 + AMIGA_BLT_ROW: setupcheatmenu();         break;
+            case 13 + AMIGA_BLT_ROW: setupsoundblockmenu();    break;
+            case 14 + AMIGA_BLT_ROW: quit = 1;                 break;
             }
         }
     }
@@ -1784,6 +1811,9 @@ static setting_t amiga_settings[] = {
     INTSETTING(askmode, amiga_cfg_askmode),
     INTSETTING(audio, amiga_cfg_audio),
     INTSETTING(rate, amiga_cfg_rate),
+#ifdef AMIGA_BLITTER_C2P
+    INTSETTING(blitter, amiga_cfg_blitter),
+#endif
     { NULL }
 };
 #endif

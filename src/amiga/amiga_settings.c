@@ -11,6 +11,7 @@
 #include "lab3d.h"
 #include "amiga/amiga_video.h"
 #include "amiga/amiga_audio.h"
+#include "amiga/amiga_c2p.h"
 
 extern ULONG amiga_cfg_modeid;
 extern int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
@@ -51,6 +52,11 @@ void amiga_settings_loaded(void) {
     if (amiga_cfg_render != AMIGA_RENDER_UNSCALED &&
         (amiga_cfg_render < 0 || amiga_cfg_render > AMIGA_RENDER_MAXDIV))
         amiga_cfg_render = AMIGA_RENDER_AUTO;
+#ifdef AMIGA_BLITTER_C2P
+    if (amiga_cfg_blitter < AMIGA_BLITTER_OFF_VALUE ||
+        amiga_cfg_blitter > AMIGA_BLITTER_ON_VALUE)
+        amiga_cfg_blitter = AMIGA_BLITTER_AUTO_VALUE;
+#endif
 
     if (amiga_mode_locked) {
         amiga_cfg_modeid = locked_modeid;
