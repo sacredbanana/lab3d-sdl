@@ -1051,8 +1051,27 @@ typedef struct {
 
 /* Load textures. Use LZW without a license. */
 
+/*
+ * Showing a frame of the loading bar means redrawing the whole screen and
+ * waiting for the display to flip.  On a native Amiga screen that redraw is a
+ * full chunky to planar conversion, which on a slow machine takes far longer
+ * than decoding a wall, so drawing all 448 of them made the load several
+ * times slower than it had to be.  There the bar skips frames instead: after
+ * each one it waits twice as long as that frame took before showing another,
+ * which keeps the display to about a third of the load however fast the
+ * machine is.  The fade still runs every wall; on the Amiga it goes straight
+ * into the hardware palette, so it stays smooth across the skipped frames.
+ */
+#ifdef PLATFORM_AMIGA
+#define PROGRESS_SKIP_FRAMES 1
+#define PROGRESS_MIN_MS      40     /* no point going faster than 25 fps */
+#else
+#define PROGRESS_SKIP_FRAMES 0
+#endif
+
 void loadwalls(int replace, int showprogress)
 {
+    K_UINT32 progress_shown = 0, progress_wait = 0;
     unsigned char bitcnt, numbits;
     wallparam wparams[numwalls];
     //imgcache* cache=NULL;
@@ -1260,15 +1279,17 @@ void loadwalls(int replace, int showprogress)
             }
             /* Loading bar; skipped before the launcher so it loads faster. */
             if (showprogress) {
-                if (i < 127) {
+                int level = (i < 127) ? 64 + (i >> 1) : 63;
+                K_UINT32 now;
+
+                /* The level only moves every other wall, and not at all
+                   past 127; reloading an unchanged palette is wasted work. */
+                if (level != fadelevel) {
                     if (debugmode)
                         fprintf(stderr, "Trying to draw screen buffer.\n");
-                    fade(64 + (i >> 1));
+                    fade(level);
                     if (debugmode)
                         fprintf(stderr, "Screen buffer draw OK.\n");
-                }
-                else {
-                    fade(63);
                 }
 
                 j = (160 - (rnumwalls >> 2) + i);
@@ -1303,9 +1324,19 @@ void loadwalls(int replace, int showprogress)
                 /* Use double buffer when fading, single buffer when not.
                    Yes, I know I'm too clever for my own good.
                    Update: Not anymore! Single buffering is no longer supported and has issues in full screen mode in Windows 10 with Nvidia drivers */
-                SetVisibleScreenOffset(0);
-                PL_PumpEvents();
-                PL_SwapBuffers();
+                now = PL_GetTicks();
+                if (i == 0 || i == rnumwalls - 1 ||
+                    now - progress_shown >= progress_wait) {
+                    SetVisibleScreenOffset(0);
+                    PL_PumpEvents();
+                    PL_SwapBuffers();
+#if PROGRESS_SKIP_FRAMES
+                    progress_shown = PL_GetTicks();
+                    progress_wait  = 2 * (progress_shown - now);
+                    if (progress_wait < PROGRESS_MIN_MS)
+                        progress_wait = PROGRESS_MIN_MS;
+#endif
+                }
             }
             cwparam = &wparams[i];
             int minfilt = cwparam->minfilt;
