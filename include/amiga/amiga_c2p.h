@@ -34,11 +34,14 @@ int  amiga_c2p_blit_area(int x, int y, int w, int h);
 void amiga_c2p_sync(void);
 void amiga_c2p_frame_done(unsigned long ms);
 
-#ifdef AMIGA_BLITTER_C2P
-/* Setting "blitter" in settings.ini, and the setup menu's view of it. */
+/* Setting "blitter" in settings.ini.  The values are visible to every build
+   so the FPU ones can carry the 020 build's choice through a save. */
 #define AMIGA_BLITTER_OFF_VALUE   0
 #define AMIGA_BLITTER_AUTO_VALUE  1     /* time both ways, keep the faster */
 #define AMIGA_BLITTER_ON_VALUE    2
+
+#ifdef AMIGA_BLITTER_C2P
+/* The setup menu's view of the setting. */
 extern int amiga_cfg_blitter;
 
 const char *amiga_c2p_blitter_status(void);

@@ -29,6 +29,7 @@ void setupamigaaudio(void);
 void amiga_lock_mode(unsigned long modeid, int w, int h, int d);
 #endif
 
+int selectionmenu(int alts,char *titles[], int *value, const char* menutitle);
 static void draw_mainmenu(void);
 static void draw_setupsetinputgroup(void);
 static void draw_key_instruction(void);
@@ -1809,6 +1810,9 @@ void amiga_settings_loaded(void);
 void amiga_settings_saving(void);
 
 static int amiga_cfg_oldscale;
+#ifndef AMIGA_BLITTER_C2P
+static int amiga_cfg_blitter_kept = AMIGA_BLITTER_AUTO_VALUE;
+#endif
 
 static setting_t amiga_settings[] = {
     INTSETTING(modeid, amiga_cfg_modeid_i),
@@ -1825,6 +1829,10 @@ static setting_t amiga_settings[] = {
     INTSETTING(rate, amiga_cfg_rate),
 #ifdef AMIGA_BLITTER_C2P
     INTSETTING(blitter, amiga_cfg_blitter),
+#else
+    /* Only the plain 020 build uses it, but the builds share settings.ini,
+       so keep the line as it was rather than warn about it or drop it. */
+    INTSETTING(blitter, amiga_cfg_blitter_kept),
 #endif
     { NULL }
 };
@@ -1962,8 +1970,9 @@ void loadsettings(void) {
             cursection = sections;
             while (1) {
                 if (!cursection->name) {
-                    fprintf(stderr, "%s:%d: Invalid config section: %s", "settings.ini", curline, key);
-                    return;
+                    fprintf(stderr, "%s:%d: Invalid config section: %s\n", "settings.ini", curline, key);
+                    cursection = NULL;
+                    break;
                 }
                 if (strcasecmp(key, cursection->name) == 0)
                     break;
@@ -1971,17 +1980,19 @@ void loadsettings(void) {
             }
         } else {
             if (!cursection) {
-                fprintf(stderr, "%s:%d: Config value outside of section: %s", "settings.ini", curline, key);
+                fprintf(stderr, "%s:%d: Config value outside of section: %s\n", "settings.ini", curline, key);
+                continue;
             }
             cursetting = cursection->settings;
             while (1) {
                 if (!cursetting->name) {
-                    fprintf(stderr, "%s:%d: Unknown config setting in section %s: %s", "settings.ini", curline, cursection->name, key);
+                    fprintf(stderr, "%s:%d: Unknown config setting in section %s: %s\n", "settings.ini", curline, cursection->name, key);
+                    break;
                 }
                 if (strcasecmp(key, cursetting->name) == 0) {
                     int rv = cursetting->load(key, val, cursetting);
                     if (rv != 0) {
-                        fprintf(stderr, "%s:%d: Invalid value for %s: %s", "settings.ini", curline, cursetting->name, val);
+                        fprintf(stderr, "%s:%d: Invalid value for %s: %s\n", "settings.ini", curline, cursetting->name, val);
                     }
                     break;
                 }
