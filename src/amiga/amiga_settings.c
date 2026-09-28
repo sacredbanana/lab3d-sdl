@@ -14,7 +14,7 @@
 
 extern ULONG amiga_cfg_modeid;
 extern int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
-extern int   amiga_cfg_scale, amiga_cfg_askmode;
+extern int   amiga_cfg_askmode, amiga_cfg_render;
 
 /* setup.c reads and writes these through the generic int setting handlers,
    which work on `int`, so the mode id gets its own int mirror. */
@@ -45,6 +45,9 @@ void amiga_settings_loaded(void) {
         amiga_cfg_audio = AMIGA_AUDIO_AUTO;
     if (amiga_rate_index(amiga_cfg_rate) < 0)
         amiga_cfg_rate = AMIGA_RATE_DEFAULT;
+    if (amiga_cfg_render != AMIGA_RENDER_UNSCALED &&
+        (amiga_cfg_render < 0 || amiga_cfg_render > AMIGA_RENDER_MAXDIV))
+        amiga_cfg_render = AMIGA_RENDER_AUTO;
 
     if (amiga_mode_locked) {
         amiga_cfg_modeid = locked_modeid;

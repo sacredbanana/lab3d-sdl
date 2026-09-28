@@ -49,11 +49,25 @@ every mode your system offers - native and RTG.  Pick one and the game starts.
 Your choice is remembered in settings.ini; add -keepmode to skip the requester
 next time, or -askmode to force it back.
 
-The game renders internally at 360x240, the resolution the DOS original used.
-A mode that big or bigger shows the whole view; a smaller one, such as the
-standard 320x256 PAL screen, shows the 320x200 window the original game used.
-Modes of 720x480 or more can pixel-double it - see Pixel doubling in the setup
-menu.
+The game fills whatever screen mode you pick.  It renders at the screen's
+resolution divided by a whole number and scales the result back up, so every
+pixel stays the same size: on a 1920x1080 screen it might draw 480x270 and
+scale it by four, or draw the full 1920x1080 if the machine is fast enough.
+On a widescreen mode the view widens to match, as the desktop version does,
+rather than leaving bars at the sides.  Setup -> Render size lists the sizes
+your screen allows:
+
+  Automatic       about as much detail as the DOS original, so the
+                  renderer's share of the frame costs about what it did
+  full / 1/2 ...  more detail, at a cost that grows with the pixel count -
+                  the full 1920x1080 is 24 times the work of 360x240
+  Off             the original 360x240 in the middle of the screen, unscaled
+
+The change takes effect at once.  Renders are limited to 2048x1200; a bigger
+screen is still filled, from a half size or smaller render.
+
+A small screen, such as the standard 320x256 PAL one, shows the 320x200
+window the original game used, as before.
 
 An 8 bit RTG screen is the fastest option, because the renderer's output is
 copied to it as-is.  A native screen needs chunky-to-planar conversion for
@@ -99,8 +113,11 @@ If the game is too slow:
   * Turn music off (Setup -> Music).  The Adlib emulation is software FM
     synthesis and it is the single most expensive thing running besides the
     renderer.
+  * Pick a smaller Render size, or Automatic.
   * Use a smaller screen mode; 320x200 is a third less work than 360x240.
-  * Turn pixel doubling off.
+  * On a native screen, scaling up costs chunky-to-planar time for every
+    pixel of the screen, not just of the render.  Render size Off, or a
+    lores screen mode, is the fastest way to play there.
 
 
 Not included

@@ -32,7 +32,7 @@ extern K_INT32        *zbuf;
 extern unsigned char   shadetab[256];
 extern K_INT32        *vrecip;
 extern double          cam_fx, cam_fy, cam_ex, cam_ey, cam_ez;
-extern double          proj_x, proj_y;
+extern double          proj_x, proj_y, proj_cx;
 extern int             horizon_row, neardist;
 
 /* ---- ray caster -------------------------------------------------------- */

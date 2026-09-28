@@ -36,7 +36,7 @@ static int              timer_ok;
 /* Settings owned by amiga_video.c. */
 extern ULONG amiga_cfg_modeid;
 extern int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
-extern int   amiga_cfg_scale, amiga_cfg_askmode;
+extern int   amiga_cfg_askmode;
 void amiga_lock_mode(ULONG modeid, int w, int h, int d);
 
 /* --------------------------------------------------------------- start/stop */
@@ -203,14 +203,9 @@ int PL_OpenVideo(void) {
     if (amiga_video_open() != 0)
         return -1;
 
-    /* The shared code works in a fixed 360x240 space on the Amiga; the
-       display module handles centring and scaling. */
-    screenwidth  = AMIGA_VIEW_W;
-    screenheight = AMIGA_VIEW_H;
-    virtualscreenwidth  = AMIGA_VIEW_W;
-    virtualscreenheight = AMIGA_VIEW_H;
-    aspw = 1.0;
-    asph = 1.0;
+    /* The render size and the view's shape come from the layout the
+       display module chose for this screen. */
+    amiga_apply_view();
 
     return 0;
 }

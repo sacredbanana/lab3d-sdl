@@ -36,7 +36,7 @@ unsigned char          shadetab[256];
 static K_INT32         vrecip_store[RECIP_MAX];
 K_INT32               *vrecip = vrecip_store;
 double                 cam_fx, cam_fy, cam_ex, cam_ey, cam_ez;
-double                 proj_x, proj_y;
+double                 proj_x, proj_y, proj_cx = 180.0;
 int                    horizon_row, neardist = 16;
 
 static unsigned char fbA[VW * VH], fbB[VW * VH];

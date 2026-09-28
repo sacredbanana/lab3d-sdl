@@ -8,19 +8,35 @@
 #include <intuition/screens.h>
 #include <graphics/gfxbase.h>
 
-/* The game always renders into a 360x240 chunky buffer, which is then
-   centred (and optionally pixel-doubled) in whatever screen mode the player
-   picked.  Keeping the internal resolution fixed keeps every coordinate in
-   the shared game code valid and makes the frame cost predictable. */
+/* The game's own coordinate space: every overlay, menu and 2D sprite is laid
+   out in a 360x240 "virtual screen", the resolution the DOS original used on
+   a 4:3 monitor.  The renderer maps it onto a chunky buffer of whatever size
+   the layout picks, and the display module scales that buffer up by a whole
+   number to fill the screen. */
 #define AMIGA_VIEW_W  360
 #define AMIGA_VIEW_H  240
 
-/* The 320x200 area inside that buffer which the original DOS game used, at
+/* The 320x200 area inside that space which the original DOS game used, at
    (20,20).  Everything the game has to show fits in the full 240 rows but
-   only in the middle 320 columns, so a screen narrower than the view is
+   only in the middle 320 columns, so a view narrower than 360 units is
    cropped to this window while a shorter one is grown into the borders. */
 #define AMIGA_CROP_W  320
 #define AMIGA_CROP_H  200
+
+/* Largest render buffer.  The wall rasteriser carries screen rows in 16.16
+   fixed point, and the top of a wall at the near plane lands about 32 x
+   proj_y rows away from the horizon, so the height is what has to be kept in
+   check: 1200 rows puts that at 27000, inside the 32767 a 16.16 row holds.
+   A bigger screen is still filled; it just renders at half size or less. */
+#define AMIGA_RENDER_MAXW  2048
+#define AMIGA_RENDER_MAXH  1200
+
+/* amiga_cfg_render: 0 picks a divisor automatically, 1..AMIGA_RENDER_MAXDIV
+   renders at screen size / n, and AMIGA_RENDER_UNSCALED is the old
+   behaviour - the 360x240 view at 1:1 in the middle of the screen. */
+#define AMIGA_RENDER_AUTO      0
+#define AMIGA_RENDER_MAXDIV    8
+#define AMIGA_RENDER_UNSCALED  (-1)
 
 typedef struct {
     ULONG  modeid;            /* display mode chosen by the player       */
@@ -28,23 +44,39 @@ typedef struct {
     int    depth;             /* bitplanes, or bits per pixel on RTG     */
     int    rtg;               /* non-zero when this is a CyberGraphX mode */
     int    pixfmt;            /* PIXFMT_#? for RTG modes                 */
-    int    scale;             /* 1 or 2: integer pixel doubling          */
-    int    srcx, srcy;        /* top-left of the region we display       */
-    int    srcw, srch;        /* size of the region we display           */
-    int    destx, desty;      /* where it lands on screen                */
+    double pixaspect;         /* width / height of one screen pixel       */
+
+    int    divisor;           /* screen pixels per render pixel, each way */
+    int    vieww, viewh;      /* render buffer (amiga_chunky) size        */
+    int    destx, desty;      /* where the scaled-up buffer lands         */
+
+    /* Game units to render pixels: pixel = unit * ppu + org.  ppux and ppuy
+       differ whenever the view keeps the original 4:3 shape on a screen of
+       some other shape, because a 360x240 unit is not square. */
+    double ppux, ppuy;
+    int    orgx, orgy;
+    int    aspectok;          /* 0 when the view fell back to 1 unit = 1 px */
 } amiga_videomode;
 
 extern amiga_videomode amiga_mode;
 extern struct Screen  *amiga_screen;
 extern struct Window  *amiga_window;
 
-/* The 8 bit chunky frame the game draws into (AMIGA_VIEW_W stride). */
+/* The 8 bit chunky frame the game draws into, amiga_mode.vieww by
+   amiga_mode.viewh with no padding between rows. */
 extern UBYTE *amiga_chunky;
 
-/* Bottom edge, in view coordinates, of the part of the frame that reaches the
-   display.  The status bar hangs off this rather than off AMIGA_VIEW_H so it
-   stays on screen when the view has to be cropped. */
-int amiga_view_bottom(void);
+/* Work out the render size for the current settings and, if the display is
+   open, reallocate the frame to match so the change shows at once.  Returns
+   0 on success; on failure the previous layout stays in force. */
+int  amiga_video_relayout(void);
+
+/* Render buffer size a given amiga_cfg_render value would produce on the
+   open screen, for the setup menu. */
+void amiga_render_size(int setting, int *w, int *h);
+
+/* Copy the layout into the shared code's globals (screenwidth, aspw, ...). */
+void amiga_apply_view(void);
 
 /* Ask the player for a screen mode; returns 0 if they cancelled. */
 int  amiga_select_screenmode(amiga_videomode *out);

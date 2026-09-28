@@ -16,9 +16,9 @@
 #include "amiga/amiga_audio.h"
 extern int amiga_cfg_modeid_i;
 extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
-extern int amiga_cfg_scale, amiga_cfg_askmode;
+extern int amiga_cfg_render, amiga_cfg_askmode;
 void amigascreenmodemenu(void);
-void setupamigascaling(void);
+void setupamigarender(void);
 void setupamigaaudio(void);
 void amiga_lock_mode(unsigned long modeid, int w, int h, int d);
 #endif
@@ -428,7 +428,6 @@ static char *okmenu[] = { "OK" };
 
 #ifdef PLATFORM_AMIGA
 static char *amigaokmenu[] = { "OK" };
-static char *amigascalemenu[] = { "Automatic", "Off (1x)", "On (2x)" };
 static char *amigaaudiomenu[] = {
     "Automatic",
     "Paula (8 bit)",
@@ -459,8 +458,59 @@ void amigascreenmodemenu(void) {
     }
 }
 
-void setupamigascaling(void) {
-    selectionmenu(3, amigascalemenu, &amiga_cfg_scale, "Pixel doubling");
+/* Render size, shown as the resolution each choice gives on this screen.
+   Automatic, then every divisor from full size down that the screen can
+   use, then the original fixed 360x240.  A divisor that comes out the same
+   size as the one before it (the screen is too small or too big for it) is
+   left out. */
+static char amigarendertext[AMIGA_RENDER_MAXDIV + 2][32];
+
+/* `brief` is for the one line summary in the main setup menu. */
+static void amiga_render_label(char *buf, int setting, int brief) {
+    int w, h;
+
+    amiga_render_size(setting, &w, &h);
+    if (setting == AMIGA_RENDER_AUTO)
+        sprintf(buf, brief ? "Auto, %dx%d" : "Automatic (%dx%d)", w, h);
+    else if (setting == AMIGA_RENDER_UNSCALED)
+        sprintf(buf, brief ? "Off, %dx%d" : "Off: %dx%d, not scaled", w, h);
+    else if (brief)
+        sprintf(buf, "%dx%d", w, h);
+    else if (setting == 1)
+        sprintf(buf, "%dx%d (full)", w, h);
+    else
+        sprintf(buf, "%dx%d (1/%d)", w, h, setting);
+}
+
+void setupamigarender(void) {
+    char *items[AMIGA_RENDER_MAXDIV + 2];
+    int   values[AMIGA_RENDER_MAXDIV + 2];
+    int   n = 0, sel = 0, i, w, h, lastw = -1, lasth = -1;
+
+    values[n] = AMIGA_RENDER_AUTO; n++;
+    for (i = 1; i <= AMIGA_RENDER_MAXDIV; i++) {
+        amiga_render_size(i, &w, &h);
+        if (w == lastw && h == lasth) continue;
+        lastw = w; lasth = h;
+        values[n++] = i;
+    }
+    values[n++] = AMIGA_RENDER_UNSCALED;
+
+    for (i = 0; i < n; i++) {
+        amiga_render_label(amigarendertext[i], values[i], 0);
+        items[i] = amigarendertext[i];
+        if (values[i] == amiga_cfg_render) sel = i;
+    }
+
+    if (selectionmenu(n, items, &sel, "Render size") < 0)
+        return;
+    if (values[sel] == amiga_cfg_render)
+        return;
+
+    /* Takes effect straight away: the menus redraw every frame, so the next
+       one lands in the new buffer. */
+    amiga_cfg_render = values[sel];
+    amiga_video_relayout();
 }
 
 /* Paula or AHI.  Automatic takes AHI on an 040 or better, where the software
@@ -1139,8 +1189,8 @@ static void draw_mainmenu(void) {
     strcpy(textbuf,"Ask for mode at startup: ");
     strcat(textbuf,amiga_cfg_askmode ? "Yes" : "No");
     n += 12; textprint(51,n,64);
-    strcpy(textbuf,"Pixel doubling: ");
-    strcat(textbuf,amigascalemenu[amiga_cfg_scale > 2 ? 0 : amiga_cfg_scale]);
+    strcpy(textbuf,"Render size: ");
+    amiga_render_label(textbuf + strlen(textbuf), amiga_cfg_render, 1);
     n += 12; textprint(51,n,64);
     strcpy(textbuf,"Sound output: ");
     strcat(textbuf,amigaaudiomenu[(amiga_cfg_audio < 0 ||
@@ -1237,7 +1287,7 @@ void setupmenu(int ingame) {
             case 1:  setupconfigureinput();    break;
             case 2:  amigascreenmodemenu();    break;
             case 3:  amiga_cfg_askmode = !amiga_cfg_askmode; break;
-            case 4:  setupamigascaling();      break;
+            case 4:  setupamigarender();       break;
             case 5:  setupamigaaudio();        break;
             case 6:  setupamigarate();         break;
             case 7:  setupsetmusic();          break;
@@ -1387,11 +1437,9 @@ void configure_screen_size(void) {
     asph=1.0;
 
 #ifdef PLATFORM_AMIGA
-    /* The Amiga renderer always works in a 360x240 chunky buffer; the display
-       module centres and optionally doubles it inside whatever screen mode
-       the player chose, so there is nothing to scale here. */
-    virtualscreenwidth = 360;
-    virtualscreenheight = 240;
+    /* The view's size and shape come from the screen mode the player chose,
+       which the display module works out when it opens the screen. */
+    amiga_apply_view();
     return;
 #endif
 
@@ -1687,16 +1735,21 @@ static int _save_joyaction(const char* key, FILE* f, setting_t* set) {
 /* Screen mode chosen through the ASL requester at startup. */
 extern int amiga_cfg_modeid_i;
 extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
-extern int amiga_cfg_scale, amiga_cfg_askmode, amiga_cfg_audio;
+extern int amiga_cfg_render, amiga_cfg_askmode, amiga_cfg_audio;
 void amiga_settings_loaded(void);
 void amiga_settings_saving(void);
+
+static int amiga_cfg_oldscale;
 
 static setting_t amiga_settings[] = {
     INTSETTING(modeid, amiga_cfg_modeid_i),
     INTSETTING(width, amiga_cfg_width),
     INTSETTING(height, amiga_cfg_height),
     INTSETTING(depth, amiga_cfg_depth),
-    INTSETTING(scale, amiga_cfg_scale),
+    INTSETTING(render, amiga_cfg_render),
+    /* The old pixel doubling setting, read and dropped so an existing
+       settings.ini does not warn about it. */
+    XINTSETTING(scale, amiga_cfg_oldscale),
     INTSETTING(askmode, amiga_cfg_askmode),
     INTSETTING(audio, amiga_cfg_audio),
     INTSETTING(rate, amiga_cfg_rate),

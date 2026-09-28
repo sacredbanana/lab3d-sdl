@@ -23,9 +23,13 @@
  *     (which clears to the floor colour and paints one rectangle for the
  *     ceiling), so there is no floor texture mapping to do at all.
  *
- * Everything is drawn into a 360x240 8 bit chunky buffer whose indices are
- * the game's own palette entries, so there is no colour conversion in the
- * inner loops.  Shading uses the structure of that palette: it is sixteen
+ * Everything is drawn into an 8 bit chunky buffer whose indices are the
+ * game's own palette entries, so there is no colour conversion in the inner
+ * loops.  The buffer is whatever size amiga_video.c's layout picked - 360x240
+ * on a small screen, up to the full screen resolution on a big one - and the
+ * game's 360x240 coordinate space is mapped onto it through amiga_mode.ppux,
+ * ppuy, orgx and orgy.  The display module then scales it up to fill the
+ * screen.  Shading uses the structure of that palette: it is sixteen
  * hues by sixteen brightness levels, so the OpenGL renderer's 0.9x shade for
  * one wall orientation becomes "subtract one from the low nibble".
  *
@@ -47,21 +51,27 @@
 
 /* ------------------------------------------------------------------ state */
 
-#define VW AMIGA_VIEW_W
-#define VH AMIGA_VIEW_H
+/* The render buffer.  These are read from amiga_mode rather than copied, so
+   a relayout from the setup menu takes effect on the next frame.  Inner loops
+   that step by a row take a local copy: a store through an unsigned char
+   pointer may alias anything, so the compiler would otherwise reload the
+   global after every pixel. */
+#define VW amiga_mode.vieww
+#define VH amiga_mode.viewh
 
 /* Per-column depth, held as 2^24/d.  Bigger is nearer.  The near plane is 16
    world units and the far plane 98304, so this spans 1048576 down to 170 -
    plenty of resolution without ever overflowing 32 bits. */
 #define ZSCALE 16777216.0
 
-static K_INT32 zbuf[VW];
+static K_INT32 zbuf[AMIGA_RENDER_MAXW];
 
 /* Camera, recomputed once per frame by R_BeginScene(). */
 static double cam_fx, cam_fy;       /* unit forward vector                */
 static double cam_ex, cam_ey, cam_ez;
-static double proj_x;               /* 180 / aspw                          */
-static double proj_y;               /* 160 / asph                          */
+static double proj_x;               /* pixels per unit of e/d, across      */
+static double proj_y;               /* pixels per unit of z/d, down        */
+static double proj_cx;              /* screen x of the view axis           */
 static int    horizon_row;
 
 /* Brightness ramp lookup: one step darker, used for the shaded wall faces. */
@@ -85,6 +95,19 @@ void softtri(double *sx, double *sy, double *tu, double *tv,
              int a, int b, int c, int texnum, K_INT32 z);
 
 /* --------------------------------------------------------------- helpers */
+
+/* First render column / row whose pixel centre lies at or past a position in
+   game units.  A span from a to b in game units covers the pixels from
+   unit_col(a) up to but not including unit_col(b), which tiles exactly:
+   neighbouring spans share their edge and never overlap or leave a gap,
+   whatever the scale. */
+static int unit_col(double gx) {
+    return (int)ceil(gx * amiga_mode.ppux + amiga_mode.orgx - 0.5);
+}
+
+static int unit_row(double gy) {
+    return (int)ceil(gy * amiga_mode.ppuy + amiga_mode.orgy - 0.5);
+}
 
 /* Round a double to the nearest integer rather than toward zero.  Every fixed
    point step below is rounded once and then added hundreds of times, so a step
@@ -146,7 +169,7 @@ void R_InitOverlay(void) {
 
 void R_ClearScreen(void) {
     if (amiga_chunky)
-        memset(amiga_chunky, 0, VW * VH);
+        memset(amiga_chunky, 0, (size_t)VW * VH);
 }
 
 /* --------------------------------------------------------------- textures */
@@ -249,13 +272,34 @@ void R_FadeChanged(void) {
 
 /* ----------------------------------------------------------------- overlay */
 
-/* Copy a rectangle of the 8 bit overlay onto the frame.  Index 255 is the
-   transparency key while in game, matching the alpha test the OpenGL path
-   uses; outside the game the overlay is opaque and this is a straight copy. */
-static void blit_overlay(int srcx, int srcy, int dstx, int dsty, int w, int h) {
+/* Source column for each destination pixel of the blit in progress. */
+static UWORD omap[AMIGA_RENDER_MAXW];
+
+/* Bottom edge, in game units, of what the frame shows.  240 unless the view
+   is cropped short or grown taller than the 4:3 area. */
+static double view_bottom(void) {
+    return (VH - amiga_mode.orgy) / amiga_mode.ppuy;
+}
+
+/*
+ * Copy a w x h rectangle of the 8 bit overlay at (srcx,srcy) onto the frame,
+ * with its top left corner at (dstx,dsty) in game units.  Index 255 is the
+ * transparency key while in game, matching the alpha test the OpenGL path
+ * uses; outside the game the overlay is opaque.
+ *
+ * The overlay is 360x240 units and the frame is usually bigger, so each
+ * destination pixel shows the overlay pixel under its centre - the same
+ * nearest neighbour sampling OpenGL does with filtering off.  The column
+ * lookup is built once per call; at 1:1 it comes out as a straight run and
+ * the copy drops to a memcpy.
+ */
+static void blit_overlay(int srcx, int srcy, double dstx, double dsty,
+                         int w, int h) {
     const unsigned char *s;
     unsigned char *d;
-    int x, y;
+    int x0, x1, y0, y1, x, y, n, stride, linear;
+    double inv;
+    K_INT32 u, du;
 
     if (!amiga_chunky || !screenbuffer) return;
 
@@ -264,30 +308,51 @@ static void blit_overlay(int srcx, int srcy, int dstx, int dsty, int w, int h) {
     if (srcy < 0) { h += srcy; dsty -= srcy; srcy = 0; }
     if (srcx + w > screenbufferwidth)  w = screenbufferwidth  - srcx;
     if (srcy + h > screenbufferheight) h = screenbufferheight - srcy;
-
-    /* Clip against the frame. */
-    if (dstx < 0) { w += dstx; srcx -= dstx; dstx = 0; }
-    if (dsty < 0) { h += dsty; srcy -= dsty; dsty = 0; }
-    if (dstx + w > VW) w = VW - dstx;
-    if (dsty + h > VH) h = VH - dsty;
-
     if (w <= 0 || h <= 0) return;
 
-    s = screenbuffer + (size_t)srcy * screenbufferwidth + srcx;
-    d = amiga_chunky + (size_t)dsty * VW + dstx;
+    /* The pixels it covers, clipped against the frame. */
+    x0 = unit_col(dstx);  x1 = unit_col(dstx + w);
+    y0 = unit_row(dsty);  y1 = unit_row(dsty + h);
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > VW) x1 = VW;
+    if (y1 > VH) y1 = VH;
+    if (x0 >= x1 || y0 >= y1) return;
 
-    if (!ingame) {
-        for (y = 0; y < h; y++) {
-            memcpy(d, s, w);
-            s += screenbufferwidth;
-            d += VW;
-        }
-    } else {
-        for (y = 0; y < h; y++) {
-            for (x = 0; x < w; x++)
-                if (s[x] != 255) d[x] = s[x];
-            s += screenbufferwidth;
-            d += VW;
+    n = x1 - x0;
+    stride = VW;
+
+    /* Stepped in 16.16 and clamped: the rounding at either end can leave the
+       first or last pixel centre a hair outside the source rectangle. */
+    inv = 1.0 / amiga_mode.ppux;
+    u  = fxround(((x0 + 0.5 - amiga_mode.orgx) * inv - dstx) * 65536.0);
+    du = fxround(inv * 65536.0);
+    for (x = 0; x < n; x++, u += du) {
+        int c = (int)(u >> 16);
+        if (c < 0) c = 0; else if (c >= w) c = w - 1;
+        omap[x] = (UWORD)(srcx + c);
+    }
+    linear = (omap[n - 1] - omap[0] == n - 1);
+
+    inv = 1.0 / amiga_mode.ppuy;
+    d = amiga_chunky + (size_t)y0 * stride + x0;
+
+    for (y = y0; y < y1; y++, d += stride) {
+        int r = (int)floor((y + 0.5 - amiga_mode.orgy) * inv - dsty);
+        if (r < 0) r = 0; else if (r >= h) r = h - 1;
+        s = screenbuffer + (size_t)(srcy + r) * screenbufferwidth;
+
+        if (!ingame) {
+            if (linear)
+                memcpy(d, s + omap[0], n);
+            else
+                for (x = 0; x < n; x++)
+                    d[x] = s[omap[x]];
+        } else {
+            for (x = 0; x < n; x++) {
+                unsigned char c = s[omap[x]];
+                if (c != 255) d[x] = c;
+            }
         }
     }
 }
@@ -296,15 +361,19 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     int i;
 
     if (statusbar == 1) {
-        /* The 320 pixel status bar, pinned to the bottom of what the display
-           actually shows - on a screen too short for the whole view that is
-           above the bottom of the frame, and hanging it off VH would push it
-           out of sight altogether. */
-        blit_overlay(x, y, x, amiga_view_bottom() - statusbaryvisible, w, h);
+        /* The 320 unit status bar, pinned to the bottom of what the frame
+           actually shows - above the bottom of the 240 unit area when the
+           view is cropped short, below it when the view is taller. */
+        double bottom = view_bottom();
+        double left   = -amiga_mode.orgx / amiga_mode.ppux;
+        double right  = (VW - amiga_mode.orgx) / amiga_mode.ppux;
 
-        /* Widen it to the full 360 by repeating the right hand edge, which is
-           what the OpenGL path does with its statusbar == 2 passes. */
-        for (i = 0; i < (int)((virtualscreenwidth - 319) / 2); i += 20) {
+        blit_overlay(x, y, x, bottom - statusbaryvisible, w, h);
+
+        /* Widen it to the edges of the view by repeating the right hand
+           twenty columns, which is what the OpenGL path does with its
+           statusbar == 2 passes.  A widescreen view needs several. */
+        for (i = 0; 340 + i < right || -i > left; i += 20) {
             ShowPartialOverlay(340 + i, statusbaryoffset, 20, statusbaryvisible, 2);
             ShowPartialOverlay(0 - i,   statusbaryoffset, 20, statusbaryvisible, 2);
         }
@@ -313,7 +382,7 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
 
     if (statusbar == 2) {
         blit_overlay(340, statusbaryoffset, x,
-                     amiga_view_bottom() - statusbaryvisible,
+                     view_bottom() - statusbaryvisible,
                      w, statusbaryvisible);
         return;
     }
@@ -359,22 +428,24 @@ void SetVisibleScreenOffset(K_UINT16 offset) {
 /* ------------------------------------------------------------ span drawing */
 
 /* Vertical texture-mapped span.  `col` is the 64 pixel texture column,
-   `ytop`/`ybot` the (unclipped) 16.16 screen rows the wall covers, `skipkey`
-   makes index 255 transparent. */
+   `ytop`/`ybot` the (unclipped) screen rows the wall covers, in fixed point
+   with `yshift` fraction bits, `skipkey` makes index 255 transparent. */
 static void draw_span(unsigned char *dstcol, const unsigned char *tex,
-                      K_INT32 ytop, K_INT32 ybot, int shaded, int skipkey)
+                      K_INT32 ytop, K_INT32 ybot, int yshift,
+                      int shaded, int skipkey)
 {
     int y0, y1, y, height;
+    const int stride = VW;
     K_INT32 v, vstep;
 
-    height = (int)((ybot - ytop) >> 16);
+    height = (int)((ybot - ytop) >> yshift);
     if (height <= 0) return;
 
     vstep = (height < RECIP_MAX) ? vrecip[height]
                                  : (K_INT32)((64L << 16) / height);
 
-    y0 = (int)(ytop >> 16);
-    y1 = (int)(ybot >> 16);
+    y0 = (int)(ytop >> yshift);
+    y1 = (int)(ybot >> yshift);
 
     v = 0;
     if (y0 < VIEW_TOP) {
@@ -384,32 +455,32 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
     if (y1 > VIEW_BOT) y1 = VIEW_BOT;
     if (y0 >= y1) return;
 
-    dstcol += (size_t)y0 * VW;
+    dstcol += (size_t)y0 * stride;
 
     if (skipkey) {
         if (shaded) {
             for (y = y0; y < y1; y++) {
                 unsigned char c = tex[(v >> 16) & 63];
                 if (c != 255) *dstcol = shadetab[c];
-                dstcol += VW; v += vstep;
+                dstcol += stride; v += vstep;
             }
         } else {
             for (y = y0; y < y1; y++) {
                 unsigned char c = tex[(v >> 16) & 63];
                 if (c != 255) *dstcol = c;
-                dstcol += VW; v += vstep;
+                dstcol += stride; v += vstep;
             }
         }
     } else {
         if (shaded) {
             for (y = y0; y < y1; y++) {
                 *dstcol = shadetab[tex[(v >> 16) & 63]];
-                dstcol += VW; v += vstep;
+                dstcol += stride; v += vstep;
             }
         } else {
             for (y = y0; y < y1; y++) {
                 *dstcol = tex[(v >> 16) & 63];
-                dstcol += VW; v += vstep;
+                dstcol += stride; v += vstep;
             }
         }
     }
@@ -444,8 +515,9 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
     double topk, botk;
     double spaninv, didx;
 #define SEGLEN 16
-    double zstep, ytstep, ybstep;
+    double zstep, ytstep, ybstep, yscale;
     K_INT32 Z, dZ, YT, dYT, YB, dYB;
+    int yshift;
     const unsigned char *texbase;
     int xa, xb, x, seg;
 
@@ -466,8 +538,8 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         d2  = near;
     }
 
-    sx1 = 180.0 + proj_x * e1 / d1;
-    sx2 = 180.0 + proj_x * e2 / d2;
+    sx1 = proj_cx + proj_x * e1 / d1;
+    sx2 = proj_cx + proj_x * e2 / d2;
 
     if (sx1 > sx2) {
         double s;
@@ -513,26 +585,42 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
 
     /* The three steps are constant over the whole quad; the values themselves
        are reseeded at each segment boundary from the exactly computed 1/d
-       there, which keeps a rounded step from accumulating across 360 columns
+       there, which keeps a rounded step from accumulating across the width
        and stops the depth values drifting at the far end of a long wall. */
-    zstep  = ZSCALE * didx;
-    ytstep = topk * didx * 65536.0;
-    ybstep = botk * didx * 65536.0;
+    zstep = ZSCALE * didx;
 
-    /* Each of these has to survive as a 32 bit accumulator, so bound them over
-       the whole span rather than at its first column: 1/d is monotonic along
-       the quad, so it is largest at one of the two ends.  A camera height or
-       projection far outside the range the game uses would not fit, and a
-       garbage span is worse than a missing wall. */
+    /*
+     * Each of these has to survive as a 32 bit accumulator, so bound them over
+     * the whole span rather than at its first column: 1/d is monotonic along
+     * the quad, so it is largest at one of the two ends.  The depth has a
+     * fixed scale; a projection far outside the range the game uses would not
+     * fit, and a garbage span is worse than a missing wall.
+     *
+     * The rows are another matter.  A wall at the near plane reaches about
+     * 64 x proj_y rows off screen with the camera at the top or bottom of its
+     * range, which is fine in 16.16 at 240 lines but not at 1080.  Only the
+     * whole part of a row is ever used, so the fraction gives way instead:
+     * the row scale drops a bit at a time until the span fits.  The top and
+     * bottom are bounded together because draw_span() subtracts them.
+     */
     {
         double idmax = (invd1 > invd2 ? invd1 : invd2) * 1.05;
-        double hrow  = fabs((double)horizon_row) * 65536.0;
+        double rows  = fabs((double)horizon_row)
+                     + (fabs(topk) + fabs(botk)) * idmax;
+        double rstep = (fabs(topk) + fabs(botk)) * fabs(didx) * SEGLEN;
 
-        if (!(ZSCALE * idmax                      + fabs(zstep)  * SEGLEN < 2.0e9 &&
-              hrow + fabs(topk) * idmax * 65536.0 + fabs(ytstep) * SEGLEN < 2.0e9 &&
-              hrow + fabs(botk) * idmax * 65536.0 + fabs(ybstep) * SEGLEN < 2.0e9))
+        if (!(ZSCALE * idmax + fabs(zstep) * SEGLEN < 2.0e9))
             return;
+
+        yshift = 16;
+        while ((rows + rstep) * (double)(1L << yshift) >= 2.0e9)
+            if (--yshift < 4)
+                return;
+        yscale = (double)(1L << yshift);
     }
+
+    ytstep = topk * didx * yscale;
+    ybstep = botk * didx * yscale;
 
     dZ  = fxround(zstep);
     dYT = fxround(ytstep);
@@ -558,8 +646,8 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
             continue;
 
         Z  = fxround(ZSCALE * id0);
-        YT = fxround(((double)horizon_row + topk * id0) * 65536.0);
-        YB = fxround(((double)horizon_row + botk * id0) * 65536.0);
+        YT = fxround(((double)horizon_row + topk * id0) * yscale);
+        YB = fxround(((double)horizon_row + botk * id0) * yscale);
 
         tv0 = tovd1 + (tovd2 - tovd1) * a0;
         tv1 = tovd1 + (tovd2 - tovd1) * a1;
@@ -582,7 +670,7 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
             if (depthonly) continue;
 
             draw_span(amiga_chunky + x, texbase + (((tcur >> 16) & 63) << 6),
-                      YT, YB, shaded, keycolour);
+                      YT, YB, yshift, shaded, keycolour);
         }
     }
 #undef SEGLEN
@@ -608,10 +696,20 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     cam_ey = posys;
     cam_ez = poszs * 16.0;
 
-    proj_x = 180.0 / aspwv;
-    proj_y = 160.0 / asphv;
+    /*
+     * The projection is fixed in game units - the view axis at x = 180, the
+     * horizon at y = 120, 180 units to one unit of e/d across and 160 down,
+     * which is the OpenGL frustum's 90 degrees across a 360 unit wide 4:3
+     * view.  A widescreen view does not change that scale: it shows more of
+     * the same projection either side, and aspw tells the ray caster how
+     * much more to look for.  So aspwv and asphv are not needed here.
+     */
+    (void)aspwv; (void)asphv;
 
-    horizon_row = 120;
+    proj_x  = 180.0 * amiga_mode.ppux;
+    proj_y  = 160.0 * amiga_mode.ppuy;
+    proj_cx = 180.0 * amiga_mode.ppux + amiga_mode.orgx;
+    horizon_row = unit_row(120.0);
 
     /* Flat ceiling above the horizon, flat floor below - the same two colours
        the OpenGL path clears and fills with. */
@@ -621,7 +719,7 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         floorcol = 0x84;
     ceilcol = 0xe3;
 
-    split = 240 - yy / 90;
+    split = unit_row(240 - yy / 90);
     if (split < 0) split = 0;
     if (split > VH) split = VH;
 
@@ -705,7 +803,7 @@ void R_DrawBillboard(K_INT32 x1, K_INT32 y1, K_INT32 x2, K_INT32 y2,
 
             if (d < (double)neardist) return;   /* too close; skip the frame */
 
-            sxv[i] = 180.0 + proj_x * e / d;
+            sxv[i] = proj_cx + proj_x * e / d;
             syv[i] = horizon_row - proj_y * (cam_ez - wz) / d;
         }
 
@@ -814,8 +912,10 @@ void softtri(double *sx, double *sy, double *tu, double *tv,
         if (fabs(t2) > lmax) lmax = fabs(t2);
     }
 
-    /* 2^29 rather than 2^31 so that a row step can be added 240 times and a
-       column step 360 times without the accumulator leaving 32 bits. */
+    /* 2^29 rather than 2^31 for headroom.  The barycentrics are affine, so
+       over the box they never exceed their values at its corners and the
+       accumulators stay within 2^29 however many rows and columns it spans;
+       what is left over absorbs the rounding in the steps. */
     lscale = 536870912.0 / lmax;
 
     l0row = fxround((a0*px0 + b0*py0 + c0) * lscale);
@@ -897,7 +997,7 @@ static K_INT32 cdiv(K_INT32 a, K_INT32 b) {
 }
 
 /* Round to nearest, positive divisor only.  The quotients below are a start
-   value and a step that is then added up to 360 times, so rounding the step
+   value and a step that is then added once per column, so rounding the step
    rather than truncating it halves the drift across a row. */
 static K_INT32 rdivp(K_INT32 a, K_INT32 b) {
     return (a < 0) ? -(((-a) + (b >> 1)) / b) : (a + (b >> 1)) / b;
@@ -913,7 +1013,7 @@ static K_INT32 rdivp(K_INT32 a, K_INT32 b) {
  * of the floating point divide and multiply the obvious form needs.
  *
  * The columns the decal actually covers are then solved for directly rather
- * than testing all 360 of them, which matters because a decal usually covers
+ * than testing every one of them, which matters because a decal usually covers
  * a small part of the screen and the old loop paid full price for every row
  * from the horizon down whether it drew anything or not.
  */
@@ -933,9 +1033,9 @@ void R_DrawFloorSprite(K_UINT16 x, K_UINT16 y, K_INT16 j) {
 
     /* World position at screen (horizon_row + r, col):
          rx = oxd + axd/r + col * bxd/r,  and likewise for y.  */
-    axd =  kdist * (cam_fx + 179.5 * cam_fy / proj_x);
+    axd =  kdist * (cam_fx + (proj_cx - 0.5) * cam_fy / proj_x);
     bxd = -cam_fy * kdist / proj_x;
-    ayd =  kdist * (cam_fy - 179.5 * cam_fx / proj_x);
+    ayd =  kdist * (cam_fy - (proj_cx - 0.5) * cam_fx / proj_x);
     byd =  cam_fx * kdist / proj_x;
     oxd =  cam_ex - (double)x;
     oyd =  cam_ey - (double)y;
@@ -1049,8 +1149,9 @@ void R_DrawSprite2D(K_INT16 x, K_INT16 y, K_INT16 siz, K_INT16 ang,
         double rx = qx*ca - qy*sa;
         double ry = qx*sa + qy*ca;
 
-        sxv[i] = x + s*rx;
-        syv[i] = y - s*ry;      /* OpenGL y is up, screen rows go down */
+        /* OpenGL y is up, screen rows go down. */
+        sxv[i] = (x + s*rx) * amiga_mode.ppux + amiga_mode.orgx;
+        syv[i] = (y - s*ry) * amiga_mode.ppuy + amiga_mode.orgy;
 
         /* S runs 1..0 down the quad and picks the texture row; T runs v0..v1
            across it and picks the texture column. */
@@ -1065,24 +1166,34 @@ void R_DrawSprite2D(K_INT16 x, K_INT16 y, K_INT16 siz, K_INT16 ang,
 /* ---------------------------------------------------- overlays and extras */
 
 void R_DrawVolumeBar(int vol, int type, float level) {
-    int y0, x, y, filled;
+    int y0, x, y, xa, xf, xb, ya, yb, stride;
 
     (void)level;    /* no alpha in an 8 bit palette; the bar is solid */
 
     if (!amiga_chunky) return;
 
     /* The OpenGL path shifts the bar by 30 rows for the music/sound variant;
-       do the same, then keep it on screen. */
+       do the same, then keep it inside the 240 unit area. */
     y0 = 110 - 30 * type;
     if (y0 < 0) y0 = 0;
-    if (y0 + 20 > VH) y0 = VH - 20;
+    if (y0 + 20 > AMIGA_VIEW_H) y0 = AMIGA_VIEW_H - 20;
 
-    filled = 96 + (vol >> 1);
+    /* 96..224 across, filled up to 96 + vol/2. */
+    xa = unit_col(96);
+    xf = unit_col(96 + (vol >> 1));
+    xb = unit_col(224);
+    ya = unit_row(y0);
+    yb = unit_row(y0 + 20);
+    if (xa < 0) xa = 0;
+    if (xb > VW) xb = VW;
+    if (ya < 0) ya = 0;
+    if (yb > VH) yb = VH;
+    stride = VW;
 
-    for (y = y0; y < y0 + 20; y++) {
-        unsigned char *row = amiga_chunky + (size_t)y * VW;
-        for (x = 96; x < 224; x++)
-            row[x] = (x < filled) ? (type ? 0x9f : 0x2f) : 0x10;
+    for (y = ya; y < yb; y++) {
+        unsigned char *row = amiga_chunky + (size_t)y * stride;
+        for (x = xa; x < xb; x++)
+            row[x] = (x < xf) ? (type ? 0x9f : 0x2f) : 0x10;
     }
 }
 
@@ -1093,9 +1204,10 @@ int R_ReadPixelsBGR(unsigned char *dst, int w, int h) {
 
     /* BMP rows run bottom to top. */
     for (y = 0; y < h; y++) {
-        const unsigned char *src = amiga_chunky + (size_t)(h - 1 - y) * VW;
+        int sy = h - 1 - y;
+        const unsigned char *src = amiga_chunky + (size_t)sy * VW;
         for (x = 0; x < w; x++) {
-            unsigned char c = (x < VW) ? src[x] : 0;
+            unsigned char c = (x < VW && sy < VH) ? src[x] : 0;
             *dst++ = (unsigned char)(palette[c*3+2] << 2);
             *dst++ = (unsigned char)(palette[c*3+1] << 2);
             *dst++ = (unsigned char)(palette[c*3+0] << 2);

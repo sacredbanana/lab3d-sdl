@@ -1,9 +1,15 @@
 /*
  * AmigaOS display back end for LAB3D.
  *
- * The game renders into a fixed 360x240 chunky buffer (the "virtual screen"
- * every coordinate in the shared code is expressed in) and this module gets
- * it onto whatever screen mode the player picked at startup.  Two paths:
+ * The shared code lays everything out in a 360x240 "virtual screen", but the
+ * renderer draws into a chunky buffer sized to the screen mode the player
+ * picked: the screen's own resolution divided by a whole number, so that
+ * scaling it back up fills the screen with every pixel the same size.  On a
+ * 1920x1080 screen that might be 480x270 scaled by four, or the full
+ * 1920x1080 on a fast enough machine.  amiga_layout() decides the size and
+ * how the 360x240 space maps onto it; amiga_blit_frame() does the scaling.
+ *
+ * Getting the frame onto the screen takes one of two paths:
  *
  *   RTG      cybergraphics.library.  An 8 bit LUT8 screen takes the chunky
  *            data verbatim; deeper screens go through WriteLUTPixelArray(),
@@ -23,6 +29,8 @@
 
 #include "lab3d.h"
 #include "amiga/amiga_video.h"
+
+#include <math.h>
 
 /* ------------------------------------------------------------------ state */
 
@@ -45,8 +53,12 @@ static int                  doublebuffered;
    it becomes the sprite DMA source - so it has to live in chip RAM. */
 static UWORD               *blankpointer;
 
-/* Scaled copy used when amiga_mode.scale == 2. */
-static UBYTE   *scalebuf;
+/* Staging area for the scaled-up frame: a band of whole source rows at a
+   time rather than the whole screen, which at 1920x1080 would be another two
+   megabytes of fast RAM for no gain. */
+#define BAND_BYTES 65536
+static UBYTE   *bandbuf;
+static int      bandrows;       /* source rows per band */
 
 /* Colour table for WriteLUTPixelArray() on deep RTG screens. */
 static ULONG    lut[256];
@@ -72,7 +84,7 @@ static int      numpens;
 /* Settings, saved in lab3d.cfg so the choice is remembered. */
 ULONG amiga_cfg_modeid = INVALID_ID;
 int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
-int   amiga_cfg_scale = 0;      /* 0 = automatic, 1 or 2 = forced */
+int   amiga_cfg_render = AMIGA_RENDER_AUTO;   /* see amiga_video.h */
 int   amiga_cfg_askmode = 1;    /* show the screen mode requester at startup */
 
 /* ------------------------------------------------------------ mode picking */
@@ -82,46 +94,209 @@ int   amiga_cfg_askmode = 1;    /* show the screen mode requester at startup */
 static struct Rectangle amiga_dclip;
 static int              amiga_useclip;
 
-/* How much of the 360x240 buffer can we show, and where? */
-static void amiga_layout(amiga_videomode *m) {
-    int scale = amiga_cfg_scale;
-    int vieww, viewh;
+/* Physical shape of one game unit.  The DOS game showed its 360x240 screen
+   on a 4:3 monitor, so a unit is 8/9 as wide as it is tall. */
+#define UNIT_ASPECT (8.0 / 9.0)
 
-    if (scale != 1 && scale != 2) {
-        /* Automatic: double up when the mode is big enough to hold the whole
-           virtual screen twice over. */
-        scale = (m->width >= AMIGA_VIEW_W*2 && m->height >= AMIGA_VIEW_H*2)
-                ? 2 : 1;
+/* Snap a scale that is within rounding of 1 onto it, so that the 1:1 cases
+   take the straight copy paths rather than a lookup that happens to be an
+   identity. */
+static double amiga_snap(double v) {
+    return (v > 0.999 && v < 1.001) ? 1.0 : v;
+}
+
+/*
+ * Map the 360x240 game space onto a w x h render buffer.
+ *
+ * The first choice keeps the original 4:3 shape of that space: scale it as
+ * large as fits and let the view grow sideways (or downwards) to fill the
+ * rest, which is what the OpenGL build's default "fill screen" view does.
+ * That needs at least one pixel per unit each way, or the menus and the
+ * status bar would lose rows and columns.  When the buffer is too small for
+ * that, fall back to one pixel per unit, centred, which is how the port has
+ * always handled small screens: a 320 wide screen then shows exactly the
+ * x = 20..340 window the original game drew into, and only the decorative
+ * margins either side go.
+ */
+static void amiga_fit_view(amiga_videomode *m, int w, int h, int force11) {
+    double fit = w / (double)AMIGA_VIEW_W;
+    double fith = h * UNIT_ASPECT / (AMIGA_VIEW_H * m->pixaspect);
+
+    if (fith < fit) fit = fith;
+
+    m->vieww = w;
+    m->viewh = h;
+    m->ppux  = amiga_snap(fit);
+    m->ppuy  = amiga_snap(fit * m->pixaspect / UNIT_ASPECT);
+    m->aspectok = !force11 && m->ppux >= 1.0 && m->ppuy >= 1.0;
+
+    if (!m->aspectok)
+        m->ppux = m->ppuy = 1.0;
+
+    /* Whole pixels, so that at 1:1 unit and pixel boundaries coincide. */
+    m->orgx = (int)floor(w * 0.5 - AMIGA_VIEW_W * 0.5 * m->ppux + 0.5);
+    m->orgy = (int)floor(h * 0.5 - AMIGA_VIEW_H * 0.5 * m->ppuy + 0.5);
+}
+
+/* Render buffer for divisor n, before the unit mapping is chosen.  A native
+   screen needs the scaled width in whole bytes for the planar conversion. */
+static void amiga_view_size(const amiga_videomode *m, int n, int *w, int *h) {
+    *w = m->width  / n;
+    *h = m->height / n;
+    if (!m->rtg)
+        while (*w > 8 && ((*w * n) & 7))
+            (*w)--;
+}
+
+/*
+ * Lay out a trial view at divisor n into *out.  Returns 0 if n cannot be used
+ * on this screen at all: the buffer would be under the 320x200 the game
+ * needs, or over the renderer's size limit.
+ */
+static int amiga_trial_layout(const amiga_videomode *m, int n,
+                              amiga_videomode *out) {
+    int w, h;
+
+    *out = *m;
+    amiga_view_size(m, n, &w, &h);
+    if (w < AMIGA_CROP_W || h < AMIGA_CROP_H)
+        return 0;
+    if (w > AMIGA_RENDER_MAXW || h > AMIGA_RENDER_MAXH)
+        return 0;
+
+    out->divisor = n;
+    amiga_fit_view(out, w, h, 0);
+    return 1;
+}
+
+/* Whether a trial layout shows all 240 rows of the game space and at least
+   the 320 columns in the middle - everything the game ever draws. */
+static int amiga_shows_everything(const amiga_videomode *t) {
+    return t->aspectok ||
+           (t->vieww >= AMIGA_CROP_W && t->viewh >= AMIGA_VIEW_H);
+}
+
+/*
+ * The divisor "Automatic" picks.
+ *
+ * This is a trade between speed and detail.  Every pixel of the render
+ * buffer costs the renderer the same whatever the scale, so a bigger divisor
+ * is faster; but past a point the buffer is too small to show the game
+ * space in its proper shape, or at all.
+ */
+static int amiga_auto_divisor(const amiga_videomode *m) {
+    amiga_videomode t;
+    int n;
+
+    /* TODO(human): native screens.  The loop below keeps the renderer's
+       cost near the original's, but on a native screen the planar
+       conversion runs once per *screen* pixel, so doubling a 320x256
+       render onto 640x512 still quadruples that part.  Decide whether a
+       native screen should prefer something else here - for instance the
+       largest divisor whose scaled-up area is no bigger than some budget -
+       and return it before the loop. */
+
+    for (n = AMIGA_RENDER_MAXDIV; n > 1; n--)
+        if (amiga_trial_layout(m, n, &t) && amiga_shows_everything(&t))
+            return n;
+    return 1;
+}
+
+/* Turn a setting into a divisor that works on this screen: a request the
+   screen is too small for comes down, one past the size limit goes up. */
+static int amiga_resolve_divisor(const amiga_videomode *m, int setting) {
+    amiga_videomode t;
+    int n = setting;
+
+    if (n == AMIGA_RENDER_AUTO)
+        return amiga_auto_divisor(m);
+    if (n < 1) n = 1;
+    if (n > AMIGA_RENDER_MAXDIV) n = AMIGA_RENDER_MAXDIV;
+
+    while (n < AMIGA_RENDER_MAXDIV &&
+           (m->width / n > AMIGA_RENDER_MAXW || m->height / n > AMIGA_RENDER_MAXH))
+        n++;
+    while (n > 1 && !amiga_trial_layout(m, n, &t))
+        n--;
+    return n;
+}
+
+/* Size of the render buffer, how the game space maps onto it, and where the
+   scaled-up result sits on the screen. */
+static void amiga_layout_for(amiga_videomode *m, int setting) {
+    int w, h;
+
+    if (setting == AMIGA_RENDER_UNSCALED) {
+        /* The 360x240 view at 1:1 in the middle, as before any of this. */
+        m->divisor = 1;
+        w = m->width  < AMIGA_VIEW_W ? m->width  : AMIGA_VIEW_W;
+        h = m->height < AMIGA_VIEW_H ? m->height : AMIGA_VIEW_H;
+        if (!m->rtg) w &= ~7;
+        amiga_fit_view(m, w, h, 1);
+    } else {
+        m->divisor = amiga_resolve_divisor(m, setting);
+        amiga_view_size(m, m->divisor, &w, &h);
+        if (w > AMIGA_RENDER_MAXW) w = AMIGA_RENDER_MAXW;
+        if (h > AMIGA_RENDER_MAXH) h = AMIGA_RENDER_MAXH;
+        amiga_fit_view(m, w, h, 0);
     }
-    if (m->width < AMIGA_VIEW_W*2 || m->height < AMIGA_VIEW_H*2)
-        scale = 1;
 
-    m->scale = scale;
-
-    /*
-     * Fit each axis on its own and centre it on the view.  A screen that is
-     * tall enough but not wide enough then only loses pixels horizontally,
-     * where there is nothing to lose: a 320 pixel wide screen lands on
-     * exactly the x = 20..340 window the original game drew into, and only
-     * the decorative margins either side go.  Doing both axes together (the
-     * old "whole view or the 320x200 window" choice) threw away forty rows
-     * on a 320x240 screen that could have shown all of them.
-     */
-    vieww = m->width  / scale;
-    viewh = m->height / scale;
-
-    m->srcw = vieww < AMIGA_VIEW_W ? vieww : AMIGA_VIEW_W;
-    m->srch = viewh < AMIGA_VIEW_H ? viewh : AMIGA_VIEW_H;
-    m->srcx = (AMIGA_VIEW_W - m->srcw) / 2;
-    m->srcy = (AMIGA_VIEW_H - m->srch) / 2;
-
-    m->destx = (m->width  - m->srcw * scale) / 2;
-    m->desty = (m->height - m->srch * scale) / 2;
+    m->destx = (m->width  - m->vieww * m->divisor) / 2;
+    m->desty = (m->height - m->viewh * m->divisor) / 2;
 
     /* Keep the destination even so the planar path can work in whole bytes. */
-    m->destx &= ~7;
+    if (!m->rtg)
+        m->destx &= ~7;
     if (m->destx < 0) m->destx = 0;
     if (m->desty < 0) m->desty = 0;
+}
+
+static void amiga_layout(amiga_videomode *m) {
+    amiga_layout_for(m, amiga_cfg_render);
+}
+
+void amiga_render_size(int setting, int *w, int *h) {
+    amiga_videomode t = amiga_mode;
+
+    if (!amiga_screen) {
+        *w = AMIGA_VIEW_W;
+        *h = AMIGA_VIEW_H;
+        return;
+    }
+    amiga_layout_for(&t, setting);
+    *w = t.vieww;
+    *h = t.viewh;
+}
+
+/* Hand the layout to the shared code.  virtualscreenwidth/height are the
+   size of the view in game units, which the status bar is widened to, and
+   aspw tells the ray caster how far either side of the 90 degree frustum the
+   view reaches, so walls at the edges of a widescreen view are found. */
+void amiga_apply_view(void) {
+    const amiga_videomode *m = &amiga_mode;
+    double cx, hr, a;
+
+    if (!amiga_screen || !m->vieww) {
+        screenwidth  = AMIGA_VIEW_W;
+        screenheight = AMIGA_VIEW_H;
+        virtualscreenwidth  = AMIGA_VIEW_W;
+        virtualscreenheight = AMIGA_VIEW_H;
+        aspw = asph = 1.0;
+        return;
+    }
+
+    screenwidth  = m->vieww;
+    screenheight = m->viewh;
+    virtualscreenwidth  = (float)(m->vieww / m->ppux);
+    virtualscreenheight = (float)(m->viewh / m->ppuy);
+
+    cx = AMIGA_VIEW_W * 0.5 * m->ppux + m->orgx;
+    a  = (cx > m->vieww - cx ? cx : m->vieww - cx) / (AMIGA_VIEW_W * 0.5 * m->ppux);
+    aspw = a > 1.0 ? a : 1.0;
+
+    hr = AMIGA_VIEW_H * 0.5 * m->ppuy + m->orgy;
+    a  = (hr > m->viewh - hr ? hr : m->viewh - hr) / (AMIGA_VIEW_H * 0.5 * m->ppuy);
+    asph = a > 1.0 ? a : 1.0;
 }
 
 /*
@@ -197,9 +372,10 @@ static void amiga_describe(const amiga_videomode *m) {
     fprintf(stderr, "Screen mode 0x%08lx: %dx%d, %d bit%s, %s\n",
             (unsigned long)m->modeid, m->width, m->height, m->depth,
             m->rtg ? "" : "planes", m->rtg ? "RTG" : "native");
-    fprintf(stderr, "Showing %dx%d of the %dx%d view at (%d,%d), %dx scale.\n",
-            m->srcw, m->srch, AMIGA_VIEW_W, AMIGA_VIEW_H,
-            m->destx, m->desty, m->scale);
+    fprintf(stderr, "Rendering at %dx%d, scaled %dx to (%d,%d); "
+                    "%.3f x %.3f pixels per unit%s.\n",
+            m->vieww, m->viewh, m->divisor, m->destx, m->desty,
+            m->ppux, m->ppuy, m->aspectok ? "" : " (1:1, 4:3 shape not kept)");
     if (amiga_useclip)
         fprintf(stderr, "Using the borders: display clip (%d,%d)-(%d,%d).\n",
                 amiga_dclip.MinX, amiga_dclip.MinY,
@@ -208,6 +384,29 @@ static void amiga_describe(const amiga_videomode *m) {
         fprintf(stderr, "Chip RAM free: %lu bytes (largest block %lu).\n",
                 (unsigned long)AvailMem(MEMF_CHIP),
                 (unsigned long)AvailMem(MEMF_CHIP | MEMF_LARGEST));
+}
+
+/*
+ * Width over height of one pixel of a native mode.  The display database
+ * gives it as ticks per pixel: PAL lores is about square, hires half as wide
+ * as it is tall, NTSC a little narrower than PAL.  RTG modes are taken to be
+ * square, since whatever they report says nothing about the monitor they end
+ * up on and a modern one shows them square.
+ */
+static double amiga_pixel_aspect(const amiga_videomode *m) {
+    struct DisplayInfo di;
+    double a;
+
+    if (m->rtg)
+        return 1.0;
+    if (GetDisplayInfoData(NULL, (UBYTE *)&di, sizeof(di),
+                           DTAG_DISP, m->modeid) <= 0)
+        return 1.0;
+    if (di.Resolution.x <= 0 || di.Resolution.y <= 0)
+        return 1.0;
+
+    a = (double)di.Resolution.x / (double)di.Resolution.y;
+    return (a >= 0.25 && a <= 4.0) ? a : 1.0;
 }
 
 /* Fill in the RTG/depth details of a mode id the player chose. */
@@ -226,6 +425,7 @@ static void amiga_probe(amiga_videomode *m) {
         if (m->depth > 8) m->depth = 8;
         if (m->depth < 1) m->depth = 1;
     }
+    m->pixaspect = amiga_pixel_aspect(m);
     amiga_fit_overscan(m);
     amiga_layout(m);
 }
@@ -366,6 +566,52 @@ static struct BitMap *amiga_drawbitmap(void) {
     return amiga_screen->RastPort.BitMap;
 }
 
+/* Allocate the render buffer and, if the layout scales it, the band the
+   scaled rows are built in.  Frees nothing: the caller owns what was there
+   before. */
+static int amiga_alloc_frame(const amiga_videomode *m) {
+    amiga_chunky = AllocVec((ULONG)m->vieww * m->viewh, MEMF_ANY | MEMF_CLEAR);
+    if (!amiga_chunky)
+        return -1;
+
+    bandbuf  = NULL;
+    bandrows = 0;
+    if (m->divisor > 1) {
+        ULONG rowbytes = (ULONG)m->vieww * m->divisor * m->divisor;
+
+        bandrows = (int)(BAND_BYTES / rowbytes);
+        if (bandrows < 1) bandrows = 1;
+        if (bandrows > m->viewh) bandrows = m->viewh;
+
+        bandbuf = AllocVec(rowbytes * bandrows, MEMF_ANY);
+        if (!bandbuf) {
+            FreeVec(amiga_chunky);
+            amiga_chunky = NULL;
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* Black out both buffers, so nothing from the last layout is left in the
+   borders round a smaller one. */
+static void amiga_clear_display(void) {
+    struct RastPort rp;
+    int i;
+
+    amiga_sync_buffers();
+
+    rp = amiga_screen->RastPort;
+    if (doublebuffered) {
+        for (i = 0; i < 2; i++) {
+            rp.BitMap = sbuf[i]->sb_BitMap;
+            SetRast(&rp, 0);
+        }
+    } else {
+        SetRast(&rp, 0);
+    }
+}
+
 int amiga_video_open(void) {
     ULONG err = 0;
 
@@ -436,20 +682,17 @@ int amiga_video_open(void) {
 
     amiga_setup_buffers();
 
-    amiga_chunky = AllocVec(AMIGA_VIEW_W * AMIGA_VIEW_H, MEMF_ANY | MEMF_CLEAR);
-    if (!amiga_chunky) {
-        fprintf(stderr, "Out of memory for the frame buffer.\n");
-        amiga_video_close();
-        return -1;
-    }
-
-    if (amiga_mode.scale == 2) {
-        scalebuf = AllocVec(AMIGA_VIEW_W * 2 * AMIGA_VIEW_H * 2,
-                            MEMF_ANY | MEMF_CLEAR);
-        if (!scalebuf) {
-            fprintf(stderr, "Out of memory for 2x scaling; falling back to 1x.\n");
-            amiga_mode.scale = 1;
-            amiga_layout(&amiga_mode);
+    if (amiga_alloc_frame(&amiga_mode) != 0) {
+        /* The full resolution frame did not fit; the old fixed size one
+           nearly always will. */
+        fprintf(stderr, "Out of memory for a %dx%d frame; "
+                        "falling back to 360x240.\n",
+                amiga_mode.vieww, amiga_mode.viewh);
+        amiga_layout_for(&amiga_mode, AMIGA_RENDER_UNSCALED);
+        if (amiga_alloc_frame(&amiga_mode) != 0) {
+            fprintf(stderr, "Out of memory for the frame buffer.\n");
+            amiga_video_close();
+            return -1;
         }
     }
 
@@ -460,13 +703,46 @@ int amiga_video_open(void) {
 
     /* Blank the screen so the borders are black rather than whatever
        Intuition left behind. */
-    SetRast(&amiga_screen->RastPort, 0);
-    if (doublebuffered) {
-        struct RastPort rp = amiga_screen->RastPort;
-        rp.BitMap = sbuf[1]->sb_BitMap;
-        SetRast(&rp, 0);
+    amiga_clear_display();
+
+    return 0;
+}
+
+/* Re-run the layout for a changed setting on the screen that is already
+   open.  The new frame is allocated before the old one goes, so a failure
+   leaves everything as it was. */
+int amiga_video_relayout(void) {
+    amiga_videomode old;
+
+    if (!amiga_screen)
+        return 0;       /* picked up when the display opens */
+
+    old = amiga_mode;
+    amiga_layout(&amiga_mode);
+
+    /* A new size needs a new frame; at the same size only the mapping of
+       the game space onto it has changed. */
+    if (amiga_mode.vieww != old.vieww || amiga_mode.viewh != old.viewh ||
+        amiga_mode.divisor != old.divisor) {
+        UBYTE *oldchunky = amiga_chunky, *oldband = bandbuf;
+        int    oldrows = bandrows;
+
+        amiga_chunky = NULL;
+        bandbuf = NULL;
+        if (amiga_alloc_frame(&amiga_mode) != 0) {
+            amiga_mode   = old;
+            amiga_chunky = oldchunky;
+            bandbuf      = oldband;
+            bandrows     = oldrows;
+            return -1;
+        }
+        FreeVec(oldchunky);
+        if (oldband) FreeVec(oldband);
     }
 
+    amiga_describe(&amiga_mode);
+    amiga_clear_display();
+    amiga_apply_view();
     return 0;
 }
 
@@ -485,7 +761,7 @@ void amiga_video_close(void) {
 
     if (amiga_screen) { CloseScreen(amiga_screen); amiga_screen = NULL; }
     if (amiga_chunky) { FreeVec(amiga_chunky);     amiga_chunky = NULL; }
-    if (scalebuf)     { FreeVec(scalebuf);         scalebuf = NULL; }
+    if (bandbuf)      { FreeVec(bandbuf);          bandbuf = NULL; }
 
     fprintf(stderr, "Display closed.  Chip RAM free: %lu bytes "
                     "(largest block %lu).\n",
@@ -609,44 +885,76 @@ void amiga_build_penmap(void) {
         pensrc[i] = 0;
 }
 
-/* The last row of the view that reaches the display.  Equal to AMIGA_VIEW_H
-   unless the screen is too short to show the whole thing. */
-int amiga_view_bottom(void) {
-    if (!amiga_screen)
-        return AMIGA_VIEW_H;
-    return amiga_mode.srcy + amiga_mode.srch;
-}
-
 int amiga_num_pens(void) { return numpens; }
 const UBYTE *amiga_penmap(void) { return penmap; }
 
 /* ----------------------------------------------------------------- blitting */
 
-static void amiga_scale2x(void) {
-    const UBYTE *s = amiga_chunky + amiga_mode.srcy * AMIGA_VIEW_W + amiga_mode.srcx;
-    UBYTE *d = scalebuf;
-    int dstride = amiga_mode.srcw * 2;
-    int x, y;
+/*
+ * Widen `rows` rows of the frame by n into the band, each source pixel
+ * becoming n bytes and each source row n identical rows.  Only the first
+ * copy of a row is built pixel by pixel; the others are memcpy()s of it.
+ * The common factors write a whole word or longword per source pixel, which
+ * the band's layout keeps aligned: it comes from AllocVec() and every row is
+ * a multiple of n bytes long.
+ */
+static void amiga_expand(const UBYTE *src, int w, int rows, int n, UBYTE *dst) {
+    int dw = w * n;
+    int r, x, k;
 
-    for (y = 0; y < amiga_mode.srch; y++) {
-        UBYTE *d0 = d;
-        for (x = 0; x < amiga_mode.srcw; x++) {
-            UBYTE c = s[x];
-            *d++ = c;
-            *d++ = c;
+    for (r = 0; r < rows; r++, src += w) {
+        UBYTE *d0 = dst;
+
+        switch (n) {
+        case 2: {
+            UWORD *d = (UWORD *)d0;
+            for (x = 0; x < w; x++)
+                d[x] = (UWORD)(src[x] * 0x0101U);
+            break;
         }
-        memcpy(d, d0, dstride);     /* duplicate the row */
-        d += dstride;
-        s += AMIGA_VIEW_W;
+        case 4: {
+            ULONG *d = (ULONG *)d0;
+            for (x = 0; x < w; x++)
+                d[x] = (ULONG)src[x] * 0x01010101UL;
+            break;
+        }
+        default: {
+            UBYTE *d = d0;
+            for (x = 0; x < w; x++) {
+                UBYTE c = src[x];
+                for (k = 0; k < n; k++)
+                    *d++ = c;
+            }
+            break;
+        }
+        }
+
+        dst += dw;
+        for (k = 1; k < n; k++, dst += dw)
+            memcpy(dst, d0, dw);
+    }
+}
+
+/* Put a w x h block of chunky pixels on the screen at (x,y). */
+static void amiga_put(struct RastPort *rp, const UBYTE *src, int stride,
+                      int x, int y, int w, int h) {
+    if (amiga_mode.rtg) {
+        if (amiga_mode.pixfmt == PIXFMT_LUT8)
+            WritePixelArray((APTR)src, 0, 0, stride, rp, x, y, w, h,
+                            RECTFMT_LUT8);
+        else
+            WriteLUTPixelArray((APTR)src, 0, 0, stride, rp, lut,
+                               x, y, w, h, CTABFMT_XRGB8);
+    } else {
+        amiga_c2p(src, stride, rp->BitMap, x, y, w, h, amiga_mode.depth);
     }
 }
 
 void amiga_blit_frame(void) {
-    struct BitMap *bm;
-    const UBYTE *src;
-    int stride, w, h;
+    struct RastPort rp;
+    int n, w, h, y;
 
-    if (!amiga_screen) return;
+    if (!amiga_screen || !amiga_chunky) return;
 
     if (doublebuffered && !safe_to_write) {
         while (!GetMsg(safeport))
@@ -654,37 +962,25 @@ void amiga_blit_frame(void) {
         safe_to_write = 1;
     }
 
-    if (amiga_mode.scale == 2 && scalebuf) {
-        amiga_scale2x();
-        src    = scalebuf;
-        stride = amiga_mode.srcw * 2;
-        w      = amiga_mode.srcw * 2;
-        h      = amiga_mode.srch * 2;
+    rp = amiga_screen->RastPort;
+    rp.BitMap = amiga_drawbitmap();
+
+    n = amiga_mode.divisor;
+    w = amiga_mode.vieww;
+    h = amiga_mode.viewh;
+
+    if (n <= 1 || !bandbuf) {
+        amiga_put(&rp, amiga_chunky, w, amiga_mode.destx, amiga_mode.desty,
+                  w, h);
     } else {
-        src    = amiga_chunky + amiga_mode.srcy * AMIGA_VIEW_W + amiga_mode.srcx;
-        stride = AMIGA_VIEW_W;
-        w      = amiga_mode.srcw;
-        h      = amiga_mode.srch;
-    }
+        for (y = 0; y < h; y += bandrows) {
+            int rows = h - y < bandrows ? h - y : bandrows;
 
-    bm = amiga_drawbitmap();
-
-    if (amiga_mode.rtg) {
-        struct RastPort rp = amiga_screen->RastPort;
-        rp.BitMap = bm;
-
-        if (amiga_mode.pixfmt == PIXFMT_LUT8) {
-            WritePixelArray((APTR)src, 0, 0, stride, &rp,
-                            amiga_mode.destx, amiga_mode.desty, w, h,
-                            RECTFMT_LUT8);
-        } else {
-            WriteLUTPixelArray((APTR)src, 0, 0, stride, &rp, lut,
-                               amiga_mode.destx, amiga_mode.desty, w, h,
-                               CTABFMT_XRGB8);
+            amiga_expand(amiga_chunky + (size_t)y * w, w, rows, n, bandbuf);
+            amiga_put(&rp, bandbuf, w * n,
+                      amiga_mode.destx, amiga_mode.desty + y * n,
+                      w * n, rows * n);
         }
-    } else {
-        amiga_c2p(src, stride, bm, amiga_mode.destx, amiga_mode.desty,
-                  w, h, amiga_mode.depth);
     }
 
     if (doublebuffered) {
