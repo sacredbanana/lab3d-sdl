@@ -271,21 +271,23 @@ static int test_wall(int ntrials, unsigned seed) {
         int shaded = trial & 1, writez = (trial >> 1) & 1, testz = (trial >> 2) & 1;
         int keycol = (trial >> 3) & 1, depthonly = ((trial >> 4) & 7) == 0;
 
+        /* Whole world units, as the game has them: the camera from posxs and
+           posys, the walls from cell corners and sprite extents. */
         cam_fx = cos(ang); cam_fy = sin(ang);
-        cam_ex = frand(2048, 63488);
-        cam_ey = frand(2048, 63488);
+        cam_ex = floor(frand(2048, 63488));
+        cam_ey = floor(frand(2048, 63488));
         cam_ez = frand(0, 1024);
         proj_x = 180.0 / frand(0.75, 1.34);
         proj_y = 160.0 / frand(0.75, 1.34);
         horizon_row = 120;
 
         if (trial % 4) {                    /* a cell edge, as the game emits */
-            double cx = cam_ex + frand(-6144, 6144), cy = cam_ey + frand(-6144, 6144);
+            double cx = floor(cam_ex + frand(-6144, 6144)), cy = floor(cam_ey + frand(-6144, 6144));
             if (rand() & 1) { wx1 = cx; wx2 = cx + 1024; wy1 = wy2 = cy; }
             else            { wy1 = cy; wy2 = cy + 1024; wx1 = wx2 = cx; }
         } else {                            /* arbitrary, to work the near clip */
-            wx1 = cam_ex + frand(-3072, 3072); wy1 = cam_ey + frand(-3072, 3072);
-            wx2 = cam_ex + frand(-3072, 3072); wy2 = cam_ey + frand(-3072, 3072);
+            wx1 = floor(cam_ex + frand(-3072, 3072)); wy1 = floor(cam_ey + frand(-3072, 3072));
+            wx2 = floor(cam_ex + frand(-3072, 3072)); wy2 = floor(cam_ey + frand(-3072, 3072));
         }
 
         for (i = 0; i < VW; i++)
@@ -771,15 +773,15 @@ static int bench_wall(const char *which, int ntrials, unsigned seed) {
         int shaded = trial & 1;
 
         cam_fx = cos(ang); cam_fy = sin(ang);
-        cam_ex = frand(2048, 63488);
-        cam_ey = frand(2048, 63488);
+        cam_ex = floor(frand(2048, 63488));
+        cam_ey = floor(frand(2048, 63488));
         cam_ez = frand(0, 1024);
         proj_x = 180.0;
         proj_y = 160.0;
         horizon_row = 120;
 
         /* Cell edges near enough to be a few columns to most of the view. */
-        cx = cam_ex + frand(-4096, 4096); cy = cam_ey + frand(-4096, 4096);
+        cx = floor(cam_ex + frand(-4096, 4096)); cy = floor(cam_ey + frand(-4096, 4096));
         if (rand() & 1) { wx1 = cx; wx2 = cx + 1024; wy1 = wy2 = cy; }
         else            { wy1 = cy; wy2 = cy + 1024; wx1 = wx2 = cx; }
 

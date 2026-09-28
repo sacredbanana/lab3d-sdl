@@ -121,27 +121,6 @@ static int unit_row(double gy) {
     return (int)ceil(gy * amiga_mode.ppuy + amiga_mode.orgy - 0.5);
 }
 
-/* Round a double to the nearest integer rather than toward zero.  Every fixed
-   point step below is rounded once and then added hundreds of times, so a step
-   that is half an ulp out drags the far end of the span badly off. */
-static K_INT32 fxround(double v) {
-    return (K_INT32)(v < 0.0 ? v - 0.5 : v + 0.5);
-}
-
-/* Round to nearest and reduce modulo 2^32.  Converting an out of range double
-   to an integer is undefined and, on most hardware, saturates rather than
-   wrapping - so an accumulator that is meant to wrap has to have its starting
-   value reduced here rather than by the cast.  The range test keeps the
-   expensive path off the common case. */
-static K_UINT32 fxwrap(double v) {
-    if (v > -2147483008.0 && v < 2147483008.0)
-        return (K_UINT32)fxround(v);
-    v = fmod(v, 4294967296.0);
-    if (v < 0.0) v += 4294967296.0;
-    if (v >= 4294967296.0) v = 0.0;          /* only reachable via NaN */
-    return (K_UINT32)v;
-}
-
 /* The binary exponent of a positive, normal double, and 2^k as a double,
    straight from the bits - on a machine without an FPU a frexp() or a
    halving loop costs soft float calls for what is just a field in the word. */
@@ -165,6 +144,110 @@ static double dpow2(int k) {
     u.w[DHI]     = (K_UINT32)(k + 1023) << 20;
     u.w[1 - DHI] = 0;
     return u.d;
+}
+
+/* v * 2^k, exactly, by adjusting the exponent: the scales below are all
+   powers of two, and a soft float multiply to apply one is a waste.  Zero
+   stays zero; nothing here comes near the ends of the exponent range. */
+static double dscale2(double v, int k) {
+    dbits u;
+    u.d = v;
+    if (u.w[DHI] & 0x7ff00000)
+        u.w[DHI] += (K_UINT32)k << 20;
+    return u.d;
+}
+
+/* v * 2^k as a double, for a 64 bit integer v held as hi:lo.  Built from
+   the bits, like dexp2(), so a soft float build pays no library calls; below
+   2^53 it is exact, above it the low bits are dropped. */
+static double dfrom64(long long v, int k) {
+    unsigned long long m;
+    K_UINT32 hi, lo, sign = 0;
+    int p, sh;
+    dbits u;
+
+    if (!v) return 0.0;
+    if (v < 0) { m = (unsigned long long)-v; sign = 0x80000000; }
+    else       m = (unsigned long long)v;
+    hi = (K_UINT32)(m >> 32);
+    lo = (K_UINT32)m;
+
+    /* p: the top set bit.  Bring it to bit 52 - bit 20 of the high word. */
+    p = hi ? 63 - __builtin_clz(hi) : 31 - __builtin_clz(lo);   /* bfffo */
+    sh = 52 - p;
+    if (sh >= 32) {
+        hi = lo << (sh - 32);
+        lo = 0;
+    } else if (sh > 0) {
+        hi = (hi << sh) | (lo >> (32 - sh));
+        lo <<= sh;
+    } else if (sh < 0) {
+        lo = (lo >> -sh) | (hi << (32 + sh));
+        hi >>= -sh;
+    }
+    u.w[DHI]     = sign | ((K_UINT32)(p + 1023 + k) << 20) | (hi & 0xfffff);
+    u.w[1 - DHI] = lo;
+    return u.d;
+}
+
+/* Whether |v| < 2^k. */
+static int dbelow2(double v, int k) {
+    return dexp2(v) < k;
+}
+
+/* Whether |v| < 2e9, i.e. comfortably fits in 32 bits once rounded; the
+   exponent settles nearly every case without a soft float compare. */
+static int dfits(double v) {
+    return dbelow2(v, 30) || fabs(v) < 2.0e9;
+}
+
+/*
+ * Round a double to the nearest integer rather than toward zero.  Every fixed
+ * point step below is rounded once and then added hundreds of times, so a step
+ * that is half an ulp out drags the far end of the span badly off.
+ *
+ * Without an FPU the obvious v + 0.5 costs a soft float compare and add, and
+ * the renderer does it a dozen times a wall.  The same rounding - half away
+ * from zero - done on the bits is a few shifts: floor(2|v|), plus one, halved.
+ * It gives the identical result for every |v| below 2^31, which is all it is
+ * ever asked for.
+ */
+static K_INT32 fxround(double v) {
+#ifndef __HAVE_68881__
+    dbits u;
+    K_UINT32 hi, lo, m, x;
+    int e, sh;
+
+    u.d = v;
+    hi = u.w[DHI];
+    lo = u.w[1 - DHI];
+    e  = (int)((hi >> 20) & 0x7ff) - 1023;
+    if (e < -1)                         /* |v| < 0.5, zero, denormal */
+        return 0;
+    if (e > 30)                         /* out of range, infinite or NaN */
+        return (hi & 0x80000000) ? -0x7fffffff - 1 : 0x7fffffff;
+    m  = (hi & 0xfffff) | 0x100000;     /* the 53 bit mantissa is m:lo */
+    sh = 51 - e;                        /* floor(2|v|) = mantissa >> sh */
+    x  = sh >= 32 ? m >> (sh - 32) : (m << (32 - sh)) | (lo >> sh);
+    x  = (x + 1) >> 1;
+    return (hi & 0x80000000) ? -(K_INT32)x : (K_INT32)x;
+#else
+    return (K_INT32)(v < 0.0 ? v - 0.5 : v + 0.5);
+#endif
+}
+
+/* Round to nearest and reduce modulo 2^32.  Converting an out of range double
+   to an integer is undefined and, on most hardware, saturates rather than
+   wrapping - so an accumulator that is meant to wrap has to have its starting
+   value reduced here rather than by the cast.  The range test keeps the
+   expensive path off the common case. */
+static K_UINT32 fxwrap(double v) {
+    if (dbelow2(v, 30) || (v > -2147483008.0 && v < 2147483008.0))
+        return (K_UINT32)fxround(v);
+    v = fmod(v, 4294967296.0);
+    if (v < 0.0) v += 4294967296.0;
+    if (v >= 4294967296.0) v = 0.0;          /* only reachable via NaN */
+    return (K_UINT32)v;
 }
 
 /* (hi:lo) / d for a quotient known to fit in 32 bits.  The 68020, 030 and
@@ -204,6 +287,24 @@ static K_INT32 tcdiv(K_INT32 tv, K_INT32 z, int sh) {
         return neg ? -0x7fffffff : 0x7fffffff;
     q = udiv64(hi, lo, (K_UINT32)z);
     return neg ? -(K_INT32)q : (K_INT32)q;
+}
+
+/*
+ * 1 / (D * 2^k) as a double, for an integer D > 0: D cut to its top 32 bits
+ * and divided into 2^63 by one divu.l.  Good to a couple of parts in 2^32,
+ * where a soft float divide costs as much as a few hundred of these.
+ */
+static double recip64(long long D, int k) {
+    unsigned long long m = (unsigned long long)D;
+    K_UINT32 hi = (K_UINT32)(m >> 32), lo = (K_UINT32)m, dn;
+    int p, sh;
+
+    p = hi ? 63 - __builtin_clz(hi) : 31 - __builtin_clz(lo);   /* bfffo */
+    sh = p - 31;                        /* dn = D >> sh, in [2^31, 2^32) */
+    if (sh >= 32)     dn = hi >> (sh - 32);
+    else if (sh > 0)  dn = (lo >> sh) | (hi << (32 - sh));
+    else              dn = lo << -sh;
+    return dfrom64((long long)udiv64(0x7fffffff, 0xffffffff, dn), -63 - sh - k);
 }
 
 static void build_shadetab(void) {
@@ -657,18 +758,16 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
                               int shaded, int writez, int testz,
                               int keycolour, int depthonly)
 {
-    double dx1 = wx1 - cam_ex, dy1 = wy1 - cam_ey;
-    double dx2 = wx2 - cam_ex, dy2 = wy2 - cam_ey;
-    double d1 =  cam_fx*dx1 + cam_fy*dy1;
-    double d2 =  cam_fx*dx2 + cam_fy*dy2;
-    double e1 =  cam_fx*dy1 - cam_fy*dx1;
-    double e2 =  cam_fx*dy2 - cam_fy*dx2;
+    double d1, d2, e1, e2;
     double near = (double)neardist;
+#ifndef __HAVE_68881__
+    long long D1, D2;                   /* d1 and d2 exactly, times 2^38 */
+#endif
     double sx1, sx2, invd1, invd2, tovd1, tovd2;
     double topk, botk;
     double spaninv, didx;
 #define SEGLEN 16
-    double zstep, ytstep, ybstep, yscale;
+    double zstep, ytstep, ybstep;
     K_INT32 Z, dZ, YT, dYT, YB, dYB;
     K_INT32 sYT, sYB, sID, sTV;         /* at the start of each segment */
     K_INT32 gYT, gYB, gID, gTV;         /* from one segment to the next */
@@ -678,6 +777,36 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
     int yshift;
     const unsigned char *texbase;
     int xa, xb, x, seg;
+
+    /*
+     * Depth and sideways offset of both ends.  The game's positions are whole
+     * world units and its view direction comes from a 16.16 table, so in
+     * fixed point - positions in 24.8, the direction in 2.30 - this is exact
+     * integer arithmetic: four widening multiplies, which the 68020 does in
+     * one instruction each, where the doubles cost a dozen soft float calls.
+     * With an FPU the doubles are cheaper than that, and on an 060, which
+     * has no 64 bit multiply, a good deal cheaper, so they stay.
+     */
+#ifndef __HAVE_68881__
+    {
+        K_INT32 fx = fxround(dscale2(cam_fx, 30)), fy = fxround(dscale2(cam_fy, 30));
+        K_INT32 cx = fxround(dscale2(cam_ex, 8)),  cy = fxround(dscale2(cam_ey, 8));
+        K_INT32 dx1 = fxround(dscale2(wx1, 8)) - cx, dy1 = fxround(dscale2(wy1, 8)) - cy;
+        K_INT32 dx2 = fxround(dscale2(wx2, 8)) - cx, dy2 = fxround(dscale2(wy2, 8)) - cy;
+
+        D1 = (long long)fx * dx1 + (long long)fy * dy1;
+        D2 = (long long)fx * dx2 + (long long)fy * dy2;
+        d1 = dfrom64(D1, -38);
+        d2 = dfrom64(D2, -38);
+        e1 = dfrom64((long long)fx * dy1 - (long long)fy * dx1, -38);
+        e2 = dfrom64((long long)fx * dy2 - (long long)fy * dx2, -38);
+    }
+#else
+    d1 = cam_fx*(wx1 - cam_ex) + cam_fy*(wy1 - cam_ey);
+    d2 = cam_fx*(wx2 - cam_ex) + cam_fy*(wy2 - cam_ey);
+    e1 = cam_fx*(wy1 - cam_ey) - cam_fy*(wx1 - cam_ex);
+    e2 = cam_fx*(wy2 - cam_ey) - cam_fy*(wx2 - cam_ex);
+#endif
 
     if (d1 < near && d2 < near)
         return;
@@ -689,28 +818,42 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         e1 += (e2 - e1) * f;
         t0 += (t1 - t0) * f;
         d1  = near;
+#ifndef __HAVE_68881__
+        D1  = (long long)neardist << 38;
+#endif
     } else if (d2 < near) {
         double f = (near - d2) / (d1 - d2);
         e2 += (e1 - e2) * f;
         t1 += (t0 - t1) * f;
         d2  = near;
+#ifndef __HAVE_68881__
+        D2  = (long long)neardist << 38;
+#endif
     }
 
-    sx1 = proj_cx + proj_x * e1 / d1;
-    sx2 = proj_cx + proj_x * e2 / d2;
+#ifndef __HAVE_68881__
+    /* The reciprocals come from the exact integer depths, and the
+       projection multiplies by them: no soft float divide at all. */
+    invd1 = recip64(D1, -38);
+    invd2 = recip64(D2, -38);
+#else
+    invd1 = 1.0 / d1;
+    invd2 = 1.0 / d2;
+#endif
+    sx1 = proj_cx + proj_x * e1 * invd1;
+    sx2 = proj_cx + proj_x * e2 * invd2;
 
     if (sx1 > sx2) {
         double s;
-        s = sx1; sx1 = sx2; sx2 = s;
-        s = d1;  d1  = d2;  d2  = s;
-        s = t0;  t0  = t1;  t1  = s;
+        s = sx1;   sx1   = sx2;   sx2   = s;
+        s = d1;    d1    = d2;    d2    = s;
+        s = t0;    t0    = t1;    t1    = s;
+        s = invd1; invd1 = invd2; invd2 = s;
     }
 
     if (sx2 <= (double)VIEW_LEFT || sx1 >= (double)VIEW_RIGHT || sx2 - sx1 < 1e-6)
         return;
 
-    invd1 = 1.0 / d1;
-    invd2 = 1.0 / d2;
     tovd1 = t0 * invd1;
     tovd2 = t1 * invd2;
 
@@ -745,7 +888,7 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
        are reseeded at each segment boundary from the exactly computed 1/d
        there, which keeps a rounded step from accumulating across the width
        and stops the depth values drifting at the far end of a long wall. */
-    zstep = ZSCALE * didx;
+    zstep = dscale2(didx, 24);          /* ZSCALE is 2^24 */
 
     /*
      * Each of these has to survive as a 32 bit accumulator, so bound them over
@@ -765,20 +908,23 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         double idmax = (invd1 > invd2 ? invd1 : invd2) * 1.05;
         double rows  = fabs((double)horizon_row)
                      + (fabs(topk) + fabs(botk)) * idmax;
-        double rstep = (fabs(topk) + fabs(botk)) * fabs(didx) * SEGLEN;
+        double rstep = dscale2((fabs(topk) + fabs(botk)) * fabs(didx), 4);
+        double need  = rows + rstep;
 
-        if (!(ZSCALE * idmax + fabs(zstep) * SEGLEN < 2.0e9))
+        if (!(dscale2(idmax, 24) + dscale2(fabs(zstep), 4) < 2.0e9))
             return;
 
-        yshift = 16;
-        while ((rows + rstep) * (double)(1L << yshift) >= 2.0e9)
-            if (--yshift < 4)
-                return;
-        yscale = (double)(1L << yshift);
+        /* The largest row scale up to 16 bits that keeps need under 2e9:
+           the exponent gets within one of it, a compare settles the rest. */
+        yshift = 30 - dexp2(need);
+        if (yshift > 16) yshift = 16;
+        if (dscale2(need, yshift) >= 2.0e9) yshift--;
+        if (yshift < 4)
+            return;
     }
 
-    ytstep = topk * didx * yscale;
-    ybstep = botk * didx * yscale;
+    ytstep = dscale2(topk * didx, yshift);
+    ybstep = dscale2(botk * didx, yshift);
 
     dZ  = fxround(zstep);
     dYT = fxround(ytstep);
@@ -812,37 +958,35 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         double tv_a = tovd1 + dtv * x0;
         double tbig = fabs(tovd1) > fabs(tovd2) ? fabs(tovd1) : fabs(tovd2);
         double ibig = invd1 > invd2 ? invd1 : invd2;
-        double pscale, tscale, g;
+        double g;
         int pk, tk;
 
         /* Powers of two putting each largest value in [2^28, 2^29). */
         pk = 28 - dexp2(ibig);
-        tk = tbig > 1e-30 ? 28 - dexp2(tbig) : pk;
-        pscale = dpow2(pk);
-        tscale = dpow2(tk);
+        tk = dexp2(tbig) > -100 ? 28 - dexp2(tbig) : pk;
         zk  = pk - 24;                  /* ZSCALE is 2^24 */
         tsh = 16 + pk - tk;
         if (zk < 0)                     /* nearer than the near plane */
             return;
 
-        sYT = fxround(((double)horizon_row + topk * id_a) * yscale);
-        sYB = fxround(((double)horizon_row + botk * id_a) * yscale);
-        sID = fxround(pscale * id_a);
-        sTV = fxround(tscale * tv_a);
+        sYT = fxround(dscale2((double)horizon_row + topk * id_a, yshift));
+        sYB = fxround(dscale2((double)horizon_row + botk * id_a, yshift));
+        sID = fxround(dscale2(id_a, pk));
+        sTV = fxround(dscale2(tv_a, tk));
 
-        gYT = fxround(ytstep * SEGLEN);
-        gYB = fxround(ybstep * SEGLEN);
+        gYT = fxround(dscale2(ytstep, 4));      /* SEGLEN is 2^4 */
+        gYB = fxround(dscale2(ybstep, 4));
         /* A quad more than a column or a segment wide keeps these bounded by
            the values themselves; a sliver narrower than that can have a
            huge slope, and never uses it, so it only must not overflow. */
-        g = pscale * didx;
-        dID = fabs(g) < 2.0e9 ? fxround(g) : 0;
-        g = tscale * dtv;
-        dTV = fabs(g) < 2.0e9 ? fxround(g) : 0;
-        g = pscale * didx * SEGLEN;
-        gID = fabs(g) < 2.0e9 ? fxround(g) : 0;
-        g = tscale * dtv * SEGLEN;
-        gTV = fabs(g) < 2.0e9 ? fxround(g) : 0;
+        g = dscale2(didx, pk);
+        dID = dfits(g) ? fxround(g) : 0;
+        g = dscale2(dtv, tk);
+        dTV = dfits(g) ? fxround(g) : 0;
+        g = dscale2(didx, pk + 4);
+        gID = dfits(g) ? fxround(g) : 0;
+        g = dscale2(dtv, tk + 4);
+        gTV = dfits(g) ? fxround(g) : 0;
     }
 
     for (seg = xa; seg < xb; seg += SEGLEN,

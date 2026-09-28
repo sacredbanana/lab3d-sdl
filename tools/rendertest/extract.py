@@ -16,12 +16,17 @@ import sys
 # In dependency order: helpers first, then the functions under test.
 WANTED = {
     "src/amiga/render_soft.c": [
-    "fxround",
-    "fxwrap",
     "dexp2",
     "dpow2",
+    "dscale2",
+    "dfrom64",
+    "dbelow2",
+    "dfits",
+    "fxround",
+    "fxwrap",
     "udiv64",
     "tcdiv",
+    "recip64",
     "fdiv",
     "cdiv",
     "rdivp",

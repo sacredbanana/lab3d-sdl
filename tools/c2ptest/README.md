@@ -36,3 +36,13 @@ rectangles, the way the display's dirty rectangle lists do.
 Planted bugs it catches: a wrong bit in a round 5 mask, a wrong pre-plane
 partner, a descending blit starting one word late, blits queued before their
 band is staged, and a wrong column offset for rows wider than one blit.
+
+## On a 68k
+
+`run68k.sh` builds the test for the 68020 and runs it under vamos (see
+`tools/rendertest/README.md`), as the game builds it, as the host code and
+against the blitter model, so the assembler block loop - both its bitplane
+and its staging forms - runs for real; then it times a whole 320x256 frame.
+Half the plain bitmaps have evenly spaced planes, which is what the
+assembler path needs; the other half must fall back to the C.
+

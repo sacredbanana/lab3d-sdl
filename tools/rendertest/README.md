@@ -104,3 +104,32 @@ Add the function to `WANTED` in `extract.py`, freeze the old version in a
 constants or file-local state, wrap them in the source with
 `rendertest:begin-<tag>` / `rendertest:end-<tag>` and add the tag to `BLOCKS`
 rather than copying them here.
+
+## On a 68k
+
+`run.sh` also builds the harness with `-D__HAVE_68881__`, which picks the
+paths the FPU builds take, and runs every test on it once.
+
+Two scripts run the same code on an emulated 68020 under vamos (from
+amitools: `pip install amitools machine68k==0.3.0`; newer machine68k
+releases break vamos; point `VAMOS` at the binary):
+
+- `bench68k.sh [bench] [trials] [git-rev]` times the live renderer, and
+  optionally the one at a git revision, in 68020 cycles. `benchwall` draws
+  the wall test's geometry; it reports cycles, the same without the pixels,
+  and soft float calls by operation. libnix hands every double operation of
+  the FPU-less build to mathieeedoubbas.library, which vamos runs on the
+  host, so those calls are counted rather than timed, and "est" weighs them
+  at rough costs for the ROM code. The cycle count ignores caches and chip
+  RAM wait states: compare versions with it, do not read it as a frame time.
+- The harness itself runs under vamos too, which is how the assembler span
+  loops, the `divu.l` and the bit level helpers are checked on the real
+  instructions: build it with `m68k-amigaos-gcc -m68020 -msoft-float` and
+  run `vamos -C 68020 -m 8192 harness wall` (or `span`, `softtri`, ...).
+
+`span` compares `draw_span()`'s 68k assembler loops with the C loops they
+replaced, pixel for pixel; off the 68k it compares the C with itself.
+
+The wall test uses whole world units for the camera and the walls, as the
+game does: the camera transform is exact integer arithmetic on that basis.
+
