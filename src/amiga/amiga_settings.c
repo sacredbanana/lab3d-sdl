@@ -45,6 +45,9 @@ void amiga_settings_loaded(void) {
         amiga_cfg_audio = AMIGA_AUDIO_AUTO;
     if (amiga_rate_index(amiga_cfg_rate) < 0)
         amiga_cfg_rate = AMIGA_RATE_DEFAULT;
+    if (amiga_cfg_viewsize < AMIGA_VIEWSIZE_MIN || amiga_cfg_viewsize > 100 ||
+        (amiga_cfg_viewsize % AMIGA_VIEWSIZE_STEP) != 0)
+        amiga_cfg_viewsize = 100;
     if (amiga_cfg_render != AMIGA_RENDER_UNSCALED &&
         (amiga_cfg_render < 0 || amiga_cfg_render > AMIGA_RENDER_MAXDIV))
         amiga_cfg_render = AMIGA_RENDER_AUTO;

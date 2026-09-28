@@ -19,6 +19,7 @@ extern int amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
 extern int amiga_cfg_render, amiga_cfg_askmode;
 void amigascreenmodemenu(void);
 void setupamigarender(void);
+void setupamigaviewsize(void);
 void setupamigaaudio(void);
 void amiga_lock_mode(unsigned long modeid, int w, int h, int d);
 #endif
@@ -511,6 +512,32 @@ void setupamigarender(void) {
        one lands in the new buffer. */
     amiga_cfg_render = values[sel];
     amiga_video_relayout();
+}
+
+/* How much of the frame the 3D view fills.  Smaller is faster on a slow
+   machine: the renderer only draws the box, and only what changes is sent to
+   the screen, so the black border round it costs nothing. */
+void setupamigaviewsize(void) {
+    static char text[(100 - AMIGA_VIEWSIZE_MIN) / AMIGA_VIEWSIZE_STEP + 1][16];
+    char *items[(100 - AMIGA_VIEWSIZE_MIN) / AMIGA_VIEWSIZE_STEP + 1];
+    int n = 0, sel = 0, v;
+
+    for (v = 100; v >= AMIGA_VIEWSIZE_MIN; v -= AMIGA_VIEWSIZE_STEP) {
+        sprintf(text[n], v == 100 ? "%d%% (full)" : "%d%%", v);
+        items[n] = text[n];
+        if (v == amiga_cfg_viewsize) sel = n;
+        n++;
+    }
+
+    if (selectionmenu(n, items, &sel, "View size") < 0)
+        return;
+    v = 100 - sel * AMIGA_VIEWSIZE_STEP;
+    if (v == amiga_cfg_viewsize)
+        return;
+
+    /* The old, bigger picture would otherwise stay in the new border. */
+    amiga_cfg_viewsize = v;
+    amiga_video_invalidate();
 }
 
 /* Paula or AHI.  Automatic takes AHI on an 040 or better, where the software
@@ -1192,6 +1219,8 @@ static void draw_mainmenu(void) {
     strcpy(textbuf,"Render size: ");
     amiga_render_label(textbuf + strlen(textbuf), amiga_cfg_render, 1);
     n += 12; textprint(51,n,64);
+    sprintf(textbuf,"View size: %d%%", amiga_cfg_viewsize);
+    n += 12; textprint(51,n,64);
     strcpy(textbuf,"Sound output: ");
     strcat(textbuf,amigaaudiomenu[(amiga_cfg_audio < 0 ||
                                    amiga_cfg_audio >= AMIGA_AUDIO_MODES)
@@ -1274,12 +1303,12 @@ void setupmenu(int ingame) {
     draw_ptr[++drawStackTopIndex] = draw_mainmenu;
 
 #ifdef PLATFORM_AMIGA
-    /* Fourteen rows: the window, filtering, stereo, texture depth and view
+    /* Fifteen rows: the window, filtering, stereo, texture depth and view
        options of the desktop builds do not apply to a software renderer on a
-       fixed size screen, and the screen mode, sound output and sample rate
-       settings take their place. */
+       fixed size screen, and the screen mode, render size, view size, sound
+       output and sample rate settings take their place. */
     while (!quit) {
-        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 14)) < 0) {
+        if ((sel = getselection(12, 7 + (ingame ? -12 : 0), sel, 15)) < 0) {
             quit = 1;
         } else {
             switch (sel) {
@@ -1288,15 +1317,16 @@ void setupmenu(int ingame) {
             case 2:  amigascreenmodemenu();    break;
             case 3:  amiga_cfg_askmode = !amiga_cfg_askmode; break;
             case 4:  setupamigarender();       break;
-            case 5:  setupamigaaudio();        break;
-            case 6:  setupamigarate();         break;
-            case 7:  setupsetmusic();          break;
-            case 8:  setupsetsound();          break;
-            case 9:  setupsetsoundchannels();  break;
-            case 10: setupsetmusicchannels();  break;
-            case 11: setupcheatmenu();         break;
-            case 12: setupsoundblockmenu();    break;
-            case 13: quit = 1;                 break;
+            case 5:  setupamigaviewsize();     break;
+            case 6:  setupamigaaudio();        break;
+            case 7:  setupamigarate();         break;
+            case 8:  setupsetmusic();          break;
+            case 9:  setupsetsound();          break;
+            case 10: setupsetsoundchannels();  break;
+            case 11: setupsetmusicchannels();  break;
+            case 12: setupcheatmenu();         break;
+            case 13: setupsoundblockmenu();    break;
+            case 14: quit = 1;                 break;
             }
         }
     }
@@ -1747,6 +1777,7 @@ static setting_t amiga_settings[] = {
     INTSETTING(height, amiga_cfg_height),
     INTSETTING(depth, amiga_cfg_depth),
     INTSETTING(render, amiga_cfg_render),
+    INTSETTING(viewsize, amiga_cfg_viewsize),
     /* The old pixel doubling setting, read and dropped so an existing
        settings.ini does not warn about it. */
     XINTSETTING(scale, amiga_cfg_oldscale),

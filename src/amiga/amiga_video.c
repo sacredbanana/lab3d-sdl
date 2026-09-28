@@ -60,6 +60,15 @@ static UWORD               *blankpointer;
 static UBYTE   *bandbuf;
 static int      bandrows;       /* source rows per band */
 
+/* Dirty rectangles; see the section of that name further down. */
+#define MAXRECTS 32
+
+typedef struct { int x0, y0, x1, y1; } arect;
+typedef struct { int n, all; arect r[MAXRECTS]; } rectlist;
+
+static rectlist dirty_now, dirty_last;  /* everything that changed      */
+static rectlist ovl_now, ovl_last;      /* the non-3D part of it        */
+
 /* Colour table for WriteLUTPixelArray() on deep RTG screens. */
 static ULONG    lut[256];
 
@@ -85,6 +94,7 @@ static int      numpens;
 ULONG amiga_cfg_modeid = INVALID_ID;
 int   amiga_cfg_width, amiga_cfg_height, amiga_cfg_depth;
 int   amiga_cfg_render = AMIGA_RENDER_AUTO;   /* see amiga_video.h */
+int   amiga_cfg_viewsize = 100;
 int   amiga_cfg_askmode = 1;    /* show the screen mode requester at startup */
 
 /* ------------------------------------------------------------ mode picking */
@@ -176,30 +186,39 @@ static int amiga_shows_everything(const amiga_videomode *t) {
            (t->vieww >= AMIGA_CROP_W && t->viewh >= AMIGA_VIEW_H);
 }
 
+/* Most screen pixels Automatic will fill on a native screen: a full PAL
+   lores screen with a little to spare.  Past that, filling the screen costs
+   more planar conversion than the port ever needed before. */
+#define AMIGA_NATIVE_BUDGET (AMIGA_VIEW_W * 256L)
+
 /*
- * The divisor "Automatic" picks.
+ * What "Automatic" picks: a divisor, or AMIGA_RENDER_UNSCALED.
  *
  * This is a trade between speed and detail.  Every pixel of the render
  * buffer costs the renderer the same whatever the scale, so a bigger divisor
  * is faster; but past a point the buffer is too small to show the game
  * space in its proper shape, or at all.
+ *
+ * A native screen has a second cost that scaling does nothing for.  The
+ * planar conversion runs once per pixel that reaches the screen, so doubling
+ * a 320x256 render onto a 640x512 screen still quadruples that part of the
+ * frame - and on an AGA machine it is the larger part.  There, a screen too
+ * big to fill within the budget gets the 360x240 view unscaled, which is
+ * what the port always did; the player can still ask for a fill by hand.
+ * RTG has no such cost, because the card's memory takes chunky pixels
+ * directly.
  */
-static int amiga_auto_divisor(const amiga_videomode *m) {
+static int amiga_auto_setting(const amiga_videomode *m) {
     amiga_videomode t;
     int n;
 
-    /* TODO(human): native screens.  The loop below keeps the renderer's
-       cost near the original's, but on a native screen the planar
-       conversion runs once per *screen* pixel, so doubling a 320x256
-       render onto 640x512 still quadruples that part.  Decide whether a
-       native screen should prefer something else here - for instance the
-       largest divisor whose scaled-up area is no bigger than some budget -
-       and return it before the loop. */
-
     for (n = AMIGA_RENDER_MAXDIV; n > 1; n--)
         if (amiga_trial_layout(m, n, &t) && amiga_shows_everything(&t))
-            return n;
-    return 1;
+            break;
+
+    if (!m->rtg && (long)m->width * m->height > AMIGA_NATIVE_BUDGET)
+        return AMIGA_RENDER_UNSCALED;
+    return n;
 }
 
 /* Turn a setting into a divisor that works on this screen: a request the
@@ -208,8 +227,6 @@ static int amiga_resolve_divisor(const amiga_videomode *m, int setting) {
     amiga_videomode t;
     int n = setting;
 
-    if (n == AMIGA_RENDER_AUTO)
-        return amiga_auto_divisor(m);
     if (n < 1) n = 1;
     if (n > AMIGA_RENDER_MAXDIV) n = AMIGA_RENDER_MAXDIV;
 
@@ -225,6 +242,9 @@ static int amiga_resolve_divisor(const amiga_videomode *m, int setting) {
    scaled-up result sits on the screen. */
 static void amiga_layout_for(amiga_videomode *m, int setting) {
     int w, h;
+
+    if (setting == AMIGA_RENDER_AUTO)
+        setting = amiga_auto_setting(m);
 
     if (setting == AMIGA_RENDER_UNSCALED) {
         /* The 360x240 view at 1:1 in the middle, as before any of this. */
@@ -704,6 +724,7 @@ int amiga_video_open(void) {
     /* Blank the screen so the borders are black rather than whatever
        Intuition left behind. */
     amiga_clear_display();
+    amiga_video_invalidate();
 
     return 0;
 }
@@ -742,6 +763,7 @@ int amiga_video_relayout(void) {
 
     amiga_describe(&amiga_mode);
     amiga_clear_display();
+    amiga_video_invalidate();
     amiga_apply_view();
     return 0;
 }
@@ -811,6 +833,9 @@ void amiga_load_palette(const unsigned char *pal, int start, int count) {
             b = (b << 2) | (b >> 4);
             lut[i] = (r << 16) | (g << 8) | b;
         }
+        /* The colours are only applied as the frame is sent, so all of
+           it has to go again for a palette change to show. */
+        dirty_now.all = dirty_last.all = 1;
         return;
     }
 
@@ -888,21 +913,106 @@ void amiga_build_penmap(void) {
 int amiga_num_pens(void) { return numpens; }
 const UBYTE *amiga_penmap(void) { return penmap; }
 
+/* -------------------------------------------------------- dirty rectangles */
+
+/*
+ * What changed in the frame since it was last sent.  With double buffering
+ * the buffer being drawn into last held the frame before the previous one,
+ * so it needs this frame's changes and the previous frame's as well; that is
+ * why two frames' worth are kept.
+ *
+ * Rectangles that one contains, or that sit side by side on the same rows,
+ * are merged as they come in.  That catches the status bar, which arrives
+ * as a dozen 20 unit strips.  Past MAXRECTS the list gives up and sends
+ * everything, which is never wrong, only slower.
+ */
+static void rl_add(rectlist *l, int x0, int y0, int x1, int y1) {
+    int i;
+
+    if (l->all) return;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 > amiga_mode.vieww) x1 = amiga_mode.vieww;
+    if (y1 > amiga_mode.viewh) y1 = amiga_mode.viewh;
+    if (x0 >= x1 || y0 >= y1) return;
+
+    for (i = 0; i < l->n; i++) {
+        arect *r = &l->r[i];
+
+        if (r->x0 <= x0 && r->y0 <= y0 && r->x1 >= x1 && r->y1 >= y1)
+            return;
+        if ((x0 <= r->x0 && y0 <= r->y0 && x1 >= r->x1 && y1 >= r->y1) ||
+            (y0 == r->y0 && y1 == r->y1 && x0 <= r->x1 && x1 >= r->x0)) {
+            if (x0 < r->x0) r->x0 = x0;
+            if (y0 < r->y0) r->y0 = y0;
+            if (x1 > r->x1) r->x1 = x1;
+            if (y1 > r->y1) r->y1 = y1;
+            return;
+        }
+    }
+    if (l->n == MAXRECTS) {
+        l->all = 1;
+        return;
+    }
+    l->r[l->n].x0 = x0; l->r[l->n].y0 = y0;
+    l->r[l->n].x1 = x1; l->r[l->n].y1 = y1;
+    l->n++;
+}
+
+void amiga_mark_dirty(int x0, int y0, int x1, int y1, int overlay) {
+    rl_add(&dirty_now, x0, y0, x1, y1);
+    if (overlay)
+        rl_add(&ovl_now, x0, y0, x1, y1);
+}
+
+void amiga_mark_all_dirty(void) {
+    dirty_now.all = 1;
+}
+
+void amiga_clear_leftovers(void) {
+    int i, y;
+
+    if (!amiga_chunky) return;
+
+    if (ovl_last.all) {
+        memset(amiga_chunky, 0, (size_t)amiga_mode.vieww * amiga_mode.viewh);
+        dirty_now.all = 1;
+        return;
+    }
+    for (i = 0; i < ovl_last.n; i++) {
+        const arect *r = &ovl_last.r[i];
+        UBYTE *row = amiga_chunky + (size_t)r->y0 * amiga_mode.vieww + r->x0;
+
+        for (y = r->y0; y < r->y1; y++, row += amiga_mode.vieww)
+            memset(row, 0, r->x1 - r->x0);
+        rl_add(&dirty_now, r->x0, r->y0, r->x1, r->y1);
+    }
+}
+
+void amiga_video_invalidate(void) {
+    if (amiga_chunky)
+        memset(amiga_chunky, 0, (size_t)amiga_mode.vieww * amiga_mode.viewh);
+    dirty_now.all = dirty_last.all = 1;
+    ovl_now.n = ovl_last.n = 0;
+    ovl_now.all = ovl_last.all = 0;
+}
+
 /* ----------------------------------------------------------------- blitting */
 
 /*
- * Widen `rows` rows of the frame by n into the band, each source pixel
+ * Widen `rows` rows of a w pixel wide piece of the frame by n into the band, each source pixel
  * becoming n bytes and each source row n identical rows.  Only the first
  * copy of a row is built pixel by pixel; the others are memcpy()s of it.
  * The common factors write a whole word or longword per source pixel, which
  * the band's layout keeps aligned: it comes from AllocVec() and every row is
  * a multiple of n bytes long.
  */
-static void amiga_expand(const UBYTE *src, int w, int rows, int n, UBYTE *dst) {
+static void amiga_expand(const UBYTE *src, int stride, int w, int rows, int n,
+                         UBYTE *dst) {
     int dw = w * n;
     int r, x, k;
 
-    for (r = 0; r < rows; r++, src += w) {
+    for (r = 0; r < rows; r++, src += stride) {
         UBYTE *d0 = dst;
 
         switch (n) {
@@ -950,9 +1060,40 @@ static void amiga_put(struct RastPort *rp, const UBYTE *src, int stride,
     }
 }
 
+/* Send one rectangle of the frame, scaling it up on the way if the layout
+   says so.  A native screen gets it widened to whole bytes, since the planar
+   conversion works eight pixels at a time. */
+static void amiga_blit_rect(struct RastPort *rp, int x0, int y0, int x1, int y1) {
+    int n = amiga_mode.divisor, w = amiga_mode.vieww;
+    int rw, y;
+
+    if (!amiga_mode.rtg) {
+        x0 &= ~7;
+        x1 = (x1 + 7) & ~7;
+        if (x1 > w) x1 = w;
+    }
+    rw = x1 - x0;
+    if (rw <= 0 || y1 <= y0) return;
+
+    if (n <= 1 || !bandbuf) {
+        amiga_put(rp, amiga_chunky + (size_t)y0 * w + x0, w,
+                  amiga_mode.destx + x0, amiga_mode.desty + y0, rw, y1 - y0);
+        return;
+    }
+
+    for (y = y0; y < y1; y += bandrows) {
+        int rows = y1 - y < bandrows ? y1 - y : bandrows;
+
+        amiga_expand(amiga_chunky + (size_t)y * w + x0, w, rw, rows, n, bandbuf);
+        amiga_put(rp, bandbuf, rw * n,
+                  amiga_mode.destx + x0 * n, amiga_mode.desty + y * n,
+                  rw * n, rows * n);
+    }
+}
+
 void amiga_blit_frame(void) {
     struct RastPort rp;
-    int n, w, h, y;
+    int i;
 
     if (!amiga_screen || !amiga_chunky) return;
 
@@ -965,23 +1106,26 @@ void amiga_blit_frame(void) {
     rp = amiga_screen->RastPort;
     rp.BitMap = amiga_drawbitmap();
 
-    n = amiga_mode.divisor;
-    w = amiga_mode.vieww;
-    h = amiga_mode.viewh;
-
-    if (n <= 1 || !bandbuf) {
-        amiga_put(&rp, amiga_chunky, w, amiga_mode.destx, amiga_mode.desty,
-                  w, h);
+    /* Everything, unless the view is shrunk and nothing says otherwise:
+       at full size the view covers the frame and is redrawn every frame
+       anyway, so there is nothing to save. */
+    if (amiga_cfg_viewsize >= 100 || dirty_now.all ||
+        (doublebuffered && dirty_last.all)) {
+        amiga_blit_rect(&rp, 0, 0, amiga_mode.vieww, amiga_mode.viewh);
     } else {
-        for (y = 0; y < h; y += bandrows) {
-            int rows = h - y < bandrows ? h - y : bandrows;
-
-            amiga_expand(amiga_chunky + (size_t)y * w, w, rows, n, bandbuf);
-            amiga_put(&rp, bandbuf, w * n,
-                      amiga_mode.destx, amiga_mode.desty + y * n,
-                      w * n, rows * n);
-        }
+        for (i = 0; i < dirty_now.n; i++)
+            amiga_blit_rect(&rp, dirty_now.r[i].x0, dirty_now.r[i].y0,
+                            dirty_now.r[i].x1, dirty_now.r[i].y1);
+        if (doublebuffered)
+            for (i = 0; i < dirty_last.n; i++)
+                amiga_blit_rect(&rp, dirty_last.r[i].x0, dirty_last.r[i].y0,
+                                dirty_last.r[i].x1, dirty_last.r[i].y1);
     }
+
+    dirty_last = dirty_now;
+    ovl_last   = ovl_now;
+    dirty_now.n = dirty_now.all = 0;
+    ovl_now.n   = ovl_now.all   = 0;
 
     if (doublebuffered) {
         if (!safe_to_change) {

@@ -19,8 +19,10 @@ typedef unsigned short K_UINT16;
 /* Must match src/amiga/amiga_video.h and render_soft.c. */
 #define VW        360
 #define VH        240
-#define VIEW_TOP  0
-#define VIEW_BOT  VH
+#define VIEW_LEFT  0
+#define VIEW_TOP   0
+#define VIEW_RIGHT VW
+#define VIEW_BOT   VH
 #define ZSCALE    16777216.0
 #define RECIP_MAX 4096
 

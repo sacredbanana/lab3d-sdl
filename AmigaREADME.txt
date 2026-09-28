@@ -58,7 +58,10 @@ rather than leaving bars at the sides.  Setup -> Render size lists the sizes
 your screen allows:
 
   Automatic       about as much detail as the DOS original, so the
-                  renderer's share of the frame costs about what it did
+                  renderer's share of the frame costs about what it did.
+                  On a native screen bigger than PAL lores it is the same
+                  as Off, since filling it would multiply the planar
+                  conversion; pick a size by hand to fill it anyway
   full / 1/2 ...  more detail, at a cost that grows with the pixel count -
                   the full 1920x1080 is 24 times the work of 360x240
   Off             the original 360x240 in the middle of the screen, unscaled
@@ -68,6 +71,14 @@ screen is still filled, from a half size or smaller render.
 
 A small screen, such as the standard 320x256 PAL one, shows the 320x200
 window the original game used, as before.
+
+Setup -> View size shrinks the 3D view itself, from 100% down to 40%, into a
+box in the middle of the screen with a black border round it - the same idea
+as the screen size option in Wolfenstein 3D.  The menus and the status bar
+keep their full size, so this works on any screen mode, PAL and NTSC lores
+included.  The renderer only draws the box, and only the parts of the screen
+that change are sent to the display each frame, so a 50% view is roughly a
+quarter of the work.
 
 An 8 bit RTG screen is the fastest option, because the renderer's output is
 copied to it as-is.  A native screen needs chunky-to-planar conversion for
@@ -113,6 +124,9 @@ If the game is too slow:
   * Turn music off (Setup -> Music).  The Adlib emulation is software FM
     synthesis and it is the single most expensive thing running besides the
     renderer.
+  * Shrink the view (Setup -> View size).  This is the biggest saving on a
+    slow machine with a native screen: it cuts the drawing and the
+    chunky-to-planar conversion together.
   * Pick a smaller Render size, or Automatic.
   * Use a smaller screen mode; 320x200 is a third less work than 360x240.
   * On a native screen, scaling up costs chunky-to-planar time for every

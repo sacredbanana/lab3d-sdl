@@ -78,6 +78,29 @@ void amiga_render_size(int setting, int *w, int *h);
 /* Copy the layout into the shared code's globals (screenwidth, aspw, ...). */
 void amiga_apply_view(void);
 
+/* View size, as a percentage of the frame: the 3D view is drawn in a box
+   that size in the middle of the screen, with a black border round it, so a
+   slow machine renders fewer pixels.  The menus and the status bar keep
+   their full size.  One of the steps below; 100 is the whole frame. */
+extern int amiga_cfg_viewsize;
+#define AMIGA_VIEWSIZE_MIN   40
+#define AMIGA_VIEWSIZE_STEP  10
+
+/* Dirty rectangles, in render buffer pixels.  With the view shrunk only what
+   changed is sent to the screen, so the static border costs nothing - which
+   matters most on a native screen, where every pixel sent costs a planar
+   conversion.  `overlay` marks writes that are not the 3D view: those have
+   to be scrubbed out of the border again next frame. */
+void amiga_mark_dirty(int x0, int y0, int x1, int y1, int overlay);
+void amiga_mark_all_dirty(void);
+
+/* Black out last frame's overlay writes; called before the view is drawn. */
+void amiga_clear_leftovers(void);
+
+/* Blank the whole frame and send all of it next time, e.g. after the view
+   size changed and the old picture is still sitting in the new border. */
+void amiga_video_invalidate(void);
+
 /* Ask the player for a screen mode; returns 0 if they cancelled. */
 int  amiga_select_screenmode(amiga_videomode *out);
 

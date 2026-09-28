@@ -81,10 +81,22 @@ static unsigned char shadetab[256];
 #define RECIP_MAX 4096
 static K_INT32 *vrecip;
 
-/* Rows the labyrinth view may touch.  The status bar is composited over the
-   bottom of the frame afterwards, exactly as the OpenGL path does. */
-#define VIEW_TOP 0
-#define VIEW_BOT VH
+/* Where the rasterisers may draw.  For the labyrinth this is the view
+   window - the whole frame, or a smaller box in the middle of it when the
+   player has shrunk the view to save time - and the status bar is then
+   composited over the bottom of the frame, as the OpenGL path does.  The 2D
+   sprites the intro and the menus use get the whole frame. */
+static int clip_x0, clip_y0, clip_x1, clip_y1;
+#define VIEW_LEFT  clip_x0
+#define VIEW_TOP   clip_y0
+#define VIEW_RIGHT clip_x1
+#define VIEW_BOT   clip_y1
+
+static void clip_to_frame(void) {
+    clip_x0 = clip_y0 = 0;
+    clip_x1 = VW;
+    clip_y1 = VH;
+}
 
 extern void amiga_build_penmap(void);
 extern int  amiga_num_pens(void);
@@ -150,6 +162,7 @@ void R_InitOverlay(void) {
     int i;
 
     build_shadetab();
+    clip_to_frame();
 
     if (!vrecip) {
         vrecip = AllocVec(RECIP_MAX * sizeof(K_INT32), MEMF_ANY);
@@ -168,8 +181,10 @@ void R_InitOverlay(void) {
 }
 
 void R_ClearScreen(void) {
-    if (amiga_chunky)
+    if (amiga_chunky) {
         memset(amiga_chunky, 0, (size_t)VW * VH);
+        amiga_mark_all_dirty();
+    }
 }
 
 /* --------------------------------------------------------------- textures */
@@ -321,6 +336,7 @@ static void blit_overlay(int srcx, int srcy, double dstx, double dsty,
 
     n = x1 - x0;
     stride = VW;
+    amiga_mark_dirty(x0, y0, x1, y1, 1);
 
     /* Stepped in 16.16 and clamped: the rounding at either end can leave the
        first or last pixel centre a hair outside the source rectangle. */
@@ -548,7 +564,7 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         s = t0;  t0  = t1;  t1  = s;
     }
 
-    if (sx2 <= 0.0 || sx1 >= (double)VW || sx2 - sx1 < 1e-6)
+    if (sx2 <= (double)VIEW_LEFT || sx1 >= (double)VIEW_RIGHT || sx2 - sx1 < 1e-6)
         return;
 
     invd1 = 1.0 / d1;
@@ -563,8 +579,8 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
 
     xa = (int)ceil(sx1 - 0.5);
     xb = (int)ceil(sx2 - 0.5);
-    if (xa < 0) xa = 0;
-    if (xb > VW) xb = VW;
+    if (xa < VIEW_LEFT) xa = VIEW_LEFT;
+    if (xb > VIEW_RIGHT) xb = VIEW_RIGHT;
     if (xa >= xb) return;
 
     texbase = walseg[texnum];
@@ -681,7 +697,8 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
 void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                   double aspwv, double asphv, int yy) {
     unsigned char ceilcol, floorcol;
-    int i, split;
+    int i, y, split, hr, full;
+    double cx, f;
 
     if (!amiga_chunky) return;
 
@@ -706,10 +723,38 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
      */
     (void)aspwv; (void)asphv;
 
-    proj_x  = 180.0 * amiga_mode.ppux;
-    proj_y  = 160.0 * amiga_mode.ppuy;
-    proj_cx = 180.0 * amiga_mode.ppux + amiga_mode.orgx;
-    horizon_row = unit_row(120.0);
+    cx = 180.0 * amiga_mode.ppux + amiga_mode.orgx;
+    hr = unit_row(120.0);
+
+    /*
+     * The view window.  Shrinking the view scales the whole picture down
+     * about the view axis and the horizon, so it keeps its field of view and
+     * the ray caster's culling still matches - it is the same picture, just
+     * smaller, and the renderer's cost falls with its area.
+     */
+    f = amiga_cfg_viewsize / 100.0;
+    full = (amiga_cfg_viewsize >= 100);
+    if (full) {
+        clip_to_frame();
+    } else {
+        clip_x0 = (int)floor(cx - f * cx + 0.5);
+        clip_x1 = (int)floor(cx + f * (VW - cx) + 0.5);
+        clip_y0 = hr - (int)floor(f * hr + 0.5);
+        clip_y1 = hr + (int)floor(f * (VH - hr) + 0.5);
+        if (clip_x0 < 0)  clip_x0 = 0;
+        if (clip_x1 > VW) clip_x1 = VW;
+        if (clip_y0 < 0)  clip_y0 = 0;
+        if (clip_y1 > VH) clip_y1 = VH;
+
+        /* The overlays drew into the border last frame; put it back. */
+        amiga_clear_leftovers();
+    }
+    amiga_mark_dirty(clip_x0, clip_y0, clip_x1, clip_y1, 0);
+
+    proj_x  = 180.0 * amiga_mode.ppux * f;
+    proj_y  = 160.0 * amiga_mode.ppuy * f;
+    proj_cx = cx;
+    horizon_row = hr;
 
     /* Flat ceiling above the horizon, flat floor below - the same two colours
        the OpenGL path clears and fills with. */
@@ -720,11 +765,21 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     ceilcol = 0xe3;
 
     split = unit_row(240 - yy / 90);
-    if (split < 0) split = 0;
-    if (split > VH) split = VH;
+    split = hr + (int)floor((split - hr) * f + 0.5);
+    if (split < clip_y0) split = clip_y0;
+    if (split > clip_y1) split = clip_y1;
 
-    memset(amiga_chunky, ceilcol, (size_t)split * VW);
-    memset(amiga_chunky + (size_t)split * VW, floorcol, (size_t)(VH - split) * VW);
+    if (full) {
+        memset(amiga_chunky, ceilcol, (size_t)split * VW);
+        memset(amiga_chunky + (size_t)split * VW, floorcol,
+               (size_t)(VH - split) * VW);
+    } else {
+        int w = clip_x1 - clip_x0, stride = VW;
+        unsigned char *row = amiga_chunky + (size_t)clip_y0 * stride + clip_x0;
+
+        for (y = clip_y0; y < clip_y1; y++, row += stride)
+            memset(row, y < split ? ceilcol : floorcol, w);
+    }
 
     for (i = 0; i < VW; i++)
         zbuf[i] = 0;
@@ -870,8 +925,8 @@ void softtri(double *sx, double *sy, double *tu, double *tv,
     if (!(minx > -1.0e6 && maxx < 1.0e6 && miny > -1.0e6 && maxy < 1.0e6))
         return;
 
-    xlo = (int)floor(minx); if (xlo < 0) xlo = 0;
-    xhi = (int)ceil(maxx);  if (xhi > VW) xhi = VW;
+    xlo = (int)floor(minx); if (xlo < VIEW_LEFT) xlo = VIEW_LEFT;
+    xhi = (int)ceil(maxx);  if (xhi > VIEW_RIGHT) xhi = VIEW_RIGHT;
     ylo = (int)floor(miny); if (ylo < VIEW_TOP) ylo = VIEW_TOP;
     yhi = (int)ceil(maxy);  if (yhi > VIEW_BOT) yhi = VIEW_BOT;
     if (xlo >= xhi || ylo >= yhi) return;
@@ -1067,7 +1122,7 @@ void R_DrawFloorSprite(K_UINT16 x, K_UINT16 y, K_INT16 j) {
         K_INT32 ry0 = OY + rdivp(AY, r), sy = rdivp(BY, r);
         K_INT32 rx, ry, z;
         unsigned char *dst;
-        int lo = 0, hi = VW, t0, t1, col;
+        int lo = VIEW_LEFT, hi = VIEW_RIGHT, t0, t1, col;
 
         /* Columns where the world position is inside the decal square. */
         if (sx > 0) {
@@ -1076,7 +1131,7 @@ void R_DrawFloorSprite(K_UINT16 x, K_UINT16 y, K_INT16 j) {
             t0 = fdiv(HALF - rx0, sx) + 1; t1 = fdiv(-HALF - rx0, sx) + 1;
         } else {
             if (rx0 < -HALF || rx0 >= HALF) continue;
-            t0 = 0; t1 = VW;
+            t0 = VIEW_LEFT; t1 = VIEW_RIGHT;
         }
         if (t0 > lo) lo = t0;
         if (t1 < hi) hi = t1;
@@ -1087,13 +1142,13 @@ void R_DrawFloorSprite(K_UINT16 x, K_UINT16 y, K_INT16 j) {
             t0 = fdiv(HALF - ry0, sy) + 1; t1 = fdiv(-HALF - ry0, sy) + 1;
         } else {
             if (ry0 < -HALF || ry0 >= HALF) continue;
-            t0 = 0; t1 = VW;
+            t0 = VIEW_LEFT; t1 = VIEW_RIGHT;
         }
         if (t0 > lo) lo = t0;
         if (t1 < hi) hi = t1;
 
-        if (lo < 0) lo = 0;
-        if (hi > VW) hi = VW;
+        if (lo < VIEW_LEFT) lo = VIEW_LEFT;
+        if (hi > VIEW_RIGHT) hi = VIEW_RIGHT;
         if (lo >= hi) continue;
 
         z   = (zmul * r) >> 8;
@@ -1159,8 +1214,26 @@ void R_DrawSprite2D(K_INT16 x, K_INT16 y, K_INT16 siz, K_INT16 ang,
         tv[i] = (1.0 - ly[i] / 64.0) * 64.0;
     }
 
-    softtri(sxv, syv, tu, tv, 0, 1, 2, j, 0);
-    softtri(sxv, syv, tu, tv, 0, 2, 3, j, 0);
+    {
+        int c0 = clip_x0, c1 = clip_x1, r0 = clip_y0, r1 = clip_y1;
+        double minx = sxv[0], maxx = sxv[0], miny = syv[0], maxy = syv[0];
+
+        for (i = 1; i < 4; i++) {
+            if (sxv[i] < minx) minx = sxv[i];
+            if (sxv[i] > maxx) maxx = sxv[i];
+            if (syv[i] < miny) miny = syv[i];
+            if (syv[i] > maxy) maxy = syv[i];
+        }
+
+        clip_to_frame();
+        softtri(sxv, syv, tu, tv, 0, 1, 2, j, 0);
+        softtri(sxv, syv, tu, tv, 0, 2, 3, j, 0);
+        clip_x0 = c0; clip_x1 = c1; clip_y0 = r0; clip_y1 = r1;
+
+        if (minx > -1.0e6 && maxx < 1.0e6 && miny > -1.0e6 && maxy < 1.0e6)
+            amiga_mark_dirty((int)floor(minx), (int)floor(miny),
+                             (int)ceil(maxx), (int)ceil(maxy), 1);
+    }
 }
 
 /* ---------------------------------------------------- overlays and extras */
@@ -1189,6 +1262,7 @@ void R_DrawVolumeBar(int vol, int type, float level) {
     if (ya < 0) ya = 0;
     if (yb > VH) yb = VH;
     stride = VW;
+    amiga_mark_dirty(xa, ya, xb, yb, 1);
 
     for (y = ya; y < yb; y++) {
         unsigned char *row = amiga_chunky + (size_t)y * stride;
