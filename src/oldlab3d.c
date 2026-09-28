@@ -2993,7 +2993,7 @@ K_INT16 oldloadstory()
     if ((fil = open(filepath,O_BINARY|O_RDONLY,S_IREAD)) == -1)
         if ((fil = open(filepathUpper,O_BINARY|O_RDONLY,S_IREAD)) == -1)
             return(-1);
-    read(fil,&storyoffs[0],256);
+    readLE16(fil,&storyoffs[0],256);
     lseek(fil,(long)(storyoffs[boardnum+1]),SEEK_SET);
     read(fil,&tempbuf[0],4096);
     k = pageoffset;
