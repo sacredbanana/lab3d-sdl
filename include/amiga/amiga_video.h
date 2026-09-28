@@ -101,6 +101,17 @@ void amiga_clear_leftovers(void);
    size changed and the old picture is still sitting in the new border. */
 void amiga_video_invalidate(void);
 
+/* A menu waiting for a selection only animates the selector icon, so rather
+   than redraw every open menu (and the labyrinth behind them) each frame, the
+   menu loop draws it all once, holds a copy of the overlay rectangle the
+   selector moves in - and the part of the frame it lands on - and puts just
+   that back before each new frame of the icon.  Returns 0 if there was no
+   memory for the copy, in which case the caller keeps redrawing everything.
+   Implemented in render_soft.c. */
+int  amiga_hold_menu(int x, int y, int w, int h);
+void amiga_restore_menu(void);
+void amiga_release_menu(void);
+
 /* Ask the player for a screen mode; returns 0 if they cancelled. */
 int  amiga_select_screenmode(amiga_videomode *out);
 

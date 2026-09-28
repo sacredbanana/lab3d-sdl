@@ -587,6 +587,73 @@ void UploadPartialOverlay(int x, int y, int w, int h) {
     ShowPartialOverlay(x - 1, y - 1, w + 2, h + 2, 0);
 }
 
+/* A held menu: see amiga_hold_menu() in amiga_video.h.  `ovl` is the overlay
+   rectangle the selector draws in, `frame` every frame pixel an upload of any
+   part of it can reach - the same one unit margin UploadPartialOverlay() adds,
+   less the intro's scroll offset, as ShowPartialOverlay() subtracts it. */
+static struct {
+    int ox, oy, ow, oh;
+    int fx0, fy0, fx1, fy1;
+    unsigned char *ovl, *frame;
+} held;
+
+int amiga_hold_menu(int x, int y, int w, int h) {
+    int fx0, fy0, fx1, fy1, r;
+
+    amiga_release_menu();
+    if (!amiga_chunky || !screenbuffer || !ClipToBuffer(&x, &y, &w, &h))
+        return 0;
+
+    fx0 = unit_col(x - 1);
+    fx1 = unit_col(x + w + 1);
+    fy0 = unit_row(y - 1 - visiblescreenyoffset);
+    fy1 = unit_row(y + h + 1 - visiblescreenyoffset);
+    if (fx0 < 0) fx0 = 0;
+    if (fy0 < 0) fy0 = 0;
+    if (fx1 > VW) fx1 = VW;
+    if (fy1 > VH) fy1 = VH;
+    if (fx0 >= fx1 || fy0 >= fy1)
+        return 0;
+
+    held.ovl   = AllocVec((ULONG)w * h, MEMF_ANY);
+    held.frame = AllocVec((ULONG)(fx1 - fx0) * (fy1 - fy0), MEMF_ANY);
+    if (!held.ovl || !held.frame) {
+        amiga_release_menu();
+        return 0;
+    }
+
+    held.ox = x;   held.oy = y;   held.ow = w;   held.oh = h;
+    held.fx0 = fx0; held.fy0 = fy0; held.fx1 = fx1; held.fy1 = fy1;
+
+    for (r = 0; r < h; r++)
+        memcpy(held.ovl + (size_t)r * w,
+               screenbuffer + (size_t)(y + r) * screenbufferwidth + x, w);
+    for (r = fy0; r < fy1; r++)
+        memcpy(held.frame + (size_t)(r - fy0) * (fx1 - fx0),
+               amiga_chunky + (size_t)r * VW + fx0, fx1 - fx0);
+    return 1;
+}
+
+void amiga_restore_menu(void) {
+    int r, fw = held.fx1 - held.fx0;
+
+    if (!held.ovl) return;
+
+    for (r = 0; r < held.oh; r++)
+        memcpy(screenbuffer + (size_t)(held.oy + r) * screenbufferwidth + held.ox,
+               held.ovl + (size_t)r * held.ow, held.ow);
+    for (r = held.fy0; r < held.fy1; r++)
+        memcpy(amiga_chunky + (size_t)r * VW + held.fx0,
+               held.frame + (size_t)(r - held.fy0) * fw, fw);
+    amiga_mark_dirty(held.fx0, held.fy0, held.fx1, held.fy1, 1);
+}
+
+void amiga_release_menu(void) {
+    if (held.ovl)   FreeVec(held.ovl);
+    if (held.frame) FreeVec(held.frame);
+    held.ovl = held.frame = NULL;
+}
+
 void UploadOverlay(void) {
     settransferpalette();
     texturecreationneeded = 0;

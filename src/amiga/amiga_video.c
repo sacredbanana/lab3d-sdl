@@ -1122,11 +1122,11 @@ void amiga_blit_frame(void) {
     rp.BitMap = amiga_drawbitmap();
     t0 = PL_GetTicks();
 
-    /* Everything, unless the view is shrunk and nothing says otherwise:
-       at full size the view covers the frame and is redrawn every frame
-       anyway, so there is nothing to save. */
-    if (amiga_cfg_viewsize >= 100 || dirty_now.all ||
-        (doublebuffered && dirty_last.all)) {
+    /* Only what changed.  In play at full view size that is the whole frame
+       anyway, since the view marks all of it; it is the frames with no view
+       in them - a menu waiting on a key, with just its selector turning -
+       where this saves nearly everything. */
+    if (dirty_now.all || (doublebuffered && dirty_last.all)) {
         amiga_blit_rect(&rp, 0, 0, amiga_mode.vieww, amiga_mode.viewh);
     } else {
         for (i = 0; i < dirty_now.n; i++)

@@ -2,6 +2,7 @@
 #include "adlibemu.h"
 #ifdef PLATFORM_AMIGA
 #include "modmusic.h"
+#include "amiga/amiga_video.h"
 #endif
 #include <math.h>
 #include <ctype.h>
@@ -4647,6 +4648,9 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
     K_INT16 animater6, n, esckeystate;
     int mousx, mousy;
     K_INT16 bstatus, obstatus;
+#ifdef PLATFORM_AMIGA
+    int held = 0;
+#endif
 
     if (vidmode == 0)
         n = 0;
@@ -4676,13 +4680,34 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         if (animater6 == 6)
             animater6 = 0;
 
-        if (ingame)
-            picrot(posx, posy, posz, ang);
+#ifdef PLATFORM_AMIGA
+        /* Only the selector changes while this waits, and the software
+           renderer's frame survives a swap, so the labyrinth and the menus
+           are drawn once and the column the selector turns in is put back
+           before each new frame of it.  Redrawing the lot every time sent
+           the whole screen through the planar conversion just to turn a
+           13 pixel icon. */
+        if (held)
+            amiga_restore_menu();
         else
-            wipeoverlay(0, 0, 512, 512);
+#endif
+        {
+            if (ingame)
+                picrot(posx, posy, posz, ang);
+            else
+                wipeoverlay(0, 0, 512, 512);
 
-        for (int i = 0; i <= drawStackTopIndex; i++)
-            draw_ptr[i]();
+            for (int i = 0; i <= drawStackTopIndex; i++)
+                draw_ptr[i]();
+
+#ifdef PLATFORM_AMIGA
+            /* Wide enough for either version's icon and the wipe that
+               erases it, from the top selector to the bottom one. */
+            held = amiga_hold_menu(xoffs + 39 - n, yoffs + n - 1, 17,
+                                   totselectors * 12 + 16 +
+                                   spriteyoffset + visiblescreenyoffset);
+#endif
+        }
 
         PL_Delay(10); /* Let's not soak up all CPU... */
 
@@ -4744,6 +4769,9 @@ K_INT16 getselection(K_INT16 xoffs, K_INT16 yoffs, K_INT16 nowselector,
         }
     }
     ksayui(27);
+#ifdef PLATFORM_AMIGA
+    amiga_release_menu();
+#endif
 
     if ((esckeystate&2) > 0)
         return(nowselector);
