@@ -1,20 +1,62 @@
+# Plain make build for Linux and other Unix systems, for when CMake 3.26 is
+# not available (for example on an older distribution).  It uses the SDL2,
+# SDL2_image, GLU and zlib development packages installed on the system, found
+# through sdl2-config, rather than the copies bundled in external/.
+#
+# Run it from the repository root, so the game finds ./gamedata:
+#
+#   make -f Makefile.old            optimised build
+#   make -f Makefile.old DEBUG=1    -O0 -g build
+#   make -f Makefile.old USE_OSS=0  without General MIDI through /dev/sequencer
+#                                   (needed where linux/soundcard.h is missing)
+#   make -f Makefile.old clean
+#
+# The result is ./ken.bin and the objects go in build/legacy.
+
 CC := gcc
 
-BIN  = ken.bin
-SRCS = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c walken.c setup.c subs.c launcher.c platform_sdl.c render_gl.c
-OBJS = $(SRCS:%.c=%.o)
+BIN    = ken.bin
+OBJDIR = build/legacy
+SRCS   = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c walken.c setup.c subs.c launcher.c platform_sdl.c render_gl.c
+OBJS   = $(SRCS:%.c=$(OBJDIR)/%.o)
+
+VPATH = src
+
+USE_OSS ?= 1
+DEBUG   ?= 0
+
+DEFS = -DENABLE_HIRES_TEXTURES
+ifeq ($(USE_OSS),1)
+DEFS += -DUSE_OSS
+endif
+
+ifeq ($(DEBUG),1)
+OPTFLAGS ?= -O0 -g
+else
+OPTFLAGS ?= -O2
+endif
 
 WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
-OPTFLAGS  = -O0 -fno-aggressive-loop-optimizations -fno-strict-aliasing
+# The game relies on both of these; do not drop them.
+CODEGEN   = -fno-aggressive-loop-optimizations -fno-strict-aliasing
 
+SDL_CFLAGS := $(shell sdl2-config --cflags)
+SDL_LIBS   := $(shell sdl2-config --libs)
 
 all: $(BIN)
 
 clean:
-	rm -f $(BIN) $(OBJS)
+	rm -rf $(OBJDIR) $(BIN)
 
 $(BIN): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(shell sdl2-config --libs) -lSDL2_image -lGL -lGLU -lm -lz
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LIBS) -lSDL2_image -lGL -lGLU -lm -lz
 
-%.o: %.c
-	$(CC) -DUSE_OSS -g $(WARNFLAGS) $(OPTFLAGS) $(CFLAGS) $(CPPFLAGS) $(shell sdl2-config --cflags) -o $@ -c $<
+$(OBJDIR)/%.o: %.c | $(OBJDIR)
+	$(CC) $(DEFS) $(WARNFLAGS) $(CODEGEN) $(OPTFLAGS) -MMD -MP -Iinclude -Isrc $(SDL_CFLAGS) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+$(OBJDIR):
+	mkdir -p $@
+
+-include $(OBJS:.o=.d)
+
+.PHONY: all clean

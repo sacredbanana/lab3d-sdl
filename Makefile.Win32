@@ -1,31 +1,61 @@
-CC := gcc
+# Windows build with MinGW-w64, either cross-compiling from Linux/macOS or
+# natively under MSYS2.  The CMake build for Windows needs Visual Studio; this
+# is the alternative when you do not have it.
+#
+# You need a MinGW-w64 toolchain and a MinGW build of SDL2 and SDL2_image (the
+# "-mingw" development archives from libsdl.org, or your distribution's
+# packages), plus zlib and the OpenGL/GLU import libraries that MinGW-w64 ships.
+# The SDL libraries in external/ are for Visual Studio and are not used here.
+#
+# Run it from the repository root:
+#
+#   make -f Makefile.Win32 SDL_PREFIX=/path/to/SDL2/i686-w64-mingw32
+#
+# For a 64-bit build use CROSS=x86_64-w64-mingw32- and the matching SDL_PREFIX.
+# Under MSYS2 use CROSS= (empty) and point SDL_PREFIX at the MinGW prefix.
+#
+# The result is ken.exe.  Put SDL2.dll, SDL2_image.dll (and the image format
+# and zlib DLLs it needs) and the gamedata drawer next to it.
 
-BIN  = ken.exe
-SRCS = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c setup.c subs.c platform_sdl.c render_gl.c
-OBJS = $(SRCS:%.c=%.obj) icon.obj
+CROSS      ?= i686-w64-mingw32-
+SDL_PREFIX ?= /usr/$(CROSS:%-=%)
 
+CC      = $(CROSS)gcc
+WINDRES = $(CROSS)windres
+STRIP   = $(CROSS)strip
+
+BIN    = ken.exe
+OBJDIR = build/mingw
+SRCS   = adlibemu.c demo.c graphx.c init.c lab3d.c oldlab3d.c walken.c launcher.c setup.c subs.c platform_sdl.c render_gl.c
+OBJS   = $(SRCS:%.c=$(OBJDIR)/%.o) $(OBJDIR)/icon.o
+
+VPATH = src
+
+DEFS      = -DENABLE_HIRES_TEXTURES
 WARNFLAGS = -Wall -Wno-pointer-sign -Wno-unused-result -Wno-unused-but-set-variable -Wno-unused-variable -Wno-unused-function
 OPTFLAGS  = -O3 -fno-aggressive-loop-optimizations -fno-strict-aliasing
 
-#MINGW_PATH  = c:/mingw32
-MINGW_PATH  = /usr/i686-w64-mingw32
-CC          = $(MINGW_PATH)/bin/gcc
-WINDRES     = $(MINGW_PATH)/bin/windres
-STRIP       = $(MINGW_PATH)/bin/strip
-SDL_CFLAGS  = -I$(MINGW_PATH)/include/SDL2
-SDL_LDFLAGS = -L$(MINGW_PATH)/lib -lmingw32 -lSDL2main -lSDL2 -mwindows
+SDL_CFLAGS  = -I$(SDL_PREFIX)/include/SDL2
+SDL_LDFLAGS = -L$(SDL_PREFIX)/lib -lmingw32 -lSDL2main -lSDL2 -mwindows
 
 all: $(BIN)
 
 clean:
-	rm -f $(BIN) $(OBJS)
+	rm -rf $(OBJDIR) $(BIN)
 
 $(BIN): $(OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lzlib1
+	$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SDL_LDFLAGS) -lSDL2_image -lopengl32 -lglu32 -lwinmm -lole32 -luuid -lz
 	$(STRIP) -s $@
 
-icon.obj:
-	$(WINDRES) -i ken.rc -o $@
+$(OBJDIR)/icon.o: icons/ken.rc icons/ken.ico | $(OBJDIR)
+	$(WINDRES) -I icons -i icons/ken.rc -o $@
 
-%.obj: %.c
-	$(CC) $(WARNFLAGS) $(OPTFLAGS) $(CFLAGS) $(CPPFLAGS) $(SDL_CFLAGS) -o $@ -c $<
+$(OBJDIR)/%.o: %.c | $(OBJDIR)
+	$(CC) $(DEFS) $(WARNFLAGS) $(OPTFLAGS) -MMD -MP -Iinclude -Isrc $(SDL_CFLAGS) $(CFLAGS) $(CPPFLAGS) -o $@ -c $<
+
+$(OBJDIR):
+	mkdir -p $@
+
+-include $(OBJS:.o=.d)
+
+.PHONY: all clean

@@ -6,10 +6,11 @@ output, threading, and some graphics support functions. Music output is
 through Adlib emulation or MIDI (MIDI only on Windows, Linux and other
 operating systems with OSS-compatible sound APIs).
 
-This code has been tested on Windows 98, Windows ME, Windows XP,
-Windows 10, macOS Mojave, macOS Catalina, SuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8),
-FreeBSD 4.7, Raspberry Pi OS, Nintendo Switch and AmigaOS 3.x (real hardware
-and emulators such as WinUAE and Amiberry).
+This code is built for, and has been tested on, Windows 10, macOS 12 and later,
+Linux (including Raspberry Pi OS), Nintendo Switch and AmigaOS 3.x (real
+hardware and emulators such as WinUAE and Amiberry). The version 4 sources need
+SDL 2, so the older systems the original SDL 1.2 port ran on (Windows 9x/XP,
+Solaris 8, FreeBSD 4.x and the like) are no longer supported.
 
 The launcher runs every released version of the game - 1.0, 1.1, 2.0 and 2.1 -
 and Walken, the 1992 pre-release (see [Walken](#walken) below).
@@ -30,9 +31,10 @@ Improvements over the original Ken's Labyrinth:
 
 # Hardware requirements
 
-LAB3D/SDL requires a machine capable of running Windows or a Unix-like OS
-(e.g. Linux) and the Simple DirectMedia Layer with a little-endian CPU, and a
-graphics card capable of OpenGL. macOS (both Apple Silicon and Intel) and Nintendo Switch is also supported.
+LAB3D/SDL requires a machine capable of running Windows 10 or a Unix-like OS
+(e.g. Linux) and the Simple DirectMedia Layer, and a graphics card with OpenGL
+drivers. Both little-endian and big-endian CPUs work. macOS (both Apple Silicon
+and Intel) and Nintendo Switch are also supported.
 
 The Amiga port has its own requirements, since it needs neither SDL nor OpenGL:
 
@@ -46,30 +48,50 @@ The Amiga port has its own requirements, since it needs neither SDL nor OpenGL:
 
 ## Recommended system:
 
-- Pentium II or equivalent CPU.
-- NVIDIA Riva TNT or better graphics accelerator (with OpenGL drivers).
-- 101-key PC keyboard or similar.
+- Any graphics card with a working, hardware accelerated OpenGL driver. If
+  OpenGL is not accelerated the game runs very slowly.
+- Keyboard. A gamepad or joystick is optional.
 
 ## Optional features:
 
-- 16-bit sound card.
-- MIDI sound.
+- MIDI sound (Windows, and Linux with an OSS-compatible `/dev/sequencer`).
 - Two-button mouse or better.
-- Joystick.
+- Game controller or joystick.
+- Stereoscopic 3D needs OpenGL framebuffer objects (OpenGL 3.0, or a driver
+  that exposes `ARB_framebuffer_object`). Without them the game runs normally
+  and simply does not offer stereo.
 
 # Software requirements
 
 ## Operating system
-Windows 95/98/Me/XP, Linux, Solaris, macOS, BSD, AmigaOS 3.x, ...
+Windows 10 or later (x86, x64 and ARM64), macOS 12.4 or later (Apple Silicon and
+Intel), Linux (x86, x64, ARMv7, ARM64 and PPC64LE are built by the project), the
+Nintendo Switch with homebrew, and AmigaOS 3.x (see above).
 
 ## Libraries
-OpenGL 1.2, GLU 1.3, SDL 2.0. Slightly older versions of GLU may work.
+SDL 2.0 or later, SDL2_image, zlib, OpenGL 1.2 and GLU. The game only uses
+old fixed-function OpenGL, so any driver that supports 1.2 will do. The Nintendo
+Switch build asks for an OpenGL 4.3 compatibility context, which is what its
+driver provides. The Windows and macOS builds ship with their libraries; the
+Linux packages depend on `libsdl2-2.0-0`, `libsdl2-image-2.0-0`, `libgl1` and
+`libglu1-mesa`.
 
 ## Compiler
-GCC 2.95.2 or later recommended. Clang will work for macOS. Other compilers will require Makefile changes, but should work.
+A C compiler with C99 support:
+
+- Windows: Visual Studio 2022 (MSVC), which is what CI uses. MinGW-w64 also
+  works through `Makefile.Win32` (see "Alternative makefiles" below).
+- macOS: Xcode command line tools (clang). The macOS build always uses clang.
+- Linux: clang or GCC. The release builds use clang in Docker.
+- Amiga: bebbo's `m68k-amigaos-gcc` (supplied by the Docker image).
+- Nintendo Switch: devkitPro with devkitA64.
 
 ## Other utilities
-Makefiles require GNU Make (or compatible) and sh (or compatible, e.g. bash). Cmake for creating the build files.
+CMake 3.26 or later, except when using `Makefile.old` or `Makefile.Win32`, which
+need only GNU Make. Older distributions ship an older CMake (for example
+Ubuntu 22.04 and Debian 12), so install a newer one from Kitware or pip, or use
+`Makefile.old`. The Linux release packages and the Amiga build also use Docker. The macOS
+build needs MacPorts for the universal libraries, and Xcode is recommended.
 
 # Installation
 
@@ -277,20 +299,27 @@ Unrecognised options are ignored.
 
 ## Windows
 
-Install Visual Studio with Visual-C++ and CMake support.
+Install Visual Studio 2022 with the "Desktop development with C++" workload and
+CMake 3.26 or later (the CMake that comes with Visual Studio 2022 is recent
+enough). The CMake build needs MSVC. To build with MinGW-w64 instead, see
+"Alternative makefiles" below.
 
 Open a terminal and in the project root run these commands:
 
-For building for Intel processors:
+For building for 64-bit Intel processors:
 ```
 mkdir build
-cmake ..
+cd build
+cmake -A x64 ..
 cmake --build . --config Release
 ```
+
+For building for 32-bit Intel processors, use `-A Win32` instead of `-A x64`.
 
 For building for ARM64:
 ```
 mkdir build
+cd build
 cmake -A ARM64 ..
 cmake --build . --config Release
 ```
@@ -304,19 +333,17 @@ Click File -> Open -> CMake. Choose the CMakeLists.txt file. The project will th
 open and you'll be able to select from the top menu the flavour of build. From there
 you can build and or/debug.
 
-## Windows (Legacy)
-
-Run "make -f Makefile.Win32" in the source directory. MinGW 3.1.0 is
-recommended for Windows use.
-
 ## macOS
+The built app targets macOS 12.4 or later. Install Xcode (or at least its command
+line tools) first.
+
 If you plan to build a universal macOS app (meaning the same binary can be run on both Apple Silicon and Intel Macs) then you **MUST** get the universal version of the libraries and this is only available on Macports. Homebrew doesn't support universal packages.
 
 - Install ["Macports"](https://www.macports.org/install.php) if you haven't already.
 
 - Run the following command:
 ```
-sudo echo "macosx_deployment_target 12.4" >> /opt/local/etc/macports/macports.conf
+echo "macosx_deployment_target 12.4" | sudo tee -a /opt/local/etc/macports/macports.conf
 sudo port install libsdl2 +universal libsdl2_image +universal libpng +universal webp +universal jpeg +universal tiff +universal zlib +universal
 ```
 
@@ -362,14 +389,56 @@ cmake --build . --config Release
 
 The executable `ken` and its dependencies will be copied dist/linux.
 
-## Unix with OSS support (Legacy)
+General MIDI music through `/dev/sequencer` is enabled by default. To build
+without it (for example, on a system with no OSS support), pass
+`-DKEN_USE_OSS=OFF` to the first `cmake` command. Adlib emulation is still
+available.
 
-Run `make` in the source directory.
+## Alternative makefiles
 
-## Unix without OSS support (Legacy)
+These need only GNU Make, not CMake. Run them from the repository root.
 
-Run `make -f Makefile.NoMIDI` in the source directory. Note that General MIDI
-music is not available if you do this (not much of a loss).
+### Linux/UNIX without CMake 3.26 (`Makefile.old`)
+
+For systems whose CMake is too old, this builds with the SDL2, SDL2_image, GLU
+and zlib development packages already on the system (found through
+`sdl2-config`):
+
+```
+make -f Makefile.old
+```
+
+This produces `ken.bin` in the project root, with the objects in `build/legacy`.
+Run it from the project root so it finds `gamedata`. Options:
+
+- `DEBUG=1` builds with `-O0 -g` instead of `-O2`.
+- `USE_OSS=0` builds without General MIDI through `/dev/sequencer`. Use this on
+  systems that have no `linux/soundcard.h`.
+- `make -f Makefile.old clean` removes the build.
+
+It was tested with GCC 13 and SDL 2.30 on Ubuntu 24.04 and with GCC 5.4 and
+SDL 2.0.4 on Ubuntu 16.04.
+
+### Windows with MinGW-w64 (`Makefile.Win32`)
+
+The CMake build for Windows needs Visual Studio. To build with MinGW-w64 instead,
+install a MinGW-w64 toolchain, zlib, and a MinGW build of SDL2 and SDL2_image
+(the "-mingw" development archives from libsdl.org, or your distribution's
+packages). The libraries in `external/` are for Visual Studio and are not used.
+For example, to cross-compile a 32-bit build on Linux:
+
+```
+make -f Makefile.Win32 SDL_PREFIX=/path/to/SDL2/i686-w64-mingw32
+```
+
+Use `CROSS=x86_64-w64-mingw32-` and the matching `SDL_PREFIX` for a 64-bit build.
+Under MSYS2 use `CROSS=` (empty). The result is `ken.exe`; put the SDL2,
+SDL2_image and zlib DLLs and the `gamedata` folder next to it. This was tested by
+cross-compiling and linking on Ubuntu 24.04, but the result has not yet been run
+on Windows.
+
+`Makefile.Switch` and `Makefile.Amiga` are the Nintendo Switch and Amiga builds
+described in their own sections.
 
 ## Amiga
 
