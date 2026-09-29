@@ -61,6 +61,9 @@ static int soundratio, channels, FeedPoint, musicsource=4, mute, musicstatus=1;
 static int samplerate=22050, musicvolume=64, soundratioshift;
 static int16_t SoundBuffer[65536];
 static void preparesound(void *p, long n) { memset(p,0,n); }
+/* How much of the buffer DumpSound() has filled; the tests below write the
+   buffer directly and say so through this, as DumpSound() would. */
+static int soundpending;
 '''
 # mixblock is static, unlike the functions used by the offline renderer.
 mixer=(ROOT/'src/subs.c').read_text()
@@ -79,24 +82,35 @@ int main(int argc,char **argv) {
             soundratio=ratio; channels=stereo; soundratioshift=ratio==4?2:ratio==2?1:0;
             samplerate=11025*ratio;
             memset(SoundBuffer,0,sizeof(SoundBuffer));
-            FeedPoint=65536-1024; modmusic_start();
+            FeedPoint=65536-1024; soundpending=0; modmusic_start();
             n=mixblock((unsigned char *)alone,len);
             assert(n>0 && n<=len);
             for(i=0;i<65536;i++) SoundBuffer[i]=1000;
-            FeedPoint=65536-1024; modmusic_start();
+            FeedPoint=65536-1024; soundpending=65536; modmusic_start();
             assert(n==mixblock((unsigned char *)together,len));
             for(i=0;i<n/2;i++) {
                 int expected=alone[i]+1000;
                 if(expected>32767) expected=32767;
                 assert(together[i]==expected);
             }
+            /* What the mixer consumed it cleared, and nothing else. */
+            for(i=0;i<65536;i++) assert(SoundBuffer[i]==(i>=65536-1024 && i<65536-1024+n/(2*ratio) ? 0 : 1000));
             for(i=0;i<65536;i++) SoundBuffer[i]=1000;
-            FeedPoint=0; mute=2;
+            FeedPoint=0; soundpending=65536; mute=2;
             n=mixblock((unsigned char *)together,len);
             for(i=0;i<n/2;i++) assert(together[i]==1000);
-            mute=1; FeedPoint=0;
+            mute=1; FeedPoint=0; soundpending=65536;
             n=mixblock((unsigned char *)together,len);
             for(i=0;i<n/2;i++) assert(together[i]==0);
+            /* With nothing pending the buffer is left alone and adds nothing. */
+            mute=0; FeedPoint=0; soundpending=0;
+            for(i=0;i<65536;i++) SoundBuffer[i]=1000;
+            modmusic_start();
+            n=mixblock((unsigned char *)together,len);
+            modmusic_start();
+            assert(n==mixblock((unsigned char *)alone,len));
+            for(i=0;i<n/2;i++) assert(together[i]==alone[i]);
+            for(i=0;i<65536;i++) assert(SoundBuffer[i]==1000);
             mute=0;
         }
         /* Longer than two loops of the longest song, including sample
@@ -157,23 +171,29 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # Fidelity: every shipped module, played by the game's player, must sound
     # like the Adlib emulator playing the KSM song it was made from.
+    # Both mixers: the interpolating one the fast CPUs get, and the
+    # nearest-sample one the 68020/68030 builds use.
     renderer=g.build_renderer(tmp)
     (tmp/'player.c').write_text(PLAYER)
-    subprocess.run(['cc','-O2','-I'+str(ROOT/'include'),str(tmp/'player.c'),str(ROOT/'src/modmusic.c'),'-o',str(tmp/'player')],check=True)
     rate=22050
-    worst=(1.0,0.0,'')
-    checked=set()
-    for x in report:
-        if x['path'] in checked:
-            continue
-        checked.add(x['path'])
-        folder=ROOT/'gamedata'/x['version']
-        frames=int(x['seconds']*rate)
-        opl=g.render(renderer,'song',folder,x['track'],rate,int(x['seconds']*240)+240)[:frames]
-        pcm=np.frombuffer(subprocess.check_output([str(tmp/'player'),str(ROOT/x['path']),str(rate),str(frames)]),dtype='<i2').astype(float)
-        corr,level=similarity(opl,pcm,rate)
-        assert corr>0.9 and abs(level)<2.0, (x['path'],corr,level)
-        if corr<worst[0]:
-            worst=(corr,level,x['path'])
-    print(f'{len(checked)} modules match the Adlib emulator; worst spectrogram correlation '
-          f'{worst[0]:.3f} ({worst[2]}, level {worst[1]:+.2f} dB).')
+    opls={}
+    for name,flags in (('interpolating',[]),('nearest-sample',['-DMODMUSIC_INTERPOLATE=0'])):
+        subprocess.run(['cc','-O2','-I'+str(ROOT/'include')]+flags+[str(tmp/'player.c'),str(ROOT/'src/modmusic.c'),'-o',str(tmp/'player')],check=True)
+        worst=(1.0,0.0,'')
+        checked=set()
+        for x in report:
+            if x['path'] in checked:
+                continue
+            checked.add(x['path'])
+            folder=ROOT/'gamedata'/x['version']
+            frames=int(x['seconds']*rate)
+            if x['path'] not in opls:
+                opls[x['path']]=g.render(renderer,'song',folder,x['track'],rate,int(x['seconds']*240)+240)[:frames]
+            opl=opls[x['path']]
+            pcm=np.frombuffer(subprocess.check_output([str(tmp/'player'),str(ROOT/x['path']),str(rate),str(frames)]),dtype='<i2').astype(float)
+            corr,level=similarity(opl,pcm,rate)
+            assert corr>0.9 and abs(level)<2.0, (name,x['path'],corr,level)
+            if corr<worst[0]:
+                worst=(corr,level,x['path'])
+        print(f'{len(checked)} modules match the Adlib emulator with the {name} mixer; '
+              f'worst spectrogram correlation {worst[0]:.3f} ({worst[2]}, level {worst[1]:+.2f} dB).')

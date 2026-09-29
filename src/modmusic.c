@@ -112,8 +112,126 @@ static void beginrow(int rate) {
     }
     order=nextorder; row=nextrow;
 }
+/*
+ * Mixing.
+ *
+ * Twelve voices at 22kHz is a lot of work for a 68020, and the first version
+ * of this player - one pass over the voices per output frame, with a loop
+ * test, an interpolation multiply and a divide each - cost more CPU than the
+ * whole of the 3D renderer.  So the voices are now mixed one at a time into
+ * an integer accumulator, each in runs that are known in advance not to reach
+ * the end of the sample or its loop, which leaves the inner loop with a load,
+ * a multiply, an add and the position step.  The output stage then scales
+ * the accumulator by the music volume with one multiply and clamps.
+ *
+ * Linear interpolation between samples is kept on the CPUs that can afford
+ * it.  On a 68020 or 68030 the extra multiply per voice per frame is a third
+ * of the mixing cost, so those builds pick the nearest sample instead, as
+ * ProTracker on Paula always did.
+ */
+#ifndef MODMUSIC_INTERPOLATE
+#if defined(__mc68020__) || defined(__mc68030__)
+#define MODMUSIC_INTERPOLATE 0
+#else
+#define MODMUSIC_INTERPOLATE 1
+#endif
+#endif
+
+#define MIXRUN 256          /* frames per accumulator fill */
+
+/* sample * gain for every sample value and every gain 0..64: a table lookup
+   is a good deal cheaper than the multiply on a 68020, and the same 33K
+   serves every voice. */
+static int16_t voltab[65][256];
+static int     voltab_ready;
+
+static void build_voltab(void) {
+    int g, s;
+    for(g=0;g<=64;g++)
+        for(s=-128;s<128;s++)
+            voltab[g][s+128]=(int16_t)(s*g);
+    voltab_ready=1;
+}
+
+/* Whether a sample loops, in the sense the player has always used. */
+#define LOOPS(s) ((s)->loopend>(s)->loopstart+2)
+
+/* Frames a voice can advance from pos before reaching limit (17.15, pos <
+   limit), at most n. */
+static unsigned run_until(uint32_t pos, uint32_t step, uint32_t limit, unsigned n) {
+    uint32_t k=(limit-1-pos)/step+1;
+    return k<n ? (unsigned)k : n;
+}
+
+/* Bring a voice's position back inside its loop, or retire it if the sample
+   is over.  Returns 0 if the voice has nothing more to play. */
+static int voice_place(Voice *v) {
+    const Sample *s=v->sample;
+    unsigned pos=v->position>>15;
+    if(LOOPS(s) && pos>=s->loopend) {
+        unsigned span=s->loopend-s->loopstart;
+        pos=s->loopstart+(pos-s->loopstart)%span;
+        v->position=(pos<<15)|(v->position&32767);
+    }
+    if(pos>=s->length) { v->sample=NULL; return 0; }
+    return 1;
+}
+
+/* Mix n frames of one voice into acc, at gain g (1..64) per sample unit. */
+static void voice_mix(Voice *v, int32_t *acc, unsigned n, unsigned g) {
+    /* Indexed straight by the signed sample byte. */
+    const int16_t *tab=voltab[g]+128;
+
+    while(n>0) {
+        const Sample *s;
+        const int8_t *data;
+        uint32_t pos, step, limit;
+        unsigned k;
+
+        if(!voice_place(v)) return;
+        s=v->sample; data=s->data; pos=v->position; step=v->step;
+        limit=(uint32_t)(LOOPS(s) ? s->loopend : s->length)<<15;
+
+#if MODMUSIC_INTERPOLATE
+        /* Up to the last sample before the limit the neighbour is plain
+           data[i+1]; that last one wants the loop start (or itself) instead
+           and is done on its own below.  The 16 bit multiply is enough: the
+           difference is nine bits and the fraction fifteen. */
+        if(pos<limit-(1u<<15)) {
+            k=run_until(pos,step,limit-(1u<<15),n);
+            n-=k;
+            while(k--) {
+                unsigned i=pos>>15;
+                int a=data[i], b=data[i+1];
+                a+=(int32_t)((int16_t)(b-a)*(int16_t)(pos&32767))>>15;
+                *acc+++=tab[a];
+                pos+=step;
+            }
+        } else {
+            unsigned i=pos>>15, next=i+1;
+            int a=data[i], b;
+            if(next==s->loopend && LOOPS(s)) next=s->loopstart;
+            b=next<s->length ? data[next] : a;
+            a+=(int32_t)((int16_t)(b-a)*(int16_t)(pos&32767))>>15;
+            *acc+++=tab[a];
+            pos+=step;
+            n--;
+        }
+#else
+        k=run_until(pos,step,limit,n);
+        n-=k;
+        while(k--) {
+            *acc+++=tab[data[pos>>15]];
+            pos+=step;
+        }
+#endif
+        v->position=pos;
+    }
+}
+
 void modmusic_render(int16_t *out, int frames, int rate, int channels, int volume) {
-    int i;
+    static int32_t acc[MIXRUN];
+    int vmul;
     if(!module || rate<=0 || (channels!=1 && channels!=2)) {
         memset(out,0,(size_t)frames*channels*2); return;
     }
@@ -121,36 +239,40 @@ void modmusic_render(int16_t *out, int frames, int rate, int channels, int volum
     if(volume>256) volume=256;
     if(outputrate && outputrate!=rate) modmusic_start();
     outputrate=rate;
-    for(i=0;i<frames;i++) {
-        int value=0; unsigned c;
+    if(!voltab_ready) build_voltab();
+    /* value * volume / 88 as (value * vmul) >> 8: value is at most twelve
+       voices of 128 * 64, so the product stays well inside 32 bits. */
+    vmul=(volume*256+MODMUSIC_GAIN_DIVISOR/2)/MODMUSIC_GAIN_DIVISOR;
+    while(frames>0) {
+        unsigned n, c, i;
         if(!remaining) beginrow(rate);
+        if(!remaining) remaining=1;     /* only at absurd rates; never stall */
+        n=(unsigned)frames;
+        if(n>remaining) n=remaining;
+        if(n>MIXRUN) n=MIXRUN;
+        memset(acc,0,n*sizeof(acc[0]));
         for(c=0;c<voicecount;c++) {
             Voice *v=&voices[c];
-            if(v->sample && v->volume) {
-                unsigned pos=v->position>>15;
-                if(v->sample->loopend>v->sample->loopstart+2 &&
-                   pos>=v->sample->loopend) {
-                    unsigned span=v->sample->loopend-v->sample->loopstart;
-                    pos=v->sample->loopstart+(pos-v->sample->loopstart)%span;
-                    v->position=(pos<<15)|(v->position&32767);
-                }
-                if(pos>=v->sample->length) { v->sample=NULL; continue; }
-                int a=v->sample->data[pos];
-                unsigned next=pos+1;
-                if(next==v->sample->loopend &&
-                   v->sample->loopend>v->sample->loopstart+2)
-                    next=v->sample->loopstart;
-                int b=next<v->sample->length ? v->sample->data[next] : a;
-                int interpolated=a*32768+(b-a)*(int)(v->position&32767);
-                value+=(interpolated*(int)v->volume)/32768;
-                v->position+=v->step;
+            if(v->sample && v->volume)
+                voice_mix(v,acc,n,(int)v->volume);
+        }
+        if(channels==2) {
+            for(i=0;i<n;i++) {
+                int value=(acc[i]*vmul)>>8;
+                if(value>32767) value=32767;
+                if(value< -32768) value= -32768;
+                out[0]=out[1]=(int16_t)value;
+                out+=2;
+            }
+        } else {
+            for(i=0;i<n;i++) {
+                int value=(acc[i]*vmul)>>8;
+                if(value>32767) value=32767;
+                if(value< -32768) value= -32768;
+                *out++=(int16_t)value;
             }
         }
-        value=value*volume/MODMUSIC_GAIN_DIVISOR;
-        if(value>32767) value=32767;
-        if(value< -32768) value= -32768;
-        *out++=(int16_t)value;
-        if(channels==2) *out++=(int16_t)value;
-        remaining--;
+        remaining-=n;
+        frames-=(int)n;
     }
 }

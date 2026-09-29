@@ -753,12 +753,20 @@ K_INT16 ksayui(K_UINT16 filenum)
     return(ksaypan(filenum, 128, 1));
 }
 
+/* How far ahead of FeedPoint the sound buffer may hold anything but silence,
+   in K_INT16 entries.  Everything past that is known to be zero - the mixer
+   clears what it consumes and DumpSound() is the only writer - so with no
+   effect playing the mixer can skip the buffer altogether, which is most of
+   the time, and on a slow machine that pass costs more than the music. */
+static int soundpending=0;
+
 /* Wipe digital sound buffer... */
 
 void reset_dsp()
 {
     memset(SoundBuffer, 0, 65536*2);
     FeedPoint=0;
+    soundpending=0;
 }
 
 #ifndef min
@@ -839,34 +847,70 @@ static int mixblock(unsigned char *stream, int len) {
     else
         memset(stream, 0, rl*2*ratio);
 
-    if (mixin && mute!=1) {
+    /* Nothing in this stretch of the buffer: the mix would add zeros and the
+       clear below would clear zeros, so skip both. */
+    if (soundpending <= 0)
+        mixin = 0;
+    else if (mixin && mute!=1) {
         /* Linearly interpolate the sound buffer up by `ratio`: j1 is the
            frame being left, j2 the one being approached, k the position
-           between them. */
+           between them.  The common ratios get their own loops with no
+           multiplies; ratio 1 needs no interpolation at all. */
         int total = rl*ratio;       /* output K_INT16s in this run */
         int j1 = FeedPoint;
         int j2 = (FeedPoint+chans)&65535;
         int k = 0;
+        K_INT16 *out = (K_INT16 *)stream;
 
-        for(i=0;i<total;) {
-            int lane;
-            for(lane=0;lane<chans;lane++,i++) {
-                t = ((SoundBuffer[j1+lane]*(ratio-k) +
-                      SoundBuffer[j2+lane]*k) >> soundratioshift) +
-                    ((K_INT16 *)stream)[i];
-                if (t<-32768) t=-32768;
-                if (t>32767) t=32767;
-                ((K_INT16 *)stream)[i]=t;
+#define MIXCLAMP(t, o) do {                             \
+            if ((t)<-32768) (t)=-32768;                 \
+            if ((t)>32767) (t)=32767;                   \
+            (o)=(K_INT16)(t);                           \
+        } while (0)
+
+        if (ratio == 1) {
+            for(i=0;i<total;i++) {
+                t = SoundBuffer[j1+i] + out[i];
+                MIXCLAMP(t, out[i]);
             }
-            if (++k == ratio) {
-                k = 0;
-                j1 += chans;
-                j2 = (j2+chans)&65535;
+        } else if (ratio == 2 && chans == 1) {
+            for(i=0;i<total;i+=2,j1++,j2=(j2+1)&65535) {
+                int a = SoundBuffer[j1], b = SoundBuffer[j2];
+                t = a + out[i];             MIXCLAMP(t, out[i]);
+                t = ((a+b)>>1) + out[i+1];  MIXCLAMP(t, out[i+1]);
+            }
+        } else if (ratio == 2 && chans == 2) {
+            for(i=0;i<total;i+=4,j1+=2,j2=(j2+2)&65535) {
+                int al = SoundBuffer[j1],   ar = SoundBuffer[j1+1];
+                int bl = SoundBuffer[j2],   br = SoundBuffer[j2+1];
+                t = al + out[i];              MIXCLAMP(t, out[i]);
+                t = ar + out[i+1];            MIXCLAMP(t, out[i+1]);
+                t = ((al+bl)>>1) + out[i+2];  MIXCLAMP(t, out[i+2]);
+                t = ((ar+br)>>1) + out[i+3];  MIXCLAMP(t, out[i+3]);
+            }
+        } else {
+            for(i=0;i<total;) {
+                int lane;
+                for(lane=0;lane<chans;lane++,i++) {
+                    t = ((SoundBuffer[j1+lane]*(ratio-k) +
+                          SoundBuffer[j2+lane]*k) >> soundratioshift) +
+                        out[i];
+                    MIXCLAMP(t, out[i]);
+                }
+                if (++k == ratio) {
+                    k = 0;
+                    j1 += chans;
+                    j2 = (j2+chans)&65535;
+                }
             }
         }
+#undef MIXCLAMP
     }
 
-    memset(SoundBuffer+FeedPoint, 0, rl*2);
+    if (soundpending > 0) {
+        memset(SoundBuffer+FeedPoint, 0, rl*2);
+        soundpending -= rl;
+    }
 
     FeedPoint+=rl;
     FeedPoint&=65535;
@@ -924,6 +968,14 @@ void DumpSound(unsigned char *sound, K_UINT16 length, K_UINT32 playpoint, int pa
 
     /* SoundBuffer holds 65536 signed 16 bit samples and wraps. */
     p = playpoint & 65535;
+
+    /* Everything from FeedPoint to the end of this effect is live now.  One
+       frame more, because the mixer's interpolation looks a frame ahead. */
+    {
+        int ahead = (int)((p - (K_UINT32)FeedPoint) & 65535) +
+                    cvtlen * channels + channels;
+        if (ahead > soundpending) soundpending = ahead;
+    }
 
     if (channels == 1) {
         for (i = 0; i < (K_UINT32)cvtlen; i++) {
