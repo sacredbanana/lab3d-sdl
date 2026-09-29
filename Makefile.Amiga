@@ -46,6 +46,7 @@ SOURCES = \
 	$(SRC_DIR)/amiga/amiga_audio.c \
 	$(SRC_DIR)/amiga/amiga_settings.c \
 	$(SRC_DIR)/amiga/amiga_gzstub.c \
+	$(SRC_DIR)/amiga/amiga_version.c \
 	$(SRC_DIR)/amiga/render_soft.c
 
 # --------------------------------------------------------------- CPU variants
@@ -96,7 +97,15 @@ endif
 CFLAGS  = $(BASEFLAGS) $(OPTFLAGS) $(WARNINGS) -MMD -MP
 LDLIBS  = -lm -lamiga
 
-.PHONY: all clean dirs $(VARIANTS)
+# libnix only grows the stack to __stack (set in src/amiga/amiga_version.c)
+# when swapstack.o is linked, and nothing in the program refers to it, so the
+# linker is told to pull it out of libnix20.a.
+LDFLAGS = -Wl,-u,___stkinit
+
+# The date for the $VER: tag, taken once per make run.
+AMIGA_DATE := $(shell date +%d.%m.%Y)
+
+.PHONY: all clean dirs FORCE $(VARIANTS)
 
 all: $(VARIANTS)
 
@@ -110,13 +119,19 @@ $(1)_OBJS = $$(patsubst $$(SRC_DIR)/%.c,$$(BUILD)/$(1)/%.o,$$(SOURCES))
 
 $$(BUILD)/$(1)/%.o: $$(SRC_DIR)/%.c
 	@mkdir -p $$(dir $$@)
-	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) -c $$< -o $$@
+	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) $$(VERFLAGS) -c $$< -o $$@
+
+# The version tag names its own variant, and is rebuilt every time so its date
+# is the date of the link rather than of the last edit to the file.
+$$(BUILD)/$(1)/amiga/amiga_version.o: VERFLAGS = \
+	-DAMIGA_VARIANT='"$(1)"' -DAMIGA_DATE='"$$(AMIGA_DATE)"'
+$$(BUILD)/$(1)/amiga/amiga_version.o: FORCE
 
 -include $$($(1)_OBJS:.o=.d)
 
 $(1): dirs $$($(1)_OBJS)
-	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) -o $$(OUT_DIR)/$$(PROGRAM).$(1) \
-	    $$($(1)_OBJS) $$(LDLIBS)
+	$$(CC) $$(CFLAGS) $$(CPUFLAGS_$(2)) $$(LDFLAGS) \
+	    -o $$(OUT_DIR)/$$(PROGRAM).$(1) $$($(1)_OBJS) $$(LDLIBS)
 	@echo "Built $$(OUT_DIR)/$$(PROGRAM).$(1)"
 endef
 
@@ -124,6 +139,8 @@ $(eval $(call VARIANT_RULES,020,020))
 $(eval $(call VARIANT_RULES,020fpu,020FPU))
 $(eval $(call VARIANT_RULES,040,040))
 $(eval $(call VARIANT_RULES,060,060))
+
+FORCE:
 
 clean:
 	rm -rf $(BUILD)
