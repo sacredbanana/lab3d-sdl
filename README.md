@@ -8,7 +8,8 @@ operating systems with OSS-compatible sound APIs).
 
 This code has been tested on Windows 98, Windows ME, Windows XP,
 Windows 10, macOS Mojave, macOS Catalina, SuSE Linux 7.2 and 8.1, Debian Linux 2.2, SunOS 5.8 (Solaris 8),
-FreeBSD 4.7, Raspberry Pi OS and Nintendo Switch.
+FreeBSD 4.7, Raspberry Pi OS, Nintendo Switch and AmigaOS 3.x (real hardware
+and emulators such as WinUAE and Amiberry).
 
 Improvements over the original Ken's Labyrinth:
 
@@ -30,6 +31,16 @@ LAB3D/SDL requires a machine capable of running Windows or a Unix-like OS
 (e.g. Linux) and the Simple DirectMedia Layer with a little-endian CPU, and a
 graphics card capable of OpenGL. macOS (both Apple Silicon and Intel) and Nintendo Switch is also supported.
 
+The Amiga port has its own requirements, since it needs neither SDL nor OpenGL:
+
+- AmigaOS 3.0 or later (V39+) and a 68020 or better (a 68EC020 with no FPU works).
+- About 3 MB of free RAM.
+- asl.library V38 or later, for the screen mode requester.
+- Optional: CyberGraphX or Picasso96 for RTG screen modes; otherwise a native
+  OCS/ECS/AGA screen is used.
+- Optional: ahi.device V4 or later for 16 bit sound, and a joystick or CD32 pad
+  in port 1.
+
 ## Recommended system:
 
 - Pentium II or equivalent CPU.
@@ -46,7 +57,7 @@ graphics card capable of OpenGL. macOS (both Apple Silicon and Intel) and Ninten
 # Software requirements
 
 ## Operating system
-Windows 95/98/Me/XP, Linux, Solaris, macOS, BSD, ...
+Windows 95/98/Me/XP, Linux, Solaris, macOS, BSD, AmigaOS 3.x, ...
 
 ## Libraries
 OpenGL 1.2, GLU 1.3, SDL 2.0. Slightly older versions of GLU may work.
@@ -106,13 +117,24 @@ Executable | For |
 `Kens-Labyrinth.040`    | 68040 |
 `Kens-Labyrinth.060`    | 68060 |
 
-Copy the one that matches your machine, together with the `gamedata` drawer,
-into a directory of your choice and run it from a Shell or from Workbench.
-Keep `gamedata/shared` with the four version drawers. It holds identical music,
-images, and game files used by more than one version.
-The ray caster does a lot of floating point work per frame, so the FPU builds
-are considerably faster than the plain 020 one - use `.020` only on a machine
-that genuinely has no FPU.
+The release is `Kens-Labyrinth.lha` (also uploaded to Aminet). Unpack it
+anywhere, for example to `RAM:`, open the `Kens-Labyrinth` drawer and
+double-click **Install**. The installer asks where to put the game, detects
+your CPU and preselects the matching executable, and copies it along with the
+game data and music. Select more than one executable if the drawer is shared
+between several Amigas. It needs Installer 42 (on the OS 3.1 disks) or later,
+or InstallerNG. Installing over an older version updates the programs and game
+data but keeps `settings.ini`, saved games, high scores and icon positions.
+
+The installer is optional: the unpacked drawer is already a complete
+installation. You can also copy the matching executable and the `gamedata`
+drawer into a directory yourself, then run the game from a Shell or from
+Workbench. Keep `gamedata/shared` with the four version drawers, because it
+holds the music, images and game files that more than one version uses.
+
+The renderer and ray caster work in fixed point, so the FPU builds are not much
+faster at drawing, but they run Adlib music emulation much faster. An FPU build
+will not run at all on a machine without an FPU.
 
 ### Choosing a screen mode
 
@@ -320,7 +342,8 @@ needed:
 This produces all four CPU variants in `dist/amiga/` along with a ready-to-copy
 `dist/amiga/Kens-Labyrinth/` drawer containing the executables, the game data
 and `Kens-Labyrinth.readme`, which is also copied next to `Kens-Labyrinth.lha`
-for uploading to Aminet. `CLEAN=1 ./build-amiga.sh` wipes the build directory
+for uploading to Aminet. The drawer also contains the `Install` script from
+`installer/amiga/` and the icons from `icons/amiga/`. `CLEAN=1 ./build-amiga.sh` wipes the build directory
 first, `DEBUG=1 ./build-amiga.sh` makes a debug build, and naming variants
 builds only those:
 
@@ -329,7 +352,9 @@ builds only those:
 ```
 
 Behind the script is `Makefile.Amiga`, which can be used directly with any
-installation of bebbo's `m68k-amigaos-gcc`.
+installation of bebbo's `m68k-amigaos-gcc`. The GitHub Actions workflow runs
+the same script on every push and pull request to `master`, and uploads the
+LHA archive and the unpacked drawer as build artifacts.
 
 ## Nintendo Switch
 
