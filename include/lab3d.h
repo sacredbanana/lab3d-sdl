@@ -690,7 +690,8 @@ typedef struct _wallparam {
     char* texreplace;
 } wallparam;
 
-EXTERN wallparam default_wallparam;
+/* Defined (with its initializer) in subs.c, so always extern here. */
+extern wallparam default_wallparam;
 
 #ifdef MAIN
 
