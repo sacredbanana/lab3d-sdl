@@ -7,7 +7,7 @@
 #   Kens-Labyrinth.020fpu   68020 with a 68881/68882
 #   Kens-Labyrinth.040      68040
 #   Kens-Labyrinth.060      68060
-#   Kens-Labyrinth.lha      executables, Amiga game data, and README
+#   Kens-Labyrinth.lha      executables, Amiga game data, README and icons
 #
 # Set CLEAN=1 to wipe the build directory first, DEBUG=1 for a debug build.
 # Pass variant names as arguments to build only those, e.g. ./build-amiga.sh 060
@@ -41,6 +41,13 @@ if ls dist/amiga/Kens-Labyrinth.0* >/dev/null 2>&1; then
 	cp dist/amiga/Kens-Labyrinth.0* "${DIST}/"
 	cp -R gamedata "${DIST}/gamedata"
 	cp AmigaREADME.txt "${DIST}/README"
+	# Workbench icons, made by tools/amigaicons/mkicons.py.  The drawer's own
+	# icon sits beside the drawer, so it goes into the archive next to it.
+	for exe in "${DIST}"/Kens-Labyrinth.0*; do
+		cp "icons/amiga/$(basename "${exe}").info" "${DIST}/"
+	done
+	cp icons/amiga/README.info "${DIST}/"
+	cp icons/amiga/Kens-Labyrinth.info dist/amiga/
 	# The Amiga port uses the original packed assets and supplied MOD music.
 	# Desktop-only hires PNGs and macOS Finder metadata are not part of the
 	# release package.
@@ -54,7 +61,7 @@ if ls dist/amiga/Kens-Labyrinth.0* >/dev/null 2>&1; then
 	rm -f "${ARCHIVE}"
 	(
 		cd dist/amiga
-		lha aq0 Kens-Labyrinth.lha Kens-Labyrinth
+		lha aq0 Kens-Labyrinth.lha Kens-Labyrinth Kens-Labyrinth.info
 	)
 fi
 
