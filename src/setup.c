@@ -1565,6 +1565,12 @@ void load_default_settings(void) {
     fullscr = 0;
 #endif
 
+#ifdef PLATFORM_AMIGA
+    soundblock = 6;   /* 46.4 ms */
+    music = 3;        /* MOD sampled music */
+    inputdevice = 3;  /* Keyboard + mouse + joystick */
+#endif
+
     for(i=0;i<ACTION_LAST;i++) {
         action_key[i] = action_key_default[i];
         action_joystick[i] = action_joystick_default[i];
