@@ -108,8 +108,11 @@
 #define kenfaceouch 75
 #define andy 76
 #define andygone 77
-#define map (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 80 : 78)
-#define invisible (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 18 : 79)
+#define map (lab3dversion == KENS_LABYRINTH_2_0 || lab3dversion == KENS_LABYRINTH_2_1 ? 78 : 80)
+/* Walken has no invisible wall: its wall 18 is an ordinary one painted in the
+   floor and ceiling colours. */
+#define invisible (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 18 : \
+                   lab3dversion == WALKEN ? 0 : 79)
 #define goldlock 80
 #define silverlock 81
 #define doorside1 84
@@ -936,6 +939,10 @@ ssize_t readLE32(int fd, void* buf, size_t count);
 ssize_t writeLE16(int fd, void* buf, size_t count);
 ssize_t writeLE32(int fd, void* buf, size_t count);
 #endif
+K_INT32 readlong(unsigned char* t);
+void writelong(unsigned char* t, K_INT32 v);
+K_UINT16 readshort(unsigned char* t);
+void writeshort(unsigned char* t, K_UINT16 v);
 EXTERN double gammalevel;
 
 #ifdef PLATFORM_AMIGA
@@ -993,11 +1000,31 @@ EXTERN enum {
     KENS_LABYRINTH_1_0,
     KENS_LABYRINTH_1_1,
     KENS_LABYRINTH_2_0,
-    KENS_LABYRINTH_2_1
+    KENS_LABYRINTH_2_1,
+    WALKEN              /* 1992 pre-release of v1.0, see src/walken.c */
 } lab3dversion;
 
 /* Things that aren't constants anymore really... */
 EXTERN int rnumwalls;
+
+/* Walken (see src/walken.c).  Board cells keep the tile in the low bits, as
+   every other version does, so the renderer needs no changes to read them;
+   the original's walk-through flag (bit 7 of the board byte) moves up to
+   WALKEN_SECRET, which the renderer masks off. */
+#define WALKEN_SECRET 1024
+#define WALKEN_NUMWALLS 80
+
+void walkenmain(void);
+void walkenloadwalls(void);
+void walkenpalette(void);
+unsigned char *walkenloadsounds(long *size);
+void walkenmonsters(K_UINT16 posxs, K_UINT16 posys, K_INT16 angs);
+
+/* Floor and ceiling colours of the labyrinth view. */
+#define FLOOR_COLOUR (lab3dversion == WALKEN ? 8 : \
+                      (lab3dversion == KENS_LABYRINTH_1_0 || \
+                       lab3dversion == KENS_LABYRINTH_1_1) ? 0x85 : 0x84)
+#define CEILING_COLOUR (lab3dversion == WALKEN ? 7 : 0xe3)
 
 /* Monster board (v1.x only)... */
 EXTERN unsigned char mboard[64][64];

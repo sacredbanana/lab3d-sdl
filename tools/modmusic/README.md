@@ -1,11 +1,14 @@
 # Instrument-based MOD soundtrack
 
 Run `python3 tools/modmusic/generate.py` with Python 3, NumPy and a host C
-compiler. It reads the original KSM song archives and `insts.dat`, renders
-every instrument with the game's own `adlibemu.c` and instrument setup code,
-and writes 121 playable MOD tracks plus a manifest. No external sound library
-or instrument bank is used. Identical tracks across versions are deduplicated
-into `gamedata/shared`; keep the entire `gamedata` drawer together.
+compiler. It reads the original KSM song archives (Walken's loose `.KSM`
+files) and `insts.dat`, renders every instrument with the game's own
+`adlibemu.c` and instrument setup code, and writes 132 playable MOD tracks
+plus a manifest. No external sound library or instrument bank is used.
+Identical tracks across versions are deduplicated into `gamedata/shared`;
+keep the entire `gamedata` drawer together. Walken's songs were written for an
+OPL2 with its waveform select left off and a drum kit built into the game,
+and are converted that way.
 
 ## How a song is converted
 
@@ -32,8 +35,8 @@ its predecessor is still sounding resumes the attack from that level via a
 `9xx` sample offset, matching the OPL carrier's un-reset envelope.
 
 Loudness is calibrated so that the MOD player at the default music volume
-matches the Adlib emulator to within about 1 dB. Files are 90-285 KB, 8.6 MB in
-total for all 63 physical MODs; a track needs at most about 290 KB of RAM.
+matches the Adlib emulator to within about 1 dB. Files are 85-300 KB, 10.4 MB in
+total for all 74 physical MODs; a track needs at most about 300 KB of RAM.
 
 ## Checking the result
 
@@ -42,8 +45,9 @@ under ASan/UBSan and exercises parsing, looping, restart, volume, mute and SFX
 mixing in mono and stereo at 11025, 22050 and 44100 Hz, rejects malformed
 files, and finally renders every shipped module with the game's player next to
 the Adlib emulator playing the same KSM song, requiring a log-spectrogram
-correlation above 0.9 and a level within 2 dB (currently the worst module
-scores 0.949).
+correlation above 0.9 and a level within 2 dB (currently the worst module,
+one of Walken's, scores 0.918 with the nearest-sample mixer and 0.947 with
+the interpolating one).
 
 Format references: [MOD sample and pattern layout](https://www.eblong.com/zarf/blorb/mod-spec.txt)
 and [OpenMPT's multichannel MOD notes](https://wiki.openmpt.org/Manual%3A_Module_formats).

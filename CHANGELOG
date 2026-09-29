@@ -1,3 +1,8 @@
+4.4.0: 2026-09-29
+* Added Walken, the 1992 pre-release of Ken's Labyrinth, to the launcher, on every platform including the Amiga
+* Walken's intro, music, sound effects, cheats and saved games work as in the DOS original, and its saved games are compatible with it
+* MOD soundtrack for Walken on the Amiga
+
 4.3.0: 2026-09-28
 * Ported to the Commodore Amiga
 

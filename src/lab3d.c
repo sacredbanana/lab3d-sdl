@@ -616,6 +616,14 @@ int main(int argc,char **argv)
         return 0;
     }
 
+    /* ... and the 1992 pre-release to its own. */
+
+    if (lab3dversion == WALKEN) {
+        walkenmain();
+        quit();
+        return 0;
+    }
+
     
 
     /* Introduction... */

@@ -1275,14 +1275,9 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     /* Draw floor and roof (save time by clearing to one of them, and drawing
        only one rectangle)... */
 
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-        glClearColor( palette[0x85*3]/64.0*redfactor,
-                      palette[0x85*3+1]/64.0*greenfactor,
-                      palette[0x85*3+2]/64.0*bluefactor, 0 );
-    else
-        glClearColor( palette[0x84*3]/64.0*redfactor,
-                      palette[0x84*3+1]/64.0*greenfactor,
-                      palette[0x84*3+2]/64.0*bluefactor, 0 );
+    glClearColor( palette[FLOOR_COLOUR*3]/64.0*redfactor,
+                  palette[FLOOR_COLOUR*3+1]/64.0*greenfactor,
+                  palette[FLOOR_COLOUR*3+2]/64.0*bluefactor, 0 );
 
     glDepthMask(1);
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1301,9 +1296,9 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     glBegin(GL_QUADS);
 
-    glColor3f(palette[0xe3*3]/64.0*redfactor,
-              palette[0xe3*3+1]/64.0*greenfactor,
-              palette[0xe3*3+2]/64.0*bluefactor);
+    glColor3f(palette[CEILING_COLOUR*3]/64.0*redfactor,
+              palette[CEILING_COLOUR*3+1]/64.0*greenfactor,
+              palette[CEILING_COLOUR*3+2]/64.0*bluefactor);
     glVertex3i(0,240,0);
     glVertex3i(0,240-yy/90,0);
     glVertex3i(360,240-yy/90,0);

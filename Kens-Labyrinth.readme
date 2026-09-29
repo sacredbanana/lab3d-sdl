@@ -2,7 +2,7 @@ Short: Ken's Labyrinth 3D shooter for 68020+
 Author: Ken Silverman, Jan Lonnberg, Cameron Armstrong
 Uploader: Cameron Armstrong <cameronscottarmstrong@gmail.com>
 Type: game/shoot
-Version: 4.3.0
+Version: 4.4.0
 Architecture: m68k-amigaos >= 3.0
 Requires: 68020+, asl.library V38+
 
@@ -17,6 +17,10 @@ secrets, all with a cartoonish sense of humour.  Ken wrote it while still at
 school, and went on to write the Build engine behind Duke Nukem 3D, Shadow
 Warrior and Blood.  He later released the full game and its source code for
 free, which is what makes this port possible.
+
+The launcher also offers Walken, the pre-release Ken finished in September
+1992, a year before the game came out.  It has ten boards, one weapon and no
+doors yet, and it is included as a piece of history.  See Walken below.
 
 This is LAB3D/SDL's Amiga port. It is the same game as the desktop versions,
 but it uses no SDL and no OpenGL: the labyrinth is drawn by a software
@@ -171,8 +175,8 @@ track has been checked against the Adlib emulator playing the same song and
 matches it closely in both spectrum and loudness. The default output remains
 centered mono.
 
-The 121 tracks occupy about 8.6 MB on disk after shared-track deduplication;
-the largest MOD needs about 290 KB of ordinary RAM while playing. The twelve
+The 132 tracks occupy about 10.4 MB on disk after shared-track deduplication;
+the largest MOD needs about 300 KB of ordinary RAM while playing. The twelve
 MOD voices are mixed in software into the existing Paula/AHI output, alongside
 the digital sound effects. They do not reserve additional hardware channels.
 The built-in player supports these supplied modules, including their note,
@@ -182,9 +186,34 @@ support 12CH MODs.
 Keep the entire gamedata drawer together. Each version's mods drawer contains
 its unique tracks; byte-identical tracks live once in gamedata/shared/mods or
 gamedata/shared/Ken1/mods and gamedata/shared/Ken2/mods. All tracks needed by
-versions 1.0, 1.1, 2.0 and 2.1 are included. The build script copies them
-automatically. A missing or invalid MOD silences that track and logs its path;
-effects keep working, and the next available track can still play.
+versions 1.0, 1.1, 2.0 and 2.1 and by Walken are included. The build script
+copies them automatically. A missing or invalid MOD silences that track and
+logs its path; effects keep working, and the next available track can still
+play.
+
+
+Walken
+------
+
+Walken is the 1992 pre-release of Ken's Labyrinth, picked from the launcher
+like the other versions.  Ken's notes on it list what had not been written
+yet: no doors or see-through walls, no spinning fans or warps, no strafing,
+no difference in shade between horizontal and vertical walls, only fireballs
+to shoot and no walls to shoot through.  Its intro, music, sound effects and
+ten boards are all here.
+
+  * Fly up and down with A and Z (Stand high / Stand low in Configure Input).
+  * Keys are never used up: one opens every lock you stand next to.
+  * Load and save with L and S, then a slot from 1 to 8.  The saved games are
+    byte for byte the DOS version's SAVGAME0.DAT to SAVGAME7.DAT, so they can
+    be copied between the two.
+  * Cheats need no password: hold both Shift keys and press E (life vest),
+    L (lightning), F (fire power), K (key), S (health) or B (next board).
+  * Escape quits, as it did in 1992.
+
+Walken's music is Adlib, and has a MOD soundtrack like the other versions.
+It was written for an OPL2 with its waveform select switched off, which is
+how it is played here too.
 
 
 Performance
@@ -213,6 +242,8 @@ Credits
 Ken Silverman's official web site: "http://www.advsys.net/ken"
 
 Ken's Labyrinth was published by Epic MegaGames.
+Walken: Ken Silverman (programming, some of the maps, 2/3 of the art, music)
+and Andy Cotter (most of the maps, 1/3 of the art, some of the sounds).
 LAB3D/SDL is by Jan Lonnberg and contributors; the Amiga port is by
 Cameron Armstrong.  See the main README for the full credit list.
 

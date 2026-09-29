@@ -18,6 +18,8 @@ static void draw_gamelaunchermenu(void) {
     n += 12; textprint(51,n,64);
     strcpy(textbuf,"Ken's Labyrinth 1.0 (Shareware)");
     n += 12; textprint(51,n,64);
+    strcpy(textbuf,"Walken (1992 Pre-release)");
+    n += 12; textprint(51,n,48);
     strcpy(textbuf,"What's New");
     n += 12; textprint(51,n,79);
     strcpy(textbuf,"Setup");
@@ -33,6 +35,33 @@ static void draw_gamelaunchermenu(void) {
     textprint(31,n,lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ? 32 : 34);
 
     finalisemenu();
+}
+
+void whatsnew440() {
+    drawmenu(320, 172, menu);
+
+    strcpy(textbuf,
+        "Version 4.4.0 Release");
+    textprint(30, 48, 80);
+
+    strcpy(textbuf, "Added Walken, the 1992 pre-release");
+    textprint(30, 58, 96);
+
+    strcpy(textbuf, "of Ken's Labyrinth.");
+    textprint(30, 68, 96);
+
+    strcpy(textbuf, "It has no doors, strafing or spinning");
+    textprint(30, 88, 96);
+
+    strcpy(textbuf, "sprites yet, and only one weapon.");
+    textprint(30, 98, 96);
+
+    strcpy(textbuf, "Hold both Shift keys to cheat.");
+    textprint(30, 118, 96);
+
+    finalisemenu();
+    PL_SwapBuffers();
+    pressakey();
 }
 
 void whatsnew430() {
@@ -514,7 +543,7 @@ void gamelaunchermenu() {
     draw_ptr[++drawStackTopIndex] = draw_gamelaunchermenu;
  
     while(!done) {
-        if ((sel = getselection(12,7,sel,8)) < 0)
+        if ((sel = getselection(12,7,sel,9)) < 0)
             done = 1;
         else {
             switch(sel) {
@@ -539,6 +568,12 @@ void gamelaunchermenu() {
                     done = 1;
                     break;
                 case 4:
+                    /* Walken */
+                    lab3dversion = WALKEN;
+                    done = 1;
+                    break;
+                case 5:
+                    whatsnew440();
                     whatsnew430();
                     whatsnew421();
                     whatsnew420();
@@ -555,14 +590,14 @@ void gamelaunchermenu() {
                     whatsnew400();
                     whatsnewkenslabyrinth2();
                     break;
-                case 5:
+                case 6:
                     setupmenu(0);
                     savesettings();
                     break;
-                case 6:
+                case 7:
                     orderinfomenu();
                     break;
-                case 7:
+                case 8:
                     quitgame = 1;
                     quit();
                     break;

@@ -11,6 +11,9 @@ Windows 10, macOS Mojave, macOS Catalina, SuSE Linux 7.2 and 8.1, Debian Linux 2
 FreeBSD 4.7, Raspberry Pi OS, Nintendo Switch and AmigaOS 3.x (real hardware
 and emulators such as WinUAE and Amiberry).
 
+The launcher runs every released version of the game - 1.0, 1.1, 2.0 and 2.1 -
+and Walken, the 1992 pre-release (see [Walken](#walken) below).
+
 Improvements over the original Ken's Labyrinth:
 
 - Runs natively on 32-bit/64-bit Intel/ARM Windows, macOS, Unix, Nintendo Switch
@@ -129,7 +132,7 @@ data but keeps `settings.ini`, saved games, high scores and icon positions.
 The installer is optional: the unpacked drawer is already a complete
 installation. You can also copy the matching executable and the `gamedata`
 drawer into a directory yourself, then run the game from a Shell or from
-Workbench. Keep `gamedata/shared` with the four version drawers, because it
+Workbench. Keep `gamedata/shared` with the five version drawers, because it
 holds the music, images and game files that more than one version uses.
 
 The renderer and ray caster work in fixed point, so the FPU builds are not much
@@ -200,6 +203,44 @@ and says so on stderr.
   turns out to be.
 - **Compressed demo files.** `-recordx` (uncompressed) and `-play` work;
   gzip-compressed demos are refused with a message rather than misread.
+
+# Walken
+
+Walken is the pre-release of Ken's Labyrinth that Ken Silverman finished in
+September 1992, and later released with its source so that fans could see
+the game as a work in progress. It has ten boards, an intro with the credits,
+its own music and sound effects, and is played from the launcher like any
+other version, on every platform including the Amiga.
+
+`src/walken.c` is a port of the original `WALKEN.C` in the same way
+`src/oldlab3d.c` ports v1.x: the game logic follows the DOS code closely, while
+the drawing, sound, music and input go through the shared engine. It reads
+Walken's data as shipped: the run-length coded `WALLS.KZP`, byte-per-cell
+`BOARDS.DAT`, and loose `.WAV` effects and `.KSM` songs. The rest of Ken's
+release (the executables, the source, the editor and the uncompressed
+`WALLS.DAT`) is not needed and is not included. Its `TABLES.DAT` holds the same
+tables as `gamedata/shared/TABLES.DAT`.
+
+What Walken does not have yet, as Ken listed it: doors and see-through walls,
+spinning fans and warps, strafing, different shades for horizontal and vertical
+walls, more than one weapon, and walls you can shoot through.
+
+Walken | Controls |
+-------|----------|
+Arrows, Shift, Ctrl, Space | Move, run, shoot, unlock. Keys are never used up. |
+A / Z | Fly up and down (Stand high / Stand low). |
+L / S, then 1-8 | Load / save. The files are the DOS version's `SAVGAME0.DAT`-`SAVGAME7.DAT`, byte for byte. |
+Return | Show or hide the status bar. |
+Both Shift keys + E, L, F, K, S or B | Cheats: life vest, lightning, fire power, key, health, next board. No password needed. |
+Escape | Quit. |
+
+All of these can be rebound in *Setup -> Configure Input*, and the mouse,
+joysticks and game controllers work as in v1.x. The port changes three things
+so that the game plays the same at any frame rate: damage from monsters and
+fans is counted per tick rather than per frame, a sound the original started
+every frame (such as the fan's) waits for its last copy to finish rather than
+piling up, and a monster's dying explosion stays on screen for 16 ticks rather
+than one frame.
 
 # Program arguments
 
@@ -419,6 +460,13 @@ Design, code and Adlib emulation            | Artwork       | Board maps    | So
 |Ken Silverman<br>http://www.advsys.net/ken | Mikko Iho     | Andrew Cotter | Ken Silverman | Ken Silverman
 |                                           | Ken Silverman |               | Andrew Cotter |
 |                                           | Andrew Cotter |               |               |
+
+## Walken
+
+Code and music | Board maps     | Artwork           | Sound effects
+-------------- | -------------- | ----------------- | -------------
+Ken Silverman  | Andy Cotter    | Ken Silverman     | Andy Cotter
+|              | Ken Silverman  | Andy Cotter       |
 
 ## LAB3D/SDL
 

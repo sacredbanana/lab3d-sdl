@@ -1607,11 +1607,8 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
 
     /* Flat ceiling above the horizon, flat floor below - the same two colours
        the OpenGL path clears and fills with. */
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
-        floorcol = 0x85;
-    else
-        floorcol = 0x84;
-    ceilcol = 0xe3;
+    floorcol = FLOOR_COLOUR;
+    ceilcol = CEILING_COLOUR;
 
     split = unit_row(240 - yy / 90);
     split = hr + (int)floor((split - hr) * f + 0.5);

@@ -36,6 +36,7 @@ SOURCES = \
 	$(SRC_DIR)/init.c \
 	$(SRC_DIR)/setup.c \
 	$(SRC_DIR)/oldlab3d.c \
+	$(SRC_DIR)/walken.c \
 	$(SRC_DIR)/launcher.c \
 	$(SRC_DIR)/demo.c \
 	$(SRC_DIR)/adlibemu.c \

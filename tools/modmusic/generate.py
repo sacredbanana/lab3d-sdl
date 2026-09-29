@@ -54,7 +54,7 @@ PEAK_REFERENCE = 5911
 
 
 def function(source, name):
-    match = re.search(r'^(?:void|K_INT16) ' + name + r'\([^;]*?\)\s*\{', source, re.M)
+    match = re.search(r'^(?:void|K_INT16|static int) ' + name + r'\([^;]*?\)\s*\{', source, re.M)
     if not match:
         raise ValueError(name)
     pos = match.end()
@@ -105,6 +105,8 @@ typedef uint32_t K_UINT32;
 #define MUSIC_SOURCE_ADLIB 2
 #define MUSIC_SOURCE_ADLIB_RANDOM 3
 int musicsource=2, firstime=1, musicpan=0, mute=0, lastTick;
+enum { KENS_LABYRINTH_1_0, KENS_LABYRINTH_1_1, KENS_LABYRINTH_2_0,
+       KENS_LABYRINTH_2_1, WALKEN } lab3dversion = KENS_LABYRINTH_2_1;
 unsigned int musicstatus, count, countstop;
 unsigned short numnotes, numchans, nownote, drumstat;
 uint32_t note[65536], chanage[18];
@@ -122,7 +124,7 @@ int PL_GetTicks(void) {return 0;}
 void setmidiinsts(void) {}
 void randominsts(void) {}
 '''
-    names = ['outdata', 'setinst', 'loadmusic', 'musicon', 'ksmhandler']
+    names = ['outdata', 'setinst', 'opensong', 'loadmusic', 'musicon', 'ksmhandler']
     funcs = [function(src, n) for n in names]
     shim += '\nunsigned short adlibfreq[63] = ' + freq + ';\n'
     shim += '\n'.join(f[:f.index('{')].strip() + ';' for f in funcs) + '\n'
@@ -146,6 +148,10 @@ static void reset(int rate) {
     adlibsetvolume(64*48);            /* default music volume */
     outdata(0, 0x1, 32); outdata(0, 0x4, 0); outdata(0, 0x8, 0);
 }
+/* Walken's songs are loose KSM files with their own drum kit. */
+static void version(const char *folder) {
+    if (strstr(folder, "Walken")) lab3dversion = WALKEN;
+}
 int main(int argc, char **argv) {
     if (argc < 2) return 2;
     if (!strcmp(argv[1], "song") && (argc == 6 || argc == 7)) {
@@ -154,6 +160,7 @@ int main(int argc, char **argv) {
         int rate = atoi(argv[4]), i;
         long ticks = atol(argv[5]), tick, previous = 0;
         snprintf(gameroot, sizeof(gameroot), "%s/", argv[2]);
+        version(argv[2]);
         if (argc == 7) {
             speakers = 2;
             for (i = 0; i < 9; i++) lvol[i] = rvol[i] = (atoi(argv[6]) >> i) & 1;
@@ -169,8 +176,10 @@ int main(int argc, char **argv) {
         }
         return 0;
     }
-    if (!strcmp(argv[1], "inst") && argc == 7) {
-        /* inst <rate> <11 hex bytes> <note> <hold samples> <total samples> */
+    if (!strcmp(argv[1], "inst") && (argc == 7 || argc == 8)) {
+        /* inst <rate> <11 hex bytes> <note> <hold samples> <total samples>
+                [<OPL register 1>]: Walken leaves register 1 at 0, which
+           turns the waveform select off. */
         int rate = atoi(argv[2]), n = atoi(argv[4]), i;
         long hold = atol(argv[5]), total = atol(argv[6]);
         unsigned char v[11];
@@ -180,6 +189,7 @@ int main(int argc, char **argv) {
             v[i] = (unsigned char)x;
         }
         reset(rate);
+        if (argc == 8) outdata(0, 0x1, atoi(argv[7]));
         outdata(0, 0xbd, 32);         /* rhythm mode on, as in every song */
         setinst(0, 0, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10]);
         outdata(0, 0xa0, adlibfreq[n]&255);
@@ -200,6 +210,7 @@ int main(int argc, char **argv) {
         int track = atoi(argv[4]), freq = adlibfreq[atoi(argv[5])];
         int rate = atoi(argv[6]), bit, chan, i;
         snprintf(gameroot, sizeof(gameroot), "%s/", argv[2]);
+        version(argv[2]);
         switch (track) {
             case 11: bit = 16; chan = 6; freq -= 2048; break;
             case 12: bit = 8; chan = 7; freq -= 2048; break;
@@ -258,6 +269,21 @@ def archive_songs(archive):
         notes = struct.unpack_from('<%dI' % count, data, off+82)
         songs.append((name, meta, notes))
     return songs
+
+
+def loose_songs(folder):
+    """Walken keeps each song in its own .KSM file."""
+    songs = []
+    for path in sorted(folder.iterdir()):
+        if path.suffix.lower() == '.ksm':
+            data = path.read_bytes()
+            count = struct.unpack_from('<H', data, 80)[0]
+            songs.append((path.stem.upper(), data[:80], struct.unpack_from('<%dI' % count, data, 82)))
+    return songs
+
+
+def is_walken(folder):
+    return Path(folder).name == 'Walken'
 
 
 def load_instruments(folder):
@@ -345,8 +371,9 @@ def instrument_key(insts, meta, track):
     return bytes(v)
 
 
-def drum_key(insts, meta, track, pitch, context):
-    section = tuple(insts[meta[t]][1] for t in range(11, 16))
+def drum_key(insts, meta, track, pitch, context, walken=False):
+    # Walken's drum kit is built into loadmusic() rather than the bank.
+    section = 'walken' if walken else tuple(insts[meta[t]][1] for t in range(11, 16))
     return ('drum', section, bytes(meta[75:80]), track, pitch, context)
 
 
@@ -369,7 +396,7 @@ def drum_context(meta, events, insts, track):
     return hits.most_common(1)[0][0], instrument_key(insts, meta, owner)
 
 
-def plan_samples(meta, events, insts):
+def plan_samples(meta, events, insts, walken=False):
     """Assign every (track, pitch) to a sample slot.  Melodic notes share one
     sample per instrument per pitch range; drums get one sample per hit type."""
     melodic = collections.defaultdict(set)
@@ -398,13 +425,14 @@ def plan_samples(meta, events, insts):
         specs, assignment = [], {}
         for key, pitches in sorted(melodic.items()):
             for reference, chosen in group(pitches, melodic_span):
-                specs.append(('inst', key, reference))
+                # Walken never enables the OPL waveform select.
+                specs.append(('inst', key, reference, 0 if walken else 32))
                 for pitch in chosen:
                     assignment[('inst', key, pitch)] = (len(specs), reference)
         for track, pitches in sorted(drums.items()):
             context = drum_context(meta, events, insts, track)
             for reference, chosen in group(pitches, drum_span):
-                specs.append(drum_key(insts, meta, track, reference, context))
+                specs.append(drum_key(insts, meta, track, reference, context, walken))
                 for pitch in chosen:
                     assignment[('drum', track, pitch)] = (len(specs), reference)
         if len(specs) <= SAMPLE_SLOTS:
@@ -587,15 +615,15 @@ def analyse(name, x, period, release_render):
     return Sample(name, pcm, loop, baked, held, held_slope, release, release_slope)
 
 
-def analyse_melodic(renderer, name, key, reference):
+def analyse_melodic(renderer, name, key, reference, wavesel=32):
     edges = row_edges(HOLD_ROWS + 6)
-    x = render(renderer, 'inst', RATE_INT, key.hex(), reference, edges[-1], edges[-1])
+    x = render(renderer, 'inst', RATE_INT, key.hex(), reference, edges[-1], edges[-1], wavesel)
     mul_zero = (key[0] & 15) == 0 or (key[5] & 15) == 0
     period = RATE / (opl_rate(reference) * 49716 / 2**20) * (2 if mul_zero else 1)
 
     def release_render(keyoff_row):
         yedges = row_edges(keyoff_row + RELEASE_ROWS)
-        return render(renderer, 'inst', RATE_INT, key.hex(), reference, yedges[keyoff_row], yedges[-1])
+        return render(renderer, 'inst', RATE_INT, key.hex(), reference, yedges[keyoff_row], yedges[-1], wavesel)
     return analyse(name, x, period, release_render)
 
 
@@ -780,18 +808,20 @@ def make_module(name, meta, notes, renderer, folder, insts, cache):
     rows, events = sequence(meta, notes)
     if rows > 128 * 64:
         raise ValueError('song exceeds 128 patterns')
-    specs, assignment = plan_samples(meta, events, insts)
+    walken = is_walken(folder)
+    specs, assignment = plan_samples(meta, events, insts, walken)
     samples = []
     for spec in specs:
         if spec not in cache:
             if spec[0] == 'inst':
-                _, key, reference = spec
+                _, key, reference, wavesel = spec
                 label = next(n for n, v in insts if v[0] == key[0] and v[2:] == key[2:]) or 'FM'
-                cache[spec] = analyse_melodic(renderer, f'{label[:17]} {reference:02d}', key, reference)
+                cache[spec] = analyse_melodic(renderer, f'{label[:17]} {reference:02d}', key, reference, wavesel)
             else:
                 _, section, vols, track, pitch, context = spec
                 label = ('BD', 'SD', 'TT', 'CY', 'HH')[track - 11]
-                cache[spec] = analyse_drum(renderer, f'{label} {insts[meta[track]][0][:16]} {pitch:02d}',
+                kit = 'Walken' if walken else insts[meta[track]][0][:16]
+                cache[spec] = analyse_drum(renderer, f'{label} {kit} {pitch:02d}',
                                            folder, name, track, pitch, context)
         samples.append(cache[spec])
     cells = build_cells(rows, events, assignment, samples, insts, meta)
@@ -831,8 +861,10 @@ def make_module(name, meta, notes, renderer, folder, insts, cache):
 
 
 def organize_assets(report):
-    """Keep one MOD for identical tracks across the four game versions."""
-    versions = ('Ken1.0', 'Ken1.1', 'Ken2.0', 'Ken2.1')
+    """Keep one MOD for identical tracks across the game versions."""
+    def family(version):              # game_data_path()'s shared/<family>
+        return 'Walken' if version == 'Walken' else version[:4]
+
     by_name = collections.defaultdict(dict)
     for item in report:
         by_name[item['track']][item['version']] = item
@@ -846,11 +878,11 @@ def organize_assets(report):
             groups[item['sha256']].append(version)
         ranked = sorted(groups.values(), key=lambda g: (-len(g), g))
         for n, group in enumerate(ranked):
-            spans = {v[:4] for v in group}
-            if n == 0 and len(spans) == 2:
+            spans = {family(v) for v in group}
+            if n == 0 and len(spans) >= 2:
                 target = ROOT / 'gamedata/shared/mods' / (name + '.mod')
             elif len(group) == 2 and len(spans) == 1:
-                target = ROOT / 'gamedata/shared' / group[0][:4] / 'mods' / (name + '.mod')
+                target = ROOT / 'gamedata/shared' / family(group[0]) / 'mods' / (name + '.mod')
             else:
                 target = None
             for version in group:
@@ -866,7 +898,8 @@ def organize_assets(report):
         target.write_bytes(payload[key])
         item['path'] = str(target.relative_to(ROOT))
     keep = set(desired.values())
-    for folder in list((ROOT / 'gamedata').glob('Ken*/mods')) + list((ROOT / 'gamedata/shared').glob('**/mods')):
+    for folder in (list((ROOT / 'gamedata').glob('Ken*/mods')) + list((ROOT / 'gamedata').glob('Walken/mods')) +
+                   list((ROOT / 'gamedata/shared').glob('**/mods'))):
         if folder.is_dir():
             for path in folder.glob('*.mod'):
                 if path not in keep:
@@ -884,14 +917,19 @@ def main():
             if not folder.is_dir():
                 continue
             archive = next((p for p in folder.iterdir() if p.name.lower() == 'songs.kzp'), None)
-            if not archive:
+            if archive:
+                songs = archive_songs(archive)
+            elif is_walken(folder):
+                songs = loose_songs(folder)
+            else:
                 continue
             insts = load_instruments(folder)
             dest = folder / 'mods'
             dest.mkdir(exist_ok=True)
-            for name, meta, notes in archive_songs(archive):
+            for name, meta, notes in songs:
                 signature = hashlib.sha256(b''.join(v for _, v in insts) + meta +
-                                           struct.pack('<%dI' % len(notes), *notes)).digest()
+                                           struct.pack('<%dI' % len(notes), *notes) +
+                                           (b'walken' if is_walken(folder) else b'')).digest()
                 if signature in modules:
                     old, stats = modules[signature]
                     mod = name.encode().ljust(20, b'\0') + old[20:]

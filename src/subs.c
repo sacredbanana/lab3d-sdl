@@ -62,7 +62,8 @@ void game_data_path(char *out, size_t size, const char *name)
     *slash = '\0';
 
     family = (lab3dversion == KENS_LABYRINTH_1_0 ||
-              lab3dversion == KENS_LABYRINTH_1_1) ? "Ken1" : "Ken2";
+              lab3dversion == KENS_LABYRINTH_1_1) ? "Ken1" :
+             (lab3dversion == WALKEN) ? "Walken" : "Ken2";
     snprintf(candidate, sizeof(candidate), "%s/shared/%s/%s", root, family, name);
     if (stat(candidate, &st) == 0) {
         snprintf(out, size, "%s", candidate);
@@ -2371,12 +2372,61 @@ void configureResolution()
 
 /* Load KSM file... */
 
+/* Open song `filename` and leave the file positioned at its KSM data.
+   Returns -1 if there is no such song. */
+
+static int opensong(char *filename)
+{
+    unsigned char buffer[12];
+    int infile;
+    K_INT16 i, j, k, numfiles;
+
+    if (lab3dversion == WALKEN) {
+        /* One loose .KSM file per song rather than a songs.kzp archive. */
+        sprintf(filepath, "%s%.8s.ksm", gameroot, filename);
+        sprintf(filepathUpper, "%s%.8s.KSM", gameroot, filename);
+        if (((infile = open(filepath, O_RDONLY|O_BINARY, 0))==-1)&&
+            ((infile = open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1))
+            return(-1);
+        return(infile);
+    }
+
+    sprintf(filepath, "%ssongs.kzp", gameroot);
+    sprintf(filepathUpper, "%sSONGS.KZP", gameroot);
+    if (((infile = open(filepath, O_RDONLY|O_BINARY, 0))==-1)&&
+        ((infile = open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1))
+        return(-1);
+    readLE16(infile, &numfiles, 2);
+    i = 0;
+    j = 1;
+    while ((j == 1) && (i < numfiles))
+    {
+        read(infile, &buffer[0], 12);
+        j = 0;
+        k = 0;
+        while ((filename[k] != 0) && (k < 8))
+        {
+            if (buffer[k] != filename[k])
+                j = 1;
+            k++;
+        }
+        i++;
+    }
+    if (j == 1)
+    {
+        close(infile);
+        return(-1);
+    }
+
+    lseek(infile, readlong(buffer+8), SEEK_SET);
+    return(infile);
+}
+
 K_INT16 loadmusic(char *filename)
 {
     unsigned char buffer[256], instbuf[11];
     int infile;
-    K_INT16 i, j, k, numfiles;
-    K_INT32 filoffs;
+    K_INT16 i, j;
 
     if (filename != lastPlayedMusicFile)
         sprintf(lastPlayedMusicFile, "%s", filename);
@@ -2442,42 +2492,17 @@ K_INT16 loadmusic(char *filename)
             close(infile);
             numchans = 9;
 
-            outdata((char)0, (char)0x1, (char)32);  //clear test stuff
+            /* Walken never enables the OPL2 waveform select bit, so every
+               operator plays a sine whatever its instrument asks for. */
+            outdata((char)0, (char)0x1, (char)(lab3dversion == WALKEN ? 0 : 32));  //clear test stuff
             outdata((char)0, (char)0x4, (char)0);   //reset
             outdata((char)0, (char)0x8, (char)0);   //2-operator synthesis
 
             firstime = 0;
         }
     }
-    sprintf(filepath, "%ssongs.kzp", gameroot);
-    sprintf(filepathUpper, "%sSONGS.KZP", gameroot);
-    if (((infile = open(filepath, O_RDONLY|O_BINARY, 0))==-1)&&
-        ((infile = open(filepathUpper, O_RDONLY|O_BINARY, 0))==-1))
+    if ((infile = opensong(filename)) == -1)
         return(-1);
-    readLE16(infile, &numfiles, 2);
-    i = 0;
-    j = 1;
-    while ((j == 1) && (i < numfiles))
-    {
-        read(infile, &buffer[0], 12);
-        j = 0;
-        k = 0;
-        while ((filename[k] != 0) && (k < 8))
-        {
-            if (buffer[k] != filename[k])
-                j = 1;
-            k++;
-        }
-        i++;
-    }
-    if (j == 1)
-    {
-        close(infile);
-        return(-1);
-    }
-
-    filoffs=readlong(buffer+8);
-    lseek(infile, filoffs, SEEK_SET);
     read(infile, &trinst[0], 16);
     read(infile, &trquant[0], 16);
     read(infile, &trchan[0], 16);
@@ -2500,7 +2525,21 @@ K_INT16 loadmusic(char *filename)
                 drumstat = 0;
                 outdata((char)0, (unsigned char)0xbd, (unsigned char)drumstat);
             }
-            if (trchan[11] == 1) {
+            if ((trchan[11] == 1) && (lab3dversion == WALKEN)) {
+                /* Walken's drum kit is built in rather than taken from the
+                   instrument bank. */
+                setinst(0, 6, 0, 63-trvol[11], 0xd6, 0x68, 0, 0, 10, 0xd6, 0x68, 0, 4);             //bass
+                setinst(0, 7, 0, 63-trvol[12], 0xd8, 0x4f, 0, 0, 63-trvol[14], 0xf8, 0xff, 0, 14);  //snare & hihat
+                setinst(0, 8, 0, 63-trvol[15], 0xf5, 0xc8, 0, 0, 63-trvol[13], 0xd6, 0x88, 0, 0);   //topsymb & tom
+                outdata((char)0, (unsigned char)0xa6, (unsigned char)(600&255));
+                outdata((char)0, (unsigned char)0xb6, (unsigned char)((600>>8)&223));
+                outdata((char)0, (unsigned char)0xa7, (unsigned char)(400&255));
+                outdata((char)0, (unsigned char)0xb7, (unsigned char)((400>>8)&223));
+                outdata((char)0, (unsigned char)0xa8, (unsigned char)(5510&255));
+                outdata((char)0, (unsigned char)0xb8, (unsigned char)((5510>>8)&223));
+                drumstat = 32;
+                outdata((char)0, (unsigned char)0xbd, (unsigned char)drumstat);
+            } else if (trchan[11] == 1) {
                 for(i=0;i<11;i++)
                     instbuf[i] = inst[trinst[11]][i];
                 instbuf[1] = ((instbuf[1]&192)|((trvol[11])^63));
@@ -3667,6 +3706,10 @@ void textprint(K_INT16 x, K_INT16 y, char coloffs)
 {
     unsigned char character;
     K_INT16 charcnt, walnume;
+
+    /* Walken's walls hold no font. */
+    if (lab3dversion == WALKEN)
+        return;
 
     if ((vidmode == 1) && (y>=statusbaryoffset))
         x += 20;

@@ -33,7 +33,7 @@ void initialize()
 
     fprintf(stderr,"Loading intro music...\n");
     saidwelcome = 0;
-    if (!introskip) {
+    if (!introskip && lab3dversion != WALKEN) {
         loadmusic("BEGIN");
         musicon();
     }
@@ -48,7 +48,8 @@ void initialize()
 
     initgraphics(1);
 
-    if (!introskip)
+    /* Walken has no title picture: it goes straight to its own intro. */
+    if (!introskip && lab3dversion != WALKEN)
     {
         /* Big scrolly picture... */
         i=0;
@@ -156,11 +157,13 @@ void initialize()
     /* Shareware/registered check... */
     sprintf(filepath, "%sboards.dat", gameroot);
     sprintf(filepathUpper, "%sBOARDS.DAT", gameroot);
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ||
+        lab3dversion == WALKEN) {
         if (((i = open(filepath,O_BINARY|O_RDONLY,0)) != -1)||
             ((i = open(filepathUpper,O_BINARY|O_RDONLY,0)) != -1)) {
             fstat(i, &fstats);
-            numboards = (int)(fstats.st_size>>13);
+            /* Walken's boards are one byte per cell, the others two. */
+            numboards = (int)(fstats.st_size>>(lab3dversion == WALKEN ? 12 : 13));
             fprintf(stderr, "Detected %d boards.\n", numboards);
             close(i);
         } else {
@@ -182,7 +185,7 @@ void initialize()
             fatal_error("boards.kzp not found.");
         }
     }
-    if (!introskip)
+    if (!introskip && lab3dversion != WALKEN)
         musicoff();
 }
 
@@ -316,12 +319,51 @@ void initmemory()
     numkeyspressed=0;
 }
 
-void initaudio()
+/* Read the whole of sounds.kzp into memory. */
+
+static unsigned char *loadsoundfile(long *size)
 {
     FILE *file;
     struct stat fstats;
+    unsigned char *data;
     long sndsize;
     int i;
+
+    game_data_path(filepath, sizeof(filepath), "sounds.kzp");
+    game_data_path(filepathUpper, sizeof(filepathUpper), "SOUNDS.KZP");
+    if (((i = open(filepath,O_BINARY|O_RDONLY,0)) != -1)||
+        ((i = open(filepathUpper,O_BINARY|O_RDONLY,0)) != -1)) {
+        fstat(i, &fstats);
+        sndsize = (int)(fstats.st_size);
+        fprintf(stderr, "Detected %ld byte sounds.\n", sndsize);
+        close(i);
+    } else sndsize=0;
+
+    data=malloc(sndsize);
+
+    if (data==NULL) {
+        fatal_error("Insufficient memory for sound.");
+    }
+
+    file=fopen(filepath,"rb");
+    if (file==NULL) {
+        file=fopen(filepathUpper,"rb");
+    }
+    if (file==NULL) {
+        fatal_error("Can not find sounds.kzp.");
+    }
+    if (fread(data,1,sndsize,file)!=sndsize) {
+        fatal_error("Error in sounds.kzp.");
+    }
+    fclose(file);
+
+    *size = sndsize;
+    return data;
+}
+
+void initaudio()
+{
+    long sndsize;
 
     speed = 240;
     musicstatus=0;
@@ -343,35 +385,18 @@ void initaudio()
 
     if (speechstatus >= 2 || musicsource == MUSIC_SOURCE_MOD)
     {
-        game_data_path(filepath, sizeof(filepath), "sounds.kzp");
-        game_data_path(filepathUpper, sizeof(filepathUpper), "SOUNDS.KZP");
-        if (((i = open(filepath,O_BINARY|O_RDONLY,0)) != -1)||
-            ((i = open(filepathUpper,O_BINARY|O_RDONLY,0)) != -1)) {
-            fstat(i, &fstats);
-            sndsize = (int)(fstats.st_size);
-            fprintf(stderr, "Detected %ld byte sounds.\n", sndsize);
-            close(i);
-        } else sndsize=0;
-
-        SoundFile=malloc(sndsize);
+        /* Walken's effects are separate .WAV files; walkenloadsounds() packs
+           them into the same layout as sounds.kzp so ksay() can play them. */
+        if (lab3dversion == WALKEN)
+            SoundFile=walkenloadsounds(&sndsize);
+        else
+            SoundFile=loadsoundfile(&sndsize);
 
         SoundBuffer=malloc(65536*2);
 
         if ((SoundFile==NULL)||(SoundBuffer==NULL)) {
             fatal_error("Insufficient memory for sound.");
         }
-
-        file=fopen(filepath,"rb");
-        if (file==NULL) {
-            file=fopen(filepathUpper,"rb");
-        }
-        if (file==NULL) {
-            fatal_error("Can not find sounds.kzp.");
-        }
-        if (fread(SoundFile,1,sndsize,file)!=sndsize) {
-            fatal_error("Error in sounds.kzp.");
-        }
-        fclose(file);
 
         PL_LockSound();
         fprintf(stderr,"Opening sound output in %s for %s sound effects...\n",
@@ -439,6 +464,20 @@ void initgraphics(int showlogos)
     texturecreationneeded = 1;
 
     fprintf(stderr,"Loading intro pictures...\n");
+
+    if (lab3dversion == WALKEN) {
+        /* No pictures and no logos: one palette for everything. */
+        memset(screenbuffer, 0, screenbufferwidth*screenbufferheight);
+        walkenpalette();
+        UploadOverlay();
+        fprintf(stderr,"Loading Walken graphics...\n");
+        walkenloadwalls();
+        SetVisibleScreenOffset(0);
+        PL_SwapBuffers();
+        if (moustat == 0)
+            moustat = setupmouse();
+        return;
+    }
 
     if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         kgif(-1);
@@ -595,10 +634,25 @@ void initgameversion()
             rnumwalls=448;
             fprintf(stderr, "Ken's Labyrinth version 2.1 selected.\n");
             break;
+            case WALKEN:
+            sprintf(gameroot, "%s%s", gameroot, "gamedata/Walken/");
+            rnumwalls=WALKEN_NUMWALLS;
+            fprintf(stderr, "Walken (1992 pre-release) selected.\n");
+            break;
         }
     } else {
         gameroot[0] = '\0';
         legacyload = 1;
+        sprintf(filepath, "%swalsng00.ksm", gameroot);
+        sprintf(filepathUpper, "%sWALSNG00.KSM", gameroot);
+        if (((fil = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||
+            ((fil = open(filepathUpper,O_RDONLY|O_BINARY,0)) != -1)) {
+            close(fil);
+            lab3dversion=WALKEN; /* Walken's songs are loose KSM files. */
+            rnumwalls=WALKEN_NUMWALLS;
+            fprintf(stderr, "Walken (1992 pre-release) detected.\n");
+            return;
+        }
         sprintf(filepath, "%send.txt", gameroot);
         sprintf(filepathUpper, "%sEND.TXT", gameroot);
         if (((fil = open(filepath,O_RDONLY|O_BINARY,0)) != -1)||

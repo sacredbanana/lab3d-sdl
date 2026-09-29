@@ -351,7 +351,7 @@ K_INT16 castray(K_UINT16 posxs,K_UINT16 posys, K_INT32 angle) {
                 if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
                     if (((k >= 152) && (k <= 157)) || ((k >= 168) && (k <= 173)))
                         j = 188;
-                } else {
+                } else if (lab3dversion != WALKEN) {
                     if ((k >= door1) && (k <= door1+5)) j = doorside1-1;
                     if ((k >= door2) && (k <= door2+5)) j = doorside2-1;
                     if ((k >= door3) && (k <= door3+7)) j = doorside3-1;
@@ -379,7 +379,7 @@ K_INT16 castray(K_UINT16 posxs,K_UINT16 posys, K_INT32 angle) {
                 if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
                     if (((k >= 152) && (k <= 157)) || ((k >= 168) && (k <= 173)))
                         j = 188;
-                } else {
+                } else if (lab3dversion != WALKEN) {
                     if ((k >= door1) && (k <= door1+5)) j = doorside1-1;
                     if ((k >= door2) && (k <= door2+5)) j = doorside2-1;
                     if ((k >= door3) && (k <= door3+7)) j = doorside3-1;
@@ -765,6 +765,12 @@ void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, do
         if ((walnum[i]&1023) == map-1)
             shadecoffs = 0;
 
+        /* Walken does not shade walls by orientation yet: every wall is
+           drawn as the brighter of the two.  Its palette is a colour cube,
+           not the ramps the Amiga renderer's darker shade steps down. */
+        if (lab3dversion == WALKEN)
+            shadecoffs = 2;
+
         j=walnum[i]&1023;
 
         if (wallx[i]<0) continue;
@@ -818,7 +824,9 @@ void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, do
 
     /* Check for visible monsters... */
 
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+    if (lab3dversion == WALKEN) {
+        walkenmonsters(posxs, posys, angs);
+    } else if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
         for(i=0;i<mnum;i++)
         {
             xc = (mposx[i]>>10);
@@ -1256,7 +1264,7 @@ void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, do
         }
     }
 
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 || lab3dversion == WALKEN) {
         for(xc=0;xc<64;xc++)
             for(yc=0;yc<64;yc++)
                 if (tempbuf[(xc<<6)+yc] != 0)
@@ -1343,7 +1351,7 @@ void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, do
         k = sortbnum[temp];
         if (bmpkind[k] == 2)
         {
-            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1)
+            if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 || lab3dversion == WALKEN)
                 flatsprite(sortx[temp],sorty[temp],0,angs,k);
             else {
                 if (k == warp)

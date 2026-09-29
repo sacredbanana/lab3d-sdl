@@ -1577,7 +1577,8 @@ void load_default_settings(void) {
         action_controller[i] = action_controller_default[i];
     }
 
-    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ) {
+    if (lab3dversion == KENS_LABYRINTH_1_0 || lab3dversion == KENS_LABYRINTH_1_1 ||
+        lab3dversion == WALKEN) {
         action_key[ACTION_OLD_LOAD]=PLK_l;
         action_key[ACTION_OLD_SAVE]=PLK_s;
     }

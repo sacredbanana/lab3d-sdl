@@ -47,7 +47,8 @@ enum lab3dversion_t {
     KENS_LABYRINTH_1_0,
     KENS_LABYRINTH_1_1,
     KENS_LABYRINTH_2_0,
-    KENS_LABYRINTH_2_1
+    KENS_LABYRINTH_2_1,
+    WALKEN
 };
 extern enum lab3dversion_t lab3dversion;
 

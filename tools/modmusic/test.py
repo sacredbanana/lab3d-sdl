@@ -141,7 +141,7 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(['cc','-O1','-g','-fsanitize=address,undefined','-I'+str(ROOT/'include'),str(src),str(ROOT/'src/modmusic.c'),'-o',str(exe)],check=True)
     report=json.loads((ROOT/'tools/modmusic/manifest.json').read_text())
     mods=[ROOT/x['path'] for x in report]
-    assert len(mods)==121
+    assert len(mods)==132
     assert all(p.is_file() for p in mods)
     args=[str(exe)]
     for p,x in zip(mods,report):
@@ -167,7 +167,7 @@ with tempfile.TemporaryDirectory() as tmp:
     for i,data in enumerate(cases):
         path=tmp/f'bad{i}.mod';path.write_bytes(data)
         subprocess.run([str(tmp/'reject'),str(path)],check=True)
-    print('121 modules and',len(cases),'malformed-file cases passed under ASan/UBSan.')
+    print(len(mods),'modules and',len(cases),'malformed-file cases passed under ASan/UBSan.')
 
     # Fidelity: every shipped module, played by the game's player, must sound
     # like the Adlib emulator playing the KSM song it was made from.
