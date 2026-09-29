@@ -1,10 +1,10 @@
-Short:        Ken's Labyrinth 3D shooter for 68020+
-Author:       Ken Silverman, Jan Lonnberg, Cameron Armstrong
-Uploader:     Cameron Armstrong <cameronscottarmstrong@gmail.com>
-Type:         game/shoot
-Version:      4.3.0
+Short: Ken's Labyrinth 3D shooter for 68020+
+Author: Ken Silverman, Jan Lonnberg, Cameron Armstrong
+Uploader: Cameron Armstrong <cameronscottarmstrong@gmail.com>
+Type: game/shoot
+Version: 4.3.0
 Architecture: m68k-amigaos >= 3.0
-Requires:     68020+, asl.library V38+
+Requires: 68020+, asl.library V38+
 
 Ken's Labyrinth for AmigaOS 3.x
 ===============================
@@ -36,6 +36,25 @@ Requirements
     game runs on a native OCS/ECS/AGA screen instead.
   * Optional: a joystick or CD32 pad in port 1.
   * Optional: ahi.device V4 or later, for 16 bit sound - see Sound below.
+
+
+Installation
+------------
+
+Unpack the archive anywhere, for example to RAM:, open the Kens-Labyrinth
+drawer and double-click Install.  The installer asks where to put the game,
+makes a Kens-Labyrinth drawer there and copies in the executable that
+matches your CPU - it checks which one you have and ticks it for you - with
+the game data and music.  Pick more than one executable if the drawer is
+shared between several Amigas.  It needs Installer 42 (on the OS 3.1 disks)
+or later, or InstallerNG.
+
+Installing over an older version updates the programs and the game data but
+keeps settings.ini, your saved games, your high scores and the positions of
+the icons.
+
+The installer is optional: the unpacked Kens-Labyrinth drawer is a complete
+installation already, and can simply be dragged to where you want it.
 
 
 Which executable?

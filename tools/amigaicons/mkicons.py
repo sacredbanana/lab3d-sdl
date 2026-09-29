@@ -15,6 +15,9 @@ to copy them:
                                      brick wall, stack 32768
     Kens-Labyrinth.readme.info
                             project  a page of text, default tool MultiView
+    Install.info            project  the floppy with a green arrow, default
+                                     tool Installer, APPNAME and user level
+                                     tool types for the Install script
 
 --preview DIR also writes a PNG of each icon, normal and selected side by
 side, for checking the art without booting an Amiga.
@@ -35,6 +38,7 @@ and the icon.library V44 autodoc for the FORM ICON chunks):
   struct Image + planes       normal image
   struct Image + planes       selected image
   default tool                ULONG length incl. NUL, then the string
+  tool types                  ULONG (count + 1) * 4, then each string
   struct DrawerData tail      dd_Flags ULONG + dd_ViewModes UWORD, drawers only
   FORM ICON                   FACE, then one IMAG per image (RLE pixels,
                               raw palette)
@@ -180,6 +184,27 @@ def monster_picture(walls, pal):
 
 def floppy_picture(walls, pal):
     return paletted(wall_rows(walls[WALL_FLOPPY]), pal)
+
+
+def install_picture(walls, pal):
+    """The floppy with a green arrow pointing down into it."""
+    rows = floppy_picture(walls, pal)
+    fill, rim = (40, 200, 60), (0, 0, 0)
+    cx, top, neck, tip = 47, 22, 44, 62
+    def inside(x, y):
+        if top <= y < neck:
+            return abs(x - cx) <= 4           # shaft
+        if neck <= y <= tip:
+            return abs(x - cx) <= tip - y     # head, 45 degree sides
+        return False
+    for y in range(64):
+        for x in range(64):
+            if inside(x, y):
+                rows[y][x] = fill
+            elif any(inside(x + dx, y + dy) for dx, dy in
+                     ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                rows[y][x] = rim
+    return rows
 
 
 def readme_picture():
@@ -379,8 +404,8 @@ def string(s):
     return struct.pack(">I", len(b)) + b
 
 
-def disk_object(kind, picture, stack=0, default_tool=None, pos=None,
-                drawer=None):
+def disk_object(kind, picture, stack=0, default_tool=None, tool_types=(),
+                pos=None, drawer=None):
     sel = selected(picture)
     h, w = len(picture), len(picture[0])
     x, y = pos if pos else (NO_ICON_POSITION, NO_ICON_POSITION)
@@ -399,7 +424,7 @@ def disk_object(kind, picture, stack=0, default_tool=None, pos=None,
         ">BBIIiiIIi",
         kind, 0,
         1 if default_tool else 0,     # do_DefaultTool
-        0,                            # do_ToolTypes
+        1 if tool_types else 0,       # do_ToolTypes
         x, y,                         # do_CurrentX/Y
         1 if drawer else 0,           # do_DrawerData
         0,                            # do_ToolWindow
@@ -424,6 +449,11 @@ def disk_object(kind, picture, stack=0, default_tool=None, pos=None,
                          for prow, crow in zip(pens, picture)])
     if default_tool:
         out += string(default_tool)
+    if tool_types:
+        # The count is the size of the NULL terminated pointer array.
+        out += struct.pack(">I", (len(tool_types) + 1) * 4)
+        for t in tool_types:
+            out += string(t)
     if drawer:
         out += struct.pack(">IH", 1, 1)  # DDFLAGS_SHOWICONS, DDVM_BYICON
     return out + colour_form([picture, sel])
@@ -463,7 +493,8 @@ def main(argv):
     pal = game_palette()
     monster = monster_picture(walls, pal)
     # The drawer's window holds three columns, 190 pixels apart: the four
-    # executables in two rows, the readme top right.  Topaz 8 draws
+    # executables in two rows, the readme top right and the installer below
+    # it.  Topaz 8 draws
     # "Kens-Labyrinth.020fpu" 168 pixels wide in one line, centred under its
     # icon, so the first icon starts far enough in for the label to fit;
     # proportional fonts (AmiKit) wrap it at the dot onto a second line,
@@ -480,6 +511,15 @@ def main(argv):
             readme, dict(kind=WBPROJECT, stack=4096,
                          default_tool="SYS:Utilities/MultiView",
                          pos=(column(2, len(readme[0])), 14))),
+        # Installer runs the project file itself as the script.  It will not
+        # start from Workbench without APPNAME; NOVICE installs the detected
+        # CPU's build into the default drawer without asking.
+        "Install": (
+            install_picture(walls, pal),
+            dict(kind=WBPROJECT, stack=32768, default_tool="Installer",
+                 tool_types=("APPNAME=Ken's Labyrinth", "MINUSER=NOVICE",
+                             "DEFUSER=AVERAGE"),
+                 pos=(column(2, 64), 120))),
     }
     for i, name in enumerate(EXECUTABLES):
         icons[name] = (monster, dict(kind=WBTOOL, stack=STACK,

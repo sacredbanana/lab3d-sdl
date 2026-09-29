@@ -7,7 +7,8 @@
 #   Kens-Labyrinth.020fpu   68020 with a 68881/68882
 #   Kens-Labyrinth.040      68040
 #   Kens-Labyrinth.060      68060
-#   Kens-Labyrinth.lha      executables, Amiga game data, readme and icons
+#   Kens-Labyrinth.lha      executables, Amiga game data, readme, icons and
+#                           the Installer script
 #   Kens-Labyrinth.readme   the Aminet readme, uploaded beside the archive
 #
 # Set CLEAN=1 to wipe the build directory first, DEBUG=1 for a debug build.
@@ -49,6 +50,9 @@ if ls dist/amiga/Kens-Labyrinth.0* >/dev/null 2>&1; then
 		cp "icons/amiga/$(basename "${exe}").info" "${DIST}/"
 	done
 	cp icons/amiga/Kens-Labyrinth.readme.info "${DIST}/"
+	# Installer script, run from inside the drawer; see installer/amiga.
+	cp installer/amiga/Install "${DIST}/"
+	cp icons/amiga/Install.info "${DIST}/"
 	cp icons/amiga/Kens-Labyrinth.info dist/amiga/
 	# The Amiga port uses the original packed assets and supplied MOD music.
 	# Desktop-only hires PNGs and macOS Finder metadata are not part of the

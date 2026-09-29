@@ -1,0 +1,309 @@
+; Installer script for Ken's Labyrinth, the AmigaOS 3.x port of LAB3D/SDL.
+;
+; Double-click the Install icon, or from a Shell in this drawer:
+;
+;     Installer Install
+;
+; Needs Installer 42 (the one on the OS 3.1 disks) or later, or InstallerNG.
+; build-amiga.sh copies this script and icons/amiga/Install.info into the
+; release drawer, next to the executables and the gamedata drawer, which it
+; reads with relative paths.
+;
+; The script copies the executable(s) for the chosen CPU, the readme and the
+; whole gamedata drawer into a drawer called Kens-Labyrinth.  Run over an
+; existing installation it updates the programs and the game data but keeps
+; the player's files - settings.ini, the saved games (savgame?.dat) and the
+; high score tables (hiscore.dat) in gamedata - and any icons already there,
+; so a drawer the player has arranged stays as it was.
+
+(set app "Ken's Labyrinth")
+(set drawer "Kens-Labyrinth")
+
+; Saved games and high scores, in whatever case the game version uses.
+(set user_pat "([Hh][Ii][Ss][Cc][Oo][Rr][Ee]|[Ss][Aa][Vv][Gg][Aa][Mm][Ee]#?).[Dd][Aa][Tt]")
+
+; gamedata plus one executable, rounded up.
+(set space_needed 12500000)
+
+(set kept 0)
+
+; ------------------------------------------------------------- procedures
+
+; Copy icon_name.info into icon_dest unless an icon is there already.
+(procedure P_Icon
+	(if (not (exists (tackon icon_dest (cat icon_name ".info")) (noreq)))
+		(copyfiles (source (cat icon_name ".info")) (dest icon_dest))
+	)
+)
+
+; Copy the game data drawer vsrc into vdst.  Subdrawers (mods, and the
+; shared Ken1 and Ken2 ones) are copied whole; a saved game or high score
+; table that is already there is left alone.
+(procedure P_CopyGameDir
+	(if (<> (exists vdst (noreq)) 2) (makedir vdst))
+	(foreach vsrc "#?"
+		(set name @each-name)
+		(if (> @each-type 0)
+			(
+				(if (<> (exists (tackon vdst name) (noreq)) 2)
+					(makedir (tackon vdst name))
+				)
+				(copyfiles
+					(source (tackon vsrc name))
+					(dest (tackon vdst name))
+					(all)
+				)
+			)
+			(if (and (patmatch user_pat name)
+			         (exists (tackon vdst name) (noreq)))
+				(set kept (+ kept 1))
+				(copyfiles (source (tackon vsrc name)) (dest vdst))
+			)
+		)
+	)
+)
+
+; ------------------------------------------------------------ sanity checks
+
+(if (<> (exists "gamedata" (noreq)) 2)
+	(abort
+		"The gamedata drawer was not found.\n\n"
+		"Run Install from the Kens-Labyrinth drawer it came in, with "
+		"everything from the archive still beside it."
+	)
+)
+
+; ------------------------------------------------------------ CPU detection
+
+(set cpu (database "cpu"))
+(set fpu (database "fpu"))
+
+(if (or (= cpu "68000") (= cpu "68010"))
+	(abort
+		app " needs a 68020 or better, and this Amiga has a " cpu ".\n\n"
+		"Nothing has been installed."
+	)
+)
+
+; 0 = 020, 1 = 020fpu, 2 = 040, 3 = 060.  A 68020 or 68030 only gets the
+; FPU build when Installer names a 68881 or 68882; an unknown answer (older
+; Installers do not know "fpu") falls back to the build that always runs.
+; A 68LC040 or 68LC060 reports NOFPU and gets the plain 020 build, which
+; runs on them too; the 040 and 060 builds need the FPU.
+(set variant
+	(if (and (or (= cpu "68040") (= cpu "68060")) (= fpu "NOFPU"))
+		0
+		(if (= cpu "68060")
+			3
+			(if (= cpu "68040")
+				2
+				(if (or (= fpu "68881") (= fpu "68882")) 1 0)
+			)
+		)
+	)
+)
+
+; Installer 43 answers "fpu" with NOFPU, 68881, 68882 or FPU40; older ones
+; with nothing useful.
+(set detected
+	(cat "Installer reports a " cpu
+		(if (= fpu "NOFPU")
+			" with no FPU."
+			(if (= fpu "") "." (cat " with an FPU (" fpu ")."))
+		)
+	)
+)
+
+; --------------------------------------------------------------- questions
+
+(message
+	"\n" app "\n\n"
+	"The first-person shooter by Ken Silverman (1993), ported from "
+	"LAB3D/SDL to AmigaOS 3.x.\n\n"
+	"This installs the game for your CPU, together with its game data "
+	"and MOD music, into a new drawer.  About 12 MB of disk space is "
+	"needed."
+)
+
+(set exes 0)
+(while (= exes 0)
+	(set exes
+		(askoptions
+			(prompt
+				"Which executables should be installed?\n\n"
+				detected "  The matching one is already ticked."
+			)
+			(help
+				"Each executable is built for one kind of CPU.  The FPU "
+				"builds do not run at all on an Amiga without an FPU; the "
+				"plain 020 build runs on every 68020 or better, only "
+				"slower.  Install more than one if the drawer is shared "
+				"between several Amigas.\n\n"
+				"All of them use the same gamedata drawer and the same "
+				"settings.ini.\n\n"
+				@askoptions-help
+			)
+			(choices
+				"Kens-Labyrinth.020     68020/68030, no FPU"
+				"Kens-Labyrinth.020fpu  68020/68030 with a 68881/68882"
+				"Kens-Labyrinth.040     68040"
+				"Kens-Labyrinth.060     68060"
+			)
+			(default (shiftleft 1 variant))
+		)
+	)
+	(if (= exes 0)
+		(message "Please pick at least one executable to install.")
+	)
+)
+
+(if (= (exists "Work:Games" (noreq)) 2)
+	(set @default-dest "Work:Games")
+)
+
+(set parent
+	(askdir
+		(prompt
+			"Where should " app " be installed?\n"
+			"A drawer called " drawer " will be made there."
+		)
+		(help
+			"Pick the drawer to put the game in, for example Work:Games.  "
+			"A new drawer called " drawer " is made inside it.\n\n"
+			"To update an existing installation, pick the drawer that "
+			"holds it, or its " drawer " drawer itself.  Your settings, "
+			"saved games and high scores are kept.\n\n"
+			@askdir-help
+		)
+		(default @default-dest)
+	)
+)
+
+; Picking the game's own drawer means "update this one".
+(if (= (fileonly parent) drawer)
+	(set target parent)
+	(set target (tackon parent drawer))
+)
+(set @default-dest target)
+
+; Installing from the drawer onto itself would copy every file onto itself.
+(if (= (expandpath "gamedata") (expandpath (tackon target "gamedata")))
+	(abort
+		"The game is already in " target " - that is the drawer this "
+		"installer is running from.\n\n"
+		"Double-click an executable there to play, or pick a different "
+		"drawer to install to."
+	)
+)
+
+(set upgrade (= (exists (tackon target "gamedata") (noreq)) 2))
+
+(if upgrade
+	(message
+		"An existing installation was found in\n" target "\n\n"
+		"Its programs and game data will be replaced with this version.  "
+		"settings.ini, your saved games, your high scores and the "
+		"positions of its icons are kept."
+	)
+)
+
+; getdiskspace answers in bytes, and in a signed 32 bit number: a large
+; partition can come back negative, and an error is -1.  Only a positive
+; answer that is too small is worth a warning.
+(set free (getdiskspace (if (= (exists target (noreq)) 2) target parent)))
+(if (and (not upgrade) (> free 0) (< free space_needed))
+	(if (not (askbool
+			(prompt
+				"There may not be enough room for " app " there.  It "
+				"needs about 12 MB and " (/ free 1024) " KB is free.\n\n"
+				"Install anyway?"
+			)
+			(help @askbool-help)
+			(choices "Install" "Stop")
+		))
+		(abort "Nothing has been installed.")
+	)
+)
+
+; ------------------------------------------------------------ installation
+
+(complete 0)
+(working "Making the " drawer " drawer")
+
+(if (<> (exists target (noreq)) 2)
+	; The drawer's own icon sits beside the Install drawer in the archive,
+	; with the window size and icon layout that suit this game.  Without
+	; it Installer gives the new drawer a default icon.
+	(if (exists (cat "/" drawer ".info") (noreq))
+		(
+			(makedir target)
+			(if (not (exists (cat target ".info") (noreq)))
+				(copyfiles
+					(source (cat "/" drawer ".info"))
+					(dest (pathonly target))
+				)
+			)
+		)
+		(makedir target (infos))
+	)
+)
+
+(set icon_dest target)
+
+(complete 5)
+(set i 0)
+(while (< i 4)
+	(if (in exes i)
+		(
+			(set exe
+				(select i
+					"Kens-Labyrinth.020"
+					"Kens-Labyrinth.020fpu"
+					"Kens-Labyrinth.040"
+					"Kens-Labyrinth.060"
+				)
+			)
+			(working "Copying " exe)
+			(copyfiles (source exe) (dest target))
+			(set icon_name exe)
+			(P_Icon)
+		)
+	)
+	(set i (+ i 1))
+)
+
+(complete 15)
+(copyfiles (source "Kens-Labyrinth.readme") (dest target))
+(set icon_name "Kens-Labyrinth.readme")
+(P_Icon)
+
+(complete 20)
+(working "Copying the game data and music")
+(set groot (tackon target "gamedata"))
+(if (<> (exists groot (noreq)) 2) (makedir groot))
+(foreach "gamedata" "#?"
+	(set entry @each-name)
+	(if (> @each-type 0)
+		(
+			(set vsrc (tackon "gamedata" entry))
+			(set vdst (tackon groot entry))
+			(P_CopyGameDir)
+		)
+		(copyfiles (source (tackon "gamedata" entry)) (dest groot))
+	)
+)
+
+(complete 100)
+
+(exit
+	app " is installed in " target ".\n\n"
+	"Open the drawer and double-click the executable for your CPU to "
+	"play.  The screen mode requester appears first; your choice is "
+	"remembered in settings.ini."
+	(if (> kept 0)
+		(cat "\n\n" kept " saved game and high score files were kept.")
+		""
+	)
+	; Otherwise Installer adds its own "Installation complete!" box.
+	(quiet)
+)
