@@ -112,14 +112,30 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Install LHA archiver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jlha-utils
+
     - name: Build
       run: ./build-amiga.sh
 
-    - name: Upload artifacts
+    - name: Upload LHA package artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Kens-Labyrinth-AmigaOS3.lha
+        path: |
+          dist/amiga/Kens-Labyrinth.lha
+          dist/amiga/Kens-Labyrinth.readme
+        if-no-files-found: error
+
+    - name: Upload drawer artifact
       uses: actions/upload-artifact@v4
       with:
         name: Kens-Labyrinth-AmigaOS3
-        path: dist/amiga/Kens-Labyrinth
+        path: |
+          dist/amiga/Kens-Labyrinth
+          dist/amiga/Kens-Labyrinth.info
         if-no-files-found: error
 
   build_macos:

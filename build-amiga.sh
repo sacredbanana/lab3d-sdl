@@ -19,16 +19,19 @@ set -e
 IMAGE=sacredbanana/amiga-compiler:m68k-amigaos
 TARGETS="$*"
 
+# The image's entrypoint does not drop root itself, so run as the calling user.
+# Otherwise, on a Linux host (e.g. CI), dist/ and build/ end up owned by root
+# and the packaging steps below cannot write to them.
 if [[ "${CLEAN}" == "1" ]]; then
 	docker run --rm \
 		-v "${PWD}":/work \
-		-e USER=$(id -u) -e GROUP=$(id -g) \
+		--user "$(id -u):$(id -g)" \
 		"${IMAGE}" make -f Makefile.Amiga clean
 fi
 
 docker run --rm \
 	-v "${PWD}":/work \
-	-e USER=$(id -u) -e GROUP=$(id -g) -e DEBUG="${DEBUG}" \
+	--user "$(id -u):$(id -g)" -e DEBUG="${DEBUG}" \
 	"${IMAGE}" make -f Makefile.Amiga -j"$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)" ${TARGETS}
 
 # ---------------------------------------------------------------------------
