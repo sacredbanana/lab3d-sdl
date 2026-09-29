@@ -134,6 +134,13 @@ void amiga_load_palette(const unsigned char *pal, int start, int count);
 /* Re-send the current palette after the fade factors changed. */
 void amiga_refresh_palette(void);
 
+/* Keep pens start..start+count-1 at the current fade factors while the rest
+   of the palette follows later fades, until amiga_release_pen_fade() (which
+   takes effect on the next load) or the next full palette load.  Lets the
+   story text pulse over a dimmed view. */
+void amiga_hold_pen_fade(int start, int count);
+void amiga_release_pen_fade(void);
+
 int  amiga_video_open(void);
 void amiga_video_close(void);
 

@@ -462,8 +462,24 @@ void R_SetOverlayPaletteRange(K_UINT16 start, K_UINT16 count,
 }
 
 void R_FadeChanged(void) {
-    /* Fading is free here: it just reloads the hardware palette with the new
-       factors applied. */
+    static K_INT16 shown = -1;
+
+    /* A fade with mixing set is for the overlay alone: the level story pulses
+       its text with fade(j) between fade(27)s for the view.  OpenGL tints the
+       text; reloading the one palette here would flash the whole screen at j
+       for part of every frame.  Hold just the text's pens - the grey ramp the
+       story loads at 240 - at j instead. */
+    if (mixing) {
+        amiga_hold_pen_fade(240, 16);
+        return;
+    }
+
+    /* Otherwise fading is free: it just reloads the hardware palette with the
+       new factors applied.  The story loop asks for the same level twice a
+       frame; skipping those keeps the text's pens held. */
+    if (fadelevel == shown) return;
+    shown = fadelevel;
+    amiga_release_pen_fade();
     amiga_refresh_palette();
 }
 

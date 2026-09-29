@@ -813,6 +813,10 @@ void amiga_video_close(void) {
    renderer keeps its own copy here rather than writing through it. */
 static unsigned char dispal[768];
 
+/* A range of pens held at their own fade factors; see amiga_hold_pen_fade(). */
+static int hold_start, hold_count;
+static GLfloat hold_r, hold_g, hold_b;
+
 /*
  * Load `count` entries starting at `start` into the display.
  *
@@ -836,9 +840,10 @@ void amiga_load_palette(const unsigned char *pal, int start, int count) {
         /* Deep RTG screen: we expand through our own lookup table instead of
            a hardware palette. */
         for (i = start; i < start + count; i++) {
-            ULONG r = (ULONG)(dispal[i*3+0] * redfactor);
-            ULONG g = (ULONG)(dispal[i*3+1] * greenfactor);
-            ULONG b = (ULONG)(dispal[i*3+2] * bluefactor);
+            int held = (unsigned)(i - hold_start) < (unsigned)hold_count;
+            ULONG r = (ULONG)(dispal[i*3+0] * (held ? hold_r : redfactor));
+            ULONG g = (ULONG)(dispal[i*3+1] * (held ? hold_g : greenfactor));
+            ULONG b = (ULONG)(dispal[i*3+2] * (held ? hold_b : bluefactor));
             if (r > 63) r = 63;
             if (g > 63) g = 63;
             if (b > 63) b = 63;
@@ -864,9 +869,10 @@ void amiga_load_palette(const unsigned char *pal, int start, int count) {
     table[0] = ((ULONG)count << 16) | (ULONG)start;
     for (i = 0; i < count; i++) {
         int src = (numpens == 256) ? (start + i) : (int)pensrc[start + i];
-        ULONG r = (ULONG)(dispal[src*3+0] * redfactor);
-        ULONG g = (ULONG)(dispal[src*3+1] * greenfactor);
-        ULONG b = (ULONG)(dispal[src*3+2] * bluefactor);
+        int held = (unsigned)(src - hold_start) < (unsigned)hold_count;
+        ULONG r = (ULONG)(dispal[src*3+0] * (held ? hold_r : redfactor));
+        ULONG g = (ULONG)(dispal[src*3+1] * (held ? hold_g : greenfactor));
+        ULONG b = (ULONG)(dispal[src*3+2] * (held ? hold_b : bluefactor));
         if (r > 63) r = 63;
         if (g > 63) g = 63;
         if (b > 63) b = 63;
@@ -881,12 +887,26 @@ void amiga_load_palette(const unsigned char *pal, int start, int count) {
 }
 
 void amiga_set_palette(const unsigned char *pal) {
+    hold_count = 0;
     amiga_load_palette(pal, 0, 256);
 }
 
 /* Re-send the palette we already have, after the fade factors changed. */
 void amiga_refresh_palette(void) {
     amiga_load_palette(dispal, 0, 256);
+}
+
+void amiga_hold_pen_fade(int start, int count) {
+    hold_start = start;
+    hold_count = count;
+    hold_r = redfactor;
+    hold_g = greenfactor;
+    hold_b = bluefactor;
+    amiga_load_palette(dispal, start, count);
+}
+
+void amiga_release_pen_fade(void) {
+    hold_count = 0;
 }
 
 /*
