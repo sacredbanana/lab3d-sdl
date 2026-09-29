@@ -44,6 +44,15 @@ static unsigned char fbA[VW * VH], fbB[VW * VH];
 
 /* The live code under test, lifted out of the real source at build time. */
 #include "generated/render_soft.inc"
+
+/* What R_BeginScene() does for draw_upright_quad() once a frame.  Only the
+   integer version has camera state of its own to set up; the FPU one reads
+   cam_* and proj_* as they are. */
+static void quad_frame(void) {
+#ifndef __HAVE_68881__
+    quad_frame_setup();
+#endif
+}
 /* The double precision original it has to agree with. */
 #include "reference.c"
 
@@ -297,7 +306,7 @@ static int test_wall(int ntrials, unsigned seed) {
         amiga_chunky = fbA; zbuf = zbufA;
         ref_draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,writez,testz,keycol,depthonly);
         amiga_chunky = fbB; zbuf = zbufB;
-        quad_frame_setup();
+        quad_frame();
         draw_upright_quad((K_INT32)wx1,(K_INT32)wy1,(K_INT32)wx2,(K_INT32)wy2,0,0,64<<16,shaded,writez,testz,keycol,depthonly);
         compare(&r);
 
@@ -789,7 +798,7 @@ static int bench_wall(const char *which, int ntrials, unsigned seed) {
         for (i = 0; i < VW; i++) zbufA[i] = 0;
         amiga_chunky = fbA; zbuf = zbufA;
         if (mode == 4) memset(fbA, UNSET, sizeof fbA);
-        quad_frame_setup();
+        quad_frame();
         if (mode == 1 || mode == 4)
             draw_upright_quad((K_INT32)wx1,(K_INT32)wy1,(K_INT32)wx2,(K_INT32)wy2,0,0,64<<16,shaded,1,1,0,0);
         else if (mode == 2)
@@ -818,7 +827,7 @@ static void frame_camera(K_UINT16 px, K_UINT16 py, K_INT16 angs) {
     cam_ex = px; cam_ey = py; cam_ez = 32 * 16.0;
     proj_x = 180.0; proj_y = 160.0; proj_cx = 180.0;
     horizon_row = 120;
-    quad_frame_setup();
+    quad_frame();
 }
 
 static void frame_cast(K_UINT16 px, K_UINT16 py, K_INT16 angs) {

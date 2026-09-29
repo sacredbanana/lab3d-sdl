@@ -68,37 +68,63 @@ TILE_MACROS = ["fountain", "map", "gameover",
                "door1", "door2", "door3", "door4", "door5"]
 
 
-def fpu_only_lines(lines):
-    """Which lines sit inside an #ifdef __HAVE_68881__ (or the #else of an
-    #ifndef): the FPU builds' code, which these tests do not exercise.  Some
-    functions exist in two versions, one for each kind of build; the soft
-    float one is the one lifted."""
+def fpu_state(lines):
+    """Which kind of build each line is compiled in: True inside an
+    #ifdef __HAVE_68881__ (the FPU builds), False inside the #ifndef or the
+    #else (the builds without), None where both see it.  Some functions exist
+    in two versions, one for each kind of build; both are lifted, each under
+    its own guard, so the harness built with -D__HAVE_68881__ tests the FPU
+    one and the plain build tests the other."""
     out, stack = [], []
-    for l in lines:
+    for n, l in enumerate(lines):
         t = l.strip()
-        if t.startswith("#ifdef") or t.startswith("#ifndef") or t.startswith("#if "):
-            fpu = "__HAVE_68881__" in t
-            stack.append((fpu, t.startswith("#ifdef") if fpu else None))
-        elif t.startswith("#else") and stack:
-            fpu, was_ifdef = stack[-1]
-            if fpu:
-                stack[-1] = (fpu, not was_ifdef)
+        if t.startswith("#if"):
+            if "__HAVE_68881__" not in t:
+                stack.append(None)
+            elif re.match(r"#ifdef\s+__HAVE_68881__\s*($|/[*/])", t) or \
+                 re.match(r"#if\s+defined\s*\(?\s*__HAVE_68881__\s*\)?\s*($|/[*/])", t):
+                stack.append(True)
+            elif re.match(r"#ifndef\s+__HAVE_68881__\s*($|/[*/])", t) or \
+                 re.match(r"#if\s+!\s*defined\s*\(?\s*__HAVE_68881__\s*\)?\s*($|/[*/])", t):
+                stack.append(False)
+            else:
+                raise SystemExit("extract.py: line %d: cannot tell which builds "
+                                 "compile this: %s" % (n + 1, t))
+        elif t.startswith("#elif") and stack and stack[-1] is not None:
+            raise SystemExit("extract.py: line %d: #elif in an __HAVE_68881__ "
+                             "conditional is not supported" % (n + 1))
+        elif t.startswith("#else") and stack and stack[-1] is not None:
+            stack[-1] = not stack[-1]
         elif t.startswith("#endif") and stack:
             stack.pop()
-        out.append(any(fpu and inside for fpu, inside in stack))
+        known = [s for s in stack if s is not None]
+        if len(set(known)) > 1:
+            raise SystemExit("extract.py: line %d: nested __HAVE_68881__ "
+                             "conditionals that no build compiles" % (n + 1))
+        out.append(known[0] if known else None)
     return out
 
 
-def find_definition(lines, name):
-    """Return (start, end) line indices of `name`'s definition, inclusive."""
+def guarded(text, state):
+    """Wrap lifted text in the conditional it sat under in the source."""
+    if state is None:
+        return text
+    return ["#ifdef __HAVE_68881__" if state else "#ifndef __HAVE_68881__"] \
+        + text + ["#endif"]
+
+
+def find_definitions(lines, name):
+    """Return [(start, end, state)] for each of `name`'s definitions: the
+    line span, inclusive, and fpu_state() of its first line."""
     # The definition's first line has the name followed by '(' and is not a
     # call (column 0) and not a prototype (it or a later line opens a brace
     # before any ';').
     pat = re.compile(r"^(?:static\s+)?[A-Za-z_][A-Za-z0-9_ \t*]*\b"
                      + re.escape(name) + r"\s*\(")
-    fpu_only = fpu_only_lines(lines)
+    state = fpu_state(lines)
+    found = []
     for i, line in enumerate(lines):
-        if not pat.match(line) or fpu_only[i]:
+        if not pat.match(line):
             continue
         # Walk forward to the '{' that opens the body, bailing on a ';' first
         # (that would be a prototype, not a definition).
@@ -117,21 +143,30 @@ def find_definition(lines, name):
         for k in range(j, len(lines)):
             depth += lines[k].count("{") - lines[k].count("}")
             if depth == 0:
-                return i, k
-        raise SystemExit("extract.py: unbalanced braces in %s" % name)
-    return None
+                found.append((i, k, state[i]))
+                break
+        else:
+            raise SystemExit("extract.py: unbalanced braces in %s" % name)
+    # One definition for every build, or one for each kind: anything else
+    # would lift two copies into the same compile.
+    states = [f[2] for f in found]
+    if len(states) != len(set(states)) or (None in states and len(states) > 1):
+        raise SystemExit("extract.py: %s is defined %d times, and some build "
+                         "would see more than one" % (name, len(found)))
+    return found
 
 
 def lift(src, names):
     lines = open(src).read().split("\n")
     chunks, missing = [], []
     for name in names:
-        span = find_definition(lines, name)
-        if span is None:
+        spans = find_definitions(lines, name)
+        if not spans:
             missing.append(name)
             continue
-        chunks.append("\n".join(lines[span[0]:span[1] + 1]))
-        chunks.append("")
+        for b, e, state in spans:
+            chunks += guarded(lines[b:e + 1], state)
+            chunks.append("")
     if missing:
         raise SystemExit(
             "extract.py: could not find in %s: %s\n"
@@ -148,7 +183,7 @@ def lift_block(src, tag):
         if "rendertest:end-" + tag in l:   e = i
     if b is None or e is None or e < b:
         raise SystemExit("extract.py: no rendertest:%s block in %s" % (tag, src))
-    return lines[b:e]
+    return guarded(lines[b:e], fpu_state(lines)[b - 1])
 
 
 def tile_macros(header):

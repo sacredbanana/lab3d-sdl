@@ -122,8 +122,22 @@ rather than copying them here.
 
 ## On a 68k
 
-`run.sh` also builds the harness with `-D__HAVE_68881__`, which picks the
-paths the FPU builds take, and runs every test on it once.
+`run.sh` also builds the harness with `-D__HAVE_68881__`, the paths the FPU
+builds (020fpu, 040, 060) take, and runs every test on it with one seed.
+`extract.py` lifts every definition it is asked for, including those that
+exist only under `#ifdef __HAVE_68881__` or only under its `#ifndef` or
+`#else`, and wraps each one in the same guard, so each build of the harness
+compiles the version the matching game build does. The two builds differ in
+two places:
+
+- `wall` runs the floating point `draw_upright_quad()` in the FPU build and
+  the integer one, with its `quad_frame_setup()` and 64 bit helpers, in the
+  other. Both are checked against the same `reference.c`.
+- `fxround()` rounds in doubles in the FPU build and works on the bits
+  otherwise, so `softtri`, `floor` and `wall` cover both versions.
+
+`span`, `castray` and `raycast` run the same code in both builds, so their
+FPU runs repeat the plain build's checks on one seed.
 
 Two scripts run the same code on an emulated 68020 under vamos (from
 amitools: `pip install amitools machine68k==0.3.0`; newer machine68k

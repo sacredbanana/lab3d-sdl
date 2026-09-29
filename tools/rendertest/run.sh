@@ -18,9 +18,10 @@ python3 "$HERE/extract.py" . "$HERE/generated" || exit 1
 
 ${CC:-cc} -O2 -Wall -Wextra -Wno-unused-parameter -I"$HERE" \
     -o "$OUT/harness" "$HERE/harness.c" -lm || exit 1
-# The FPU builds (020fpu, 040, 060) take a few different paths - fxround()
-# in doubles rather than on the bits - so that variant is built and checked
-# too, on one seed.
+# The FPU builds (020fpu, 040, 060) take different paths - a floating point
+# draw_upright_quad() in place of the integer one, and fxround() in doubles
+# rather than on the bits - so that variant is built and checked too, on one
+# seed.  extract.py lifts both versions, each under its own guard.
 ${CC:-cc} -O2 -Wall -Wextra -Wno-unused-parameter -I"$HERE" -D__HAVE_68881__ \
     -o "$OUT/harness_fpu" "$HERE/harness.c" -lm || exit 1
 
