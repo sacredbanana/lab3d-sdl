@@ -297,7 +297,8 @@ static int test_wall(int ntrials, unsigned seed) {
         amiga_chunky = fbA; zbuf = zbufA;
         ref_draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,writez,testz,keycol,depthonly);
         amiga_chunky = fbB; zbuf = zbufB;
-        draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,writez,testz,keycol,depthonly);
+        quad_frame_setup();
+        draw_upright_quad((K_INT32)wx1,(K_INT32)wy1,(K_INT32)wx2,(K_INT32)wy2,0,0,64<<16,shaded,writez,testz,keycol,depthonly);
         compare(&r);
 
         /* The depth buffer has to agree too, or sprites sort against walls
@@ -788,17 +789,142 @@ static int bench_wall(const char *which, int ntrials, unsigned seed) {
         for (i = 0; i < VW; i++) zbufA[i] = 0;
         amiga_chunky = fbA; zbuf = zbufA;
         if (mode == 4) memset(fbA, UNSET, sizeof fbA);
+        quad_frame_setup();
         if (mode == 1 || mode == 4)
-            draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,1,1,0,0);
+            draw_upright_quad((K_INT32)wx1,(K_INT32)wy1,(K_INT32)wx2,(K_INT32)wy2,0,0,64<<16,shaded,1,1,0,0);
         else if (mode == 2)
             ref_draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,1,1,0,0);
         else if (mode == 3)
-            draw_upright_quad(wx1,wy1,wx2,wy2,0,0.0,64.0,shaded,1,1,0,1);
+            draw_upright_quad((K_INT32)wx1,(K_INT32)wy1,(K_INT32)wx2,(K_INT32)wy2,0,0,64<<16,shaded,1,1,0,1);
         if (mode == 4)
             for (i = 0; i < VW * VH; i++) pixels += fbA[i] != UNSET;
     }
     if (mode == 4)
         printf("%.1f pixels per trial\n", (double)pixels / ntrials);
+    return 0;
+}
+
+/*
+ * A whole frame's worth of walls: cast the rays over a random board from a
+ * random spot, as picrot_view() does, then draw every wall found the way
+ * R_DrawWall() does.  `cast` stops after the rays, `live` draws, `none` is
+ * the setup alone, and `count` (host only) reports the rays, walls, pixels
+ * written and pixels finally visible - the ratio of those last two is the
+ * overdraw.  `sorted` draws the walls nearest first.
+ */
+static void frame_camera(K_UINT16 px, K_UINT16 py, K_INT16 angs) {
+    double a = angs * (M_PI / 1024.0);
+    cam_fx = cos(a); cam_fy = sin(a);
+    cam_ex = px; cam_ey = py; cam_ez = 32 * 16.0;
+    proj_x = 180.0; proj_y = 160.0; proj_cx = 180.0;
+    horizon_row = 120;
+    quad_frame_setup();
+}
+
+static void frame_cast(K_UINT16 px, K_UINT16 py, K_INT16 angs) {
+    K_INT32 vangw_i, angl_i, angr_i, angc_i, hx, hy;
+
+    memset(tempbuf, 0, sizeof tempbuf);
+    memset(wallfound, 255, sizeof wallfound);
+    wallsfound = 0; rayscast = 0;
+    vangw_i = (K_INT32)(atan(tan(M_PI * 0.25)) / (M_PI * 2.0) * (double)ANG_FULL + 0.5);
+    angc_i = (K_INT32)angs << (ANG_BITS - 11);
+    angl_i = angc_i - vangw_i;
+    angr_i = angc_i + vangw_i;
+    castray(px, py, angr_i);
+    hx = hitpointx; hy = hitpointy;
+    castray(px, py, angl_i);
+    if ((angr_i - angl_i >= ANG_HALFPI - 16) || hits_apart(hitpointx, hitpointy, hx, hy))
+        recurseray(px, py, angc_i, angl_i, angr_i, hitpointx, hitpointy, hx, hy);
+}
+
+static void frame_wall(int i, int depthonly) {
+    K_INT32 x1 = (K_INT32)wallx[i] << 10, y1 = (K_INT32)wally[i] << 10, x2, y2;
+    int shaded = ((walnum[i] >> 13) & 2) == 0;
+
+    switch (wallside[i]) {
+    case 0:  x2 = x1;         y2 = y1 + 1024;              break;
+    case 1:  x1 += 1024;      x2 = x1; y2 = y1; y1 += 1024; break;
+    case 2:  y2 = y1;         x2 = x1; x1 += 1024;          break;
+    default: y1 += 1024;      y2 = y1; x2 = x1 + 1024;      break;
+    }
+    draw_upright_quad(x1, y1, x2, y2, 0, 0, 64<<16, shaded, 1, 1, 0, depthonly);
+}
+
+static int bench_frame(const char *which, int ntrials, unsigned seed) {
+    int mode = !strcmp(which, "live") ? 1 : !strcmp(which, "cast") ? 2 :
+               !strcmp(which, "count") ? 3 : !strcmp(which, "sorted") ? 4 : 0;
+    long rays = 0, walls = 0, written = 0, visible = 0;
+    int trial, i;
+
+    srand(seed);
+    for (trial = 0; trial < ntrials; trial++) {
+        K_UINT16 px, py;
+        K_INT16 angs;
+        int cx, cy;
+
+        make_board();
+        waterstat = 0; animate2 = 0;
+        do { cx = rand() % 64; cy = rand() % 64; }
+        while (bmpkind[board[cx][cy] & 1023] == 1);
+        px = (K_UINT16)((cx << 10) + (rand() & 1023));
+        py = (K_UINT16)((cy << 10) + (rand() & 1023));
+        angs = (K_INT16)(rand() & 2047);
+        frame_camera(px, py, angs);
+        amiga_chunky = fbA; zbuf = zbufA;
+        for (i = 0; i < VW; i++) zbufA[i] = 0;
+        if (mode == 0) continue;
+
+        frame_cast(px, py, angs);
+        rays += rayscast; walls += wallsfound;
+        if (mode == 2) continue;
+
+        if (mode == 4) {
+            /* nearest first, by the distance to the wall's midpoint */
+            static long key[16384];
+            int j;
+            for (i = 0; i < wallsfound; i++) {
+                long dx = ((long)wallx[i] << 10) + 512 - px;
+                long dy = ((long)wally[i] << 10) + 512 - py;
+                key[i] = dx * dx + dy * dy;
+            }
+            for (i = 1; i < wallsfound; i++) {
+                long k = key[i]; K_INT16 wx = wallx[i], wy = wally[i];
+                char ws = wallside[i]; K_UINT16 wn = walnum[i];
+                for (j = i - 1; j >= 0 && key[j] > k; j--) {
+                    key[j+1] = key[j]; wallx[j+1] = wallx[j]; wally[j+1] = wally[j];
+                    wallside[j+1] = wallside[j]; walnum[j+1] = walnum[j];
+                }
+                key[j+1] = k; wallx[j+1] = wx; wally[j+1] = wy;
+                wallside[j+1] = ws; walnum[j+1] = wn;
+            }
+        }
+
+        if (mode == 3) {
+            /* count writes by drawing each wall into a clean buffer */
+            static unsigned char fbT[VW * VH];
+            memset(fbA, UNSET, sizeof fbA);
+            for (i = 0; i < wallsfound; i++) {
+                int k;
+                memset(fbT, UNSET, sizeof fbT);
+                amiga_chunky = fbT;
+                frame_wall(i, 0);
+                for (k = 0; k < VW * VH; k++)
+                    if (fbT[k] != UNSET) { written++; fbA[k] = fbT[k]; }
+            }
+            for (i = 0; i < VW * VH; i++) visible += fbA[i] != UNSET;
+        } else {
+            for (i = 0; i < wallsfound; i++)
+                frame_wall(i, 0);
+        }
+    }
+    if (mode == 2 || mode == 3)
+        printf("%.1f rays, %.1f walls per frame\n",
+               (double)rays / ntrials, (double)walls / ntrials);
+    if (mode == 3)
+        printf("%.0f pixels written, %.0f visible per frame: overdraw %.3f\n",
+               (double)written / ntrials, (double)visible / ntrials,
+               visible ? (double)written / visible : 0.0);
     return 0;
 }
 
@@ -819,6 +945,8 @@ int main(int argc, char **argv) {
     if (!strcmp(which, "span"))    return test_span   (ntrials ? ntrials : 3000,  seed);
     if (!strncmp(which, "benchwall-", 10))
         return bench_wall(which + 10, ntrials, seed);
+    if (!strncmp(which, "benchframe-", 11))
+        return bench_frame(which + 11, ntrials ? ntrials : 100, seed);
 
     fprintf(stderr, "usage: %s softtri|floor|wall|castray|raycast [trials] [seed]\n", argv[0]);
     return 2;

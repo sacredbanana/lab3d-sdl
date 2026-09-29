@@ -239,6 +239,18 @@ int main(int argc, char **argv) {
         if ((size_t)srcmod * (frame ? rows : h) > sizeof(src)) continue;
         for (n = 0; n < (size_t)srcmod * (frame ? rows : h); n++)
             src[n] = (UBYTE)rnd(256);
+        /* Exercise the solid-row fill: a whole block of one colour, or a
+           solid band above mixed rows, the way ceiling and floor land. */
+        if (rnd(8) == 0) {
+            UBYTE c = (UBYTE)rnd(256);
+            for (n = 0; n < (size_t)srcmod * (frame ? rows : h); n++)
+                src[n] = c;
+        } else if (rnd(6) == 0) {
+            UBYTE c = (UBYTE)rnd(256);
+            int band = 1 + (int)rnd((unsigned)((frame ? rows : h) / 2) + 1);
+            for (n = 0; n < (size_t)srcmod * band && n < sizeof(src); n++)
+                src[n] = c;
+        }
 
         /* Same layout, same starting garbage, in both. */
         {

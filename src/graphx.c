@@ -671,6 +671,16 @@ void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, do
     }
     
 
+    /* Clear last frame's wall marks rather than the whole 32 KB table. */
+    {
+        K_INT32 wf = wallsfound, wi;
+        if (wf > 0 && wf <= 16384) {
+            for (wi = 0; wi < wf; wi++)
+                wallfound[wallx[wi]][wally[wi]][(int)wallside[wi]] = -1;
+        } else {
+            memset(wallfound,255,32768);
+        }
+    }
     wallsfound=0;
     mapfound=0;
     gameoverfound=0;
@@ -682,8 +692,6 @@ void picrot_view(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs, do
     // a cube, its contents disappear. This makes sure
     // that whatever is in the current cube is drawn.
     tempbuf[((posxs>>10)<<6)+(posys>>10)]=1;
-
-    memset(wallfound,255,32768);
 
     rayscast=0;
 

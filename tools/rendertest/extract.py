@@ -31,6 +31,13 @@ WANTED = {
     "cdiv",
     "rdivp",
     "draw_span",
+    "quad_frame_setup",
+    "bitlen64",
+    "shr64",
+    "ushr64",
+    "mulshr",
+    "divsh",
+    "plane_frac",
     "draw_upright_quad",
     "softtri",
     "R_DrawFloorSprite",
@@ -53,11 +60,32 @@ WANTED = {
 # Blocks of constants and file-local state the lifted functions need, marked
 # in the source with rendertest:begin-<tag> / rendertest:end-<tag>.
 BLOCKS = {"src/graphx.c": ["fixedpoint"],
-          "src/amiga/render_soft.c": ["dbits"]}
+          "src/amiga/render_soft.c": ["dbits", "quadcam"]}
 
 TILE_MACROS = ["fountain", "map", "gameover",
                "doorside1", "doorside2", "doorside3", "doorside4", "doorside5",
                "door1", "door2", "door3", "door4", "door5"]
+
+
+def fpu_only_lines(lines):
+    """Which lines sit inside an #ifdef __HAVE_68881__ (or the #else of an
+    #ifndef): the FPU builds' code, which these tests do not exercise.  Some
+    functions exist in two versions, one for each kind of build; the soft
+    float one is the one lifted."""
+    out, stack = [], []
+    for l in lines:
+        t = l.strip()
+        if t.startswith("#ifdef") or t.startswith("#ifndef") or t.startswith("#if "):
+            fpu = "__HAVE_68881__" in t
+            stack.append((fpu, t.startswith("#ifdef") if fpu else None))
+        elif t.startswith("#else") and stack:
+            fpu, was_ifdef = stack[-1]
+            if fpu:
+                stack[-1] = (fpu, not was_ifdef)
+        elif t.startswith("#endif") and stack:
+            stack.pop()
+        out.append(any(fpu and inside for fpu, inside in stack))
+    return out
 
 
 def find_definition(lines, name):
@@ -67,8 +95,9 @@ def find_definition(lines, name):
     # before any ';').
     pat = re.compile(r"^(?:static\s+)?[A-Za-z_][A-Za-z0-9_ \t*]*\b"
                      + re.escape(name) + r"\s*\(")
+    fpu_only = fpu_only_lines(lines)
     for i, line in enumerate(lines):
-        if not pat.match(line):
+        if not pat.match(line) or fpu_only[i]:
             continue
         # Walk forward to the '{' that opens the body, bailing on a ';' first
         # (that would be a prototype, not a definition).

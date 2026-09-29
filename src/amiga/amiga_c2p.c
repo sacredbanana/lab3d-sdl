@@ -784,6 +784,93 @@ void amiga_c2p_frame_done(unsigned long ms) { (void)ms; }
 #endif /* AMIGA_BLITTER_C2P */
 
 /*
+ * A row that is one colour throughout.  Three probe pixels reject a typical
+ * wall row in a couple of compares (ceiling at the edge, wall in the
+ * middle); a full scan then confirms the ceiling and floor bands, which
+ * become a memset per bitplane instead of a transpose.
+ */
+static int row_looks_solid(const UBYTE *s, int w, UBYTE *col) {
+    UBYTE c = s[0];
+    if (s[w - 1] != c || s[w >> 1] != c)
+        return 0;
+    *col = c;
+    return 1;
+}
+
+static int row_is_solid(const UBYTE *s, int w, UBYTE c) {
+    int i;
+
+    if (w >= 4 && !((size_t)s & 3)) {
+        ULONG v = c;
+        const ULONG *p;
+        int n4;
+
+        v |= v << 8;
+        v |= v << 16;
+        p = (const ULONG *)s;
+        n4 = w >> 2;
+        for (i = 0; i < n4; i++)
+            if (p[i] != v)
+                return 0;
+        for (i = n4 << 2; i < w; i++)
+            if (s[i] != c)
+                return 0;
+        return 1;
+    }
+    for (i = 1; i < w; i++)
+        if (s[i] != c)
+            return 0;
+    return 1;
+}
+
+/* Write `h` solid rows of colour `c` into the planes at (destx, desty). */
+static void c2p_fill_rows(struct BitMap *bm, int destx, int desty,
+                          int w, int h, int depth, UBYTE c) {
+    int bpr = bm->BytesPerRow;
+    int nbytes = w >> 3;
+    int o0 = desty * bpr + (destx >> 3);
+    int p, y;
+    UBYTE fill[8];
+
+    for (p = 0; p < depth; p++)
+        fill[p] = (UBYTE)((c & (1 << p)) ? 0xff : 0x00);
+
+    for (p = 0; p < depth; p++) {
+        UBYTE *pl = bm->Planes[p] + o0;
+        if (bpr == nbytes) {
+            memset(pl, fill[p], (size_t)nbytes * h);
+        } else {
+            for (y = 0; y < h; y++, pl += bpr)
+                memset(pl, fill[p], nbytes);
+        }
+    }
+}
+
+/* The existing CPU / blitter conversion, for a run of mixed rows. */
+static void c2p_mixed(const UBYTE *src, int srcmod,
+                      struct BitMap *bm, int destx, int desty,
+                      int w, int h, int depth) {
+    int rowbytes = bm->BytesPerRow;
+    int y, p;
+    UBYTE *pl[8];
+
+#ifdef AMIGA_BLITTER_C2P
+    if (use_blitter && st_buf &&
+        c2p_blitted(src, srcmod, bm, destx, desty, w, h, depth))
+        return;
+#endif
+
+    for (p = 0; p < depth; p++)
+        pl[p] = bm->Planes[p] + desty * rowbytes + (destx >> 3);
+
+    for (y = 0; y < h; y++, src += srcmod) {
+        c2p_row_cpu(src, pl, w >> 3, depth);
+        for (p = 0; p < depth; p++)
+            pl[p] += rowbytes;
+    }
+}
+
+/*
  * Convert a w x h block of chunky pixels into `bm` at (destx, desty).
  * destx must be a multiple of 8 and w a multiple of 8; amiga_video.c
  * guarantees both.
@@ -792,28 +879,46 @@ void amiga_c2p(const UBYTE *src, int srcmod,
                struct BitMap *bm, int destx, int desty,
                int w, int h, int depth)
 {
-    int rowbytes = bm->BytesPerRow;
-    int y, p;
-    UBYTE *pl[8];
+    int y;
 
     if (!c2p_ready) amiga_c2p_init();
     if (depth > 8) depth = 8;
+    if (w < 8 || h < 1) return;
 
 #ifdef AMIGA_BLITTER_C2P
     frame_px += (unsigned long)w * h;
-    if (use_blitter && st_buf &&
-        c2p_blitted(src, srcmod, bm, destx, desty, w, h, depth))
-        return;
 #endif
 
-    /* Both interleaved and plain bitmaps advance one row by BytesPerRow, so
-       there is nothing to special-case here. */
-    for (p = 0; p < depth; p++)
-        pl[p] = bm->Planes[p] + desty * rowbytes + (destx >> 3);
+    for (y = 0; y < h; ) {
+        UBYTE col;
 
-    for (y = 0; y < h; y++, src += srcmod) {
-        c2p_row_cpu(src, pl, w >> 3, depth);
-        for (p = 0; p < depth; p++)
-            pl[p] += rowbytes;
+        if (row_looks_solid(src + (size_t)y * srcmod, w, &col) &&
+            row_is_solid(src + (size_t)y * srcmod, w, col)) {
+            int run = 1;
+            while (y + run < h) {
+                const UBYTE *r = src + (size_t)(y + run) * srcmod;
+                UBYTE c2;
+                if (!row_looks_solid(r, w, &c2) || c2 != col ||
+                    !row_is_solid(r, w, col))
+                    break;
+                run++;
+            }
+            if (c2p_penmap)
+                col = c2p_penmap[col];
+            c2p_fill_rows(bm, destx, desty + y, w, run, depth, col);
+            y += run;
+        } else {
+            int run = 1;
+            while (y + run < h) {
+                const UBYTE *r = src + (size_t)(y + run) * srcmod;
+                UBYTE c2;
+                if (row_looks_solid(r, w, &c2) && row_is_solid(r, w, c2))
+                    break;
+                run++;
+            }
+            c2p_mixed(src + (size_t)y * srcmod, srcmod,
+                      bm, destx, desty + y, w, run, depth);
+            y += run;
+        }
     }
 }

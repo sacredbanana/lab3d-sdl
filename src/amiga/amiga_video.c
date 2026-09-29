@@ -1034,15 +1034,21 @@ static void amiga_expand(const UBYTE *src, int stride, int w, int rows, int n,
 
         switch (n) {
         case 2: {
+            /* Shift-or, not a multiply: mulu.w is tens of cycles on a 020. */
             UWORD *d = (UWORD *)d0;
-            for (x = 0; x < w; x++)
-                d[x] = (UWORD)(src[x] * 0x0101U);
+            for (x = 0; x < w; x++) {
+                UWORD c = src[x];
+                d[x] = (UWORD)((c << 8) | c);
+            }
             break;
         }
         case 4: {
             ULONG *d = (ULONG *)d0;
-            for (x = 0; x < w; x++)
-                d[x] = (ULONG)src[x] * 0x01010101UL;
+            for (x = 0; x < w; x++) {
+                ULONG c = src[x];
+                c |= c << 8;
+                d[x] = c | (c << 16);
+            }
             break;
         }
         default: {
@@ -1062,16 +1068,73 @@ static void amiga_expand(const UBYTE *src, int stride, int w, int rows, int n,
     }
 }
 
+/* Locked LUT8 RTG bitmap, when LockBitMapTagList() will give us a linear
+   base.  One lock covers the whole frame; WritePixelArray() is the fallback
+   if the driver will not lock. */
+static APTR   rtg_lock;
+static UBYTE *rtg_base;
+static ULONG  rtg_bpr;
+
+static int amiga_rtg_lock(struct BitMap *bm) {
+    struct TagItem tags[3];
+
+    rtg_base = NULL;
+    rtg_bpr  = 0;
+    tags[0].ti_Tag  = LBMI_BASEADDRESS;
+    tags[0].ti_Data = (ULONG)&rtg_base;
+    tags[1].ti_Tag  = LBMI_BYTESPERROW;
+    tags[1].ti_Data = (ULONG)&rtg_bpr;
+    tags[2].ti_Tag  = TAG_END;
+    tags[2].ti_Data = 0;
+    rtg_lock = LockBitMapTagList(bm, tags);
+    if (!rtg_lock || !rtg_base || !rtg_bpr) {
+        if (rtg_lock) {
+            UnLockBitMap(rtg_lock);
+            rtg_lock = NULL;
+        }
+        rtg_base = NULL;
+        return 0;
+    }
+    return 1;
+}
+
+static void amiga_rtg_unlock(void) {
+    if (rtg_lock) {
+        UnLockBitMap(rtg_lock);
+        rtg_lock = NULL;
+        rtg_base = NULL;
+    }
+}
+
+static void amiga_copy_lut8(const UBYTE *src, int stride,
+                            int x, int y, int w, int h) {
+    UBYTE *d = rtg_base + (ULONG)y * rtg_bpr + x;
+
+    if (stride == w && rtg_bpr == (ULONG)w) {
+        CopyMem((APTR)src, d, (ULONG)w * (ULONG)h);
+        return;
+    }
+    while (h-- > 0) {
+        CopyMem((APTR)src, d, (ULONG)w);
+        src += stride;
+        d += rtg_bpr;
+    }
+}
+
 /* Put a w x h block of chunky pixels on the screen at (x,y). */
 static void amiga_put(struct RastPort *rp, const UBYTE *src, int stride,
                       int x, int y, int w, int h) {
     if (amiga_mode.rtg) {
-        if (amiga_mode.pixfmt == PIXFMT_LUT8)
-            WritePixelArray((APTR)src, 0, 0, stride, rp, x, y, w, h,
-                            RECTFMT_LUT8);
-        else
+        if (amiga_mode.pixfmt == PIXFMT_LUT8) {
+            if (rtg_base)
+                amiga_copy_lut8(src, stride, x, y, w, h);
+            else
+                WritePixelArray((APTR)src, 0, 0, stride, rp, x, y, w, h,
+                                RECTFMT_LUT8);
+        } else {
             WriteLUTPixelArray((APTR)src, 0, 0, stride, rp, lut,
                                x, y, w, h, CTABFMT_XRGB8);
+        }
     } else {
         amiga_c2p(src, stride, rp->BitMap, x, y, w, h, amiga_mode.depth);
     }
@@ -1125,6 +1188,9 @@ void amiga_blit_frame(void) {
     rp.BitMap = amiga_drawbitmap();
     t0 = PL_GetTicks();
 
+    if (amiga_mode.rtg && amiga_mode.pixfmt == PIXFMT_LUT8)
+        amiga_rtg_lock(rp.BitMap);
+
     /* Only what changed.  In play at full view size that is the whole frame
        anyway, since the view marks all of it; it is the frames with no view
        in them - a menu waiting on a key, with just its selector turning -
@@ -1140,6 +1206,8 @@ void amiga_blit_frame(void) {
                 amiga_blit_rect(&rp, dirty_last.r[i].x0, dirty_last.r[i].y0,
                                 dirty_last.r[i].x1, dirty_last.r[i].y1);
     }
+
+    amiga_rtg_unlock();
 
     /* The blitter may still be finishing the conversion; the frame has to
        be complete before it is shown, and the staging area free for the

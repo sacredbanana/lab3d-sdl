@@ -712,6 +712,7 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
                       K_INT32 ytop, K_INT32 ybot, int yshift,
                       int shaded, int skipkey)
 {
+    unsigned char scol[64];
     int y0, y1, y, height;
     const int stride = VW;
     K_INT32 v, vstep;
@@ -734,6 +735,19 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
     if (y0 >= y1) return;
 
     dstcol += (size_t)y0 * stride;
+
+    /*
+     * Shade the whole column once when the span is tall enough that doing so
+     * is cheaper than a table lookup per pixel.  The inner loops then stay
+     * on the plain (or key) path, which is the one the 68k unrolls hardest.
+     */
+    if (shaded && (y1 - y0) >= 24) {
+        int i;
+        for (i = 0; i < 64; i++)
+            scol[i] = shadetab[tex[i]];
+        tex = scol;
+        shaded = 0;
+    }
 
 #ifdef __m68k__
     {
@@ -759,12 +773,12 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
         if (n > 0) {
             short vi = (short)(v >> 16), vf = (short)v;
             short is = (short)(vstep >> 16), fs = (short)vstep;
-            short one = (short)((n & 3) - 1), four = (short)((n >> 2) - 1);
             long  st = stride, c = 0;   /* c: upper bytes stay clear */
             unsigned char *d = dstcol;
 
-            /* One pixel of each kind; the loops below run n & 3 of them one
-               at a time and then the rest four to a dbra. */
+            /* One pixel of each kind.  The common plain wall path unrolls
+               eight to a dbra; the others stay at four, so the longer
+               compare-and-shade sequences still fit the 020 I-cache. */
 #define PX_STEP  "add.l %[st],%[d]\n\tadd.w %[fs],%[vf]\n\taddx.w %[is],%[vi]\n\t"
 #define PX_PLAIN "move.b (%[tex],%[vi].w),(%[d])\n\t" PX_STEP
 #define PX_SHADE "move.b (%[tex],%[vi].w),%[c]\n\t" \
@@ -774,25 +788,47 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
 #define PX_KEYSH "move.b (%[tex],%[vi].w),%[c]\n\tcmp.b #-1,%[c]\n\tjeq 2f\n\t" \
                  "move.b (%[sh],%[c].w),(%[d])\n2:\n\t" PX_STEP
 #define PX_LOOPS(PX)                                                    \
-    __asm__ volatile (                                                  \
-        "tst.w %[one]\n\t"                                             \
-        "jmi 3f\n"                                                      \
-        "1:\n\t" PX "dbra %[one],1b\n"                                 \
-        "3:\n\t"                                                       \
-        "tst.w %[four]\n\t"                                            \
-        "jmi 5f\n"                                                      \
-        "4:\n\t" PX PX PX PX "dbra %[four],4b\n"                       \
-        "5:"                                                            \
-        : [d] "+a" (d), [vi] "+d" (vi), [vf] "+d" (vf),                 \
-          [one] "+d" (one), [four] "+d" (four), [c] "+d" (c)             \
-        : [tex] "a" (tex), [sh] "a" (shadetab), [st] "d" (st),          \
-          [fs] "d" (fs), [is] "d" (is)                                  \
-        : "cc", "memory")
+    do {                                                                \
+        short one_ = (short)((n & 3) - 1), four_ = (short)((n >> 2) - 1); \
+        __asm__ volatile (                                              \
+            "tst.w %[one]\n\t"                                          \
+            "jmi 3f\n"                                                  \
+            "1:\n\t" PX "dbra %[one],1b\n"                              \
+            "3:\n\t"                                                    \
+            "tst.w %[four]\n\t"                                         \
+            "jmi 5f\n"                                                  \
+            "4:\n\t" PX PX PX PX "dbra %[four],4b\n"                    \
+            "5:"                                                        \
+            : [d] "+a" (d), [vi] "+d" (vi), [vf] "+d" (vf),             \
+              [one] "+d" (one_), [four] "+d" (four_), [c] "+d" (c)      \
+            : [tex] "a" (tex), [sh] "a" (shadetab), [st] "d" (st),      \
+              [fs] "d" (fs), [is] "d" (is)                              \
+            : "cc", "memory");                                          \
+    } while (0)
+#define PX_LOOPS8(PX)                                                   \
+    do {                                                                \
+        short one_ = (short)((n & 7) - 1), eight_ = (short)((n >> 3) - 1); \
+        __asm__ volatile (                                              \
+            "tst.w %[one]\n\t"                                          \
+            "jmi 3f\n"                                                  \
+            "1:\n\t" PX "dbra %[one],1b\n"                              \
+            "3:\n\t"                                                    \
+            "tst.w %[eight]\n\t"                                        \
+            "jmi 5f\n"                                                  \
+            "4:\n\t" PX PX PX PX PX PX PX PX "dbra %[eight],4b\n"       \
+            "5:"                                                        \
+            : [d] "+a" (d), [vi] "+d" (vi), [vf] "+d" (vf),             \
+              [one] "+d" (one_), [eight] "+d" (eight_), [c] "+d" (c)    \
+            : [tex] "a" (tex), [sh] "a" (shadetab), [st] "d" (st),      \
+              [fs] "d" (fs), [is] "d" (is)                              \
+            : "cc", "memory");                                          \
+    } while (0)
 
             if (!skipkey)
-                if (!shaded) PX_LOOPS(PX_PLAIN); else PX_LOOPS(PX_SHADE);
+                if (!shaded) PX_LOOPS8(PX_PLAIN); else PX_LOOPS(PX_SHADE);
             else
                 if (!shaded) PX_LOOPS(PX_KEY);   else PX_LOOPS(PX_KEYSH);
+#undef PX_LOOPS8
 #undef PX_LOOPS
 #undef PX_KEYSH
 #undef PX_KEY
@@ -837,8 +873,11 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
     }
 }
 
+#ifdef __HAVE_68881__
 /*
  * The common path for every upright quad: walls, doors and billboards.
+ * This is the floating point version, for the builds with an FPU; the
+ * fixed point one that follows it is for the builds without.
  *
  * (wx1,wy1)-(wx2,wy2) is the quad in world coordinates, running from the
  * ceiling (z=0) to the floor (z=1024).  `t0`/`t1` are the texture columns at
@@ -850,16 +889,15 @@ static void draw_span(unsigned char *dstcol, const unsigned char *tex,
  * `depthonly` draws nothing but still claims the columns, which is how the
  * invisible wall hides what is behind it.
  */
-static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
-                              int texnum, double t0, double t1,
+static void draw_upright_quad(K_INT32 iwx1, K_INT32 iwy1, K_INT32 iwx2, K_INT32 iwy2,
+                              int texnum, K_INT32 it0, K_INT32 it1,
                               int shaded, int writez, int testz,
                               int keycolour, int depthonly)
 {
+    double wx1 = iwx1, wy1 = iwy1, wx2 = iwx2, wy2 = iwy2;
+    double t0 = it0 / 65536.0, t1 = it1 / 65536.0;
     double d1, d2, e1, e2;
     double near = (double)neardist;
-#ifndef __HAVE_68881__
-    long long D1, D2;                   /* d1 and d2 exactly, times 2^38 */
-#endif
     double sx1, sx2, invd1, invd2, tovd1, tovd2;
     double topk, botk;
     double spaninv, didx;
@@ -875,35 +913,11 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
     const unsigned char *texbase;
     int xa, xb, x, seg;
 
-    /*
-     * Depth and sideways offset of both ends.  The game's positions are whole
-     * world units and its view direction comes from a 16.16 table, so in
-     * fixed point - positions in 24.8, the direction in 2.30 - this is exact
-     * integer arithmetic: four widening multiplies, which the 68020 does in
-     * one instruction each, where the doubles cost a dozen soft float calls.
-     * With an FPU the doubles are cheaper than that, and on an 060, which
-     * has no 64 bit multiply, a good deal cheaper, so they stay.
-     */
-#ifndef __HAVE_68881__
-    {
-        K_INT32 fx = fxround(dscale2(cam_fx, 30)), fy = fxround(dscale2(cam_fy, 30));
-        K_INT32 cx = fxround(dscale2(cam_ex, 8)),  cy = fxround(dscale2(cam_ey, 8));
-        K_INT32 dx1 = fxround(dscale2(wx1, 8)) - cx, dy1 = fxround(dscale2(wy1, 8)) - cy;
-        K_INT32 dx2 = fxround(dscale2(wx2, 8)) - cx, dy2 = fxround(dscale2(wy2, 8)) - cy;
-
-        D1 = (long long)fx * dx1 + (long long)fy * dy1;
-        D2 = (long long)fx * dx2 + (long long)fy * dy2;
-        d1 = dfrom64(D1, -38);
-        d2 = dfrom64(D2, -38);
-        e1 = dfrom64((long long)fx * dy1 - (long long)fy * dx1, -38);
-        e2 = dfrom64((long long)fx * dy2 - (long long)fy * dx2, -38);
-    }
-#else
+    /* Depth and sideways offset of both ends. */
     d1 = cam_fx*(wx1 - cam_ex) + cam_fy*(wy1 - cam_ey);
     d2 = cam_fx*(wx2 - cam_ex) + cam_fy*(wy2 - cam_ey);
     e1 = cam_fx*(wy1 - cam_ey) - cam_fy*(wx1 - cam_ex);
     e2 = cam_fx*(wy2 - cam_ey) - cam_fy*(wx2 - cam_ex);
-#endif
 
     if (d1 < near && d2 < near)
         return;
@@ -915,28 +929,15 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
         e1 += (e2 - e1) * f;
         t0 += (t1 - t0) * f;
         d1  = near;
-#ifndef __HAVE_68881__
-        D1  = (long long)neardist << 38;
-#endif
     } else if (d2 < near) {
         double f = (near - d2) / (d1 - d2);
         e2 += (e1 - e2) * f;
         t1 += (t0 - t1) * f;
         d2  = near;
-#ifndef __HAVE_68881__
-        D2  = (long long)neardist << 38;
-#endif
     }
 
-#ifndef __HAVE_68881__
-    /* The reciprocals come from the exact integer depths, and the
-       projection multiplies by them: no soft float divide at all. */
-    invd1 = recip64(D1, -38);
-    invd2 = recip64(D2, -38);
-#else
     invd1 = 1.0 / d1;
     invd2 = 1.0 / d2;
-#endif
     sx1 = proj_cx + proj_x * e1 * invd1;
     sx2 = proj_cx + proj_x * e2 * invd2;
 
@@ -1128,23 +1129,377 @@ static void draw_upright_quad(double wx1, double wy1, double wx2, double wy2,
     }
 #undef SEGLEN
 }
+#else /* !__HAVE_68881__ */
+
+/*
+ * The common path for every upright quad: walls, doors and billboards, for
+ * the builds without an FPU.  Nothing in here is floating point: the setup
+ * is 32 bit integer arithmetic with 64 bit products and a handful of 64/32
+ * divides, which a 68020 does in one instruction each, where the soft float
+ * version cost some fifty library calls a quad - as much as the columns
+ * themselves for a wall of ordinary size.
+ *
+ * (wx1,wy1)-(wx2,wy2) is the quad in whole world units, running from the
+ * ceiling (z=0) to the floor (z=1024).  `t0`/`t1` are the texture columns at
+ * the two ends in 16.16, scaled 0..64.
+ *
+ * `writez` is set for solid walls, which own their columns from then on.
+ * `testz` is set for anything that has to respect walls already drawn.
+ * `keycolour` makes index 255 transparent (sprites and doors).
+ * `depthonly` draws nothing but still claims the columns, which is how the
+ * invisible wall hides what is behind it.
+ */
+
+/* The camera as the quad setup wants it, from quad_frame_setup(). */
+/* rendertest:begin-quadcam  (tools/rendertest lifts this block verbatim) */
+static K_INT32 qfx, qfy;            /* view direction, 2.30                  */
+static K_INT32 qcx, qcy;            /* camera position, 24.8                 */
+static K_INT32 qpx, qpcx;           /* proj_x and proj_cx, 16.16             */
+static K_INT32 qtopk, qbotk;        /* rows per unit of 1/d to the ceiling   */
+                                    /* and the floor, 24.8                   */
+/* rendertest:end-quadcam */
+
+static void quad_frame_setup(void) {
+    qfx   = fxround(dscale2(cam_fx, 30));
+    qfy   = fxround(dscale2(cam_fy, 30));
+    qcx   = fxround(dscale2(cam_ex, 8));
+    qcy   = fxround(dscale2(cam_ey, 8));
+    qpx   = fxround(dscale2(proj_x, 16));
+    qpcx  = fxround(dscale2(proj_cx, 16));
+    qtopk = fxround(dscale2(-proj_y * cam_ez, 8));
+    qbotk = fxround(dscale2(-proj_y * (cam_ez - 1024.0), 8));
+}
+
+/* Bits in a 64 bit value: 0 for 0, 64 for the top bit set. */
+static int bitlen64(unsigned long long v) {
+    K_UINT32 hi = (K_UINT32)(v >> 32), lo = (K_UINT32)v;
+    return hi ? 64 - __builtin_clz(hi) : lo ? 32 - __builtin_clz(lo) : 0;
+}
+
+/* p >> sh for 0 <= sh < 64, done in halves so gcc does not reach for
+   libgcc's variable 64 bit shift. */
+static K_INT32 shr64(long long p, int sh) {
+    K_INT32 hi = (K_INT32)(p >> 32);
+    K_UINT32 lo = (K_UINT32)p;
+
+    if (sh >= 32) return hi >> (sh - 32);
+    if (sh == 0)  return (K_INT32)lo;
+    return (K_INT32)((lo >> sh) | ((K_UINT32)hi << (32 - sh)));
+}
+
+static K_UINT32 ushr64(unsigned long long p, int sh) {
+    K_UINT32 hi = (K_UINT32)(p >> 32), lo = (K_UINT32)p;
+
+    if (sh >= 32) return hi >> (sh - 32);
+    if (sh == 0)  return lo;
+    return (lo >> sh) | (hi << (32 - sh));
+}
+
+/* (a * b) >> sh, rounded to nearest, for 0 < sh < 64. */
+static K_INT32 mulshr(K_INT32 a, K_INT32 b, int sh) {
+    return shr64((long long)a * b + (1LL << (sh - 1)), sh);
+}
+
+/*
+ * (n << sh) / d, truncated toward zero, for d > 0 and 0 <= sh <= 32.  When
+ * the quotient would not fit in 31 bits it returns 0 and clears *fits: the
+ * callers ask that of a per column step only for a quad narrower than a
+ * column, which never adds the step to anything.
+ */
+static K_INT32 divsh(K_INT32 n, K_UINT32 d, int sh, int *fits) {
+    K_UINT32 t = n < 0 ? (K_UINT32)-n : (K_UINT32)n, hi, lo, q;
+
+    hi = sh ? t >> (32 - sh) : 0;
+    lo = sh < 32 ? t << sh : 0;
+    if (hi >= d >> 1) { *fits = 0; return 0; }
+    q = udiv64(hi, lo, d);
+    return n < 0 ? -(K_INT32)q : (K_INT32)q;
+}
+
+/* -g1 / (g2 - g1) in 0.16, for g1 < 0 <= g2: how far along a segment from
+   an end outside a plane to one inside it the plane cuts. */
+static K_INT32 plane_frac(long long g1, long long g2) {
+    unsigned long long num = (unsigned long long)-g1;
+    unsigned long long den = (unsigned long long)(g2 - g1);
+    int s = bitlen64(den) - 31;
+    K_UINT32 n32, d32;
+
+    if (s < 0) s = 0;
+    n32 = ushr64(num, s);
+    d32 = ushr64(den, s);
+    if (!d32 || n32 >= d32) return 65536;
+    return (K_INT32)udiv64(n32 >> 16, n32 << 16, d32);
+}
+
+static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2,
+                              int texnum, K_INT32 t0, K_INT32 t1,
+                              int shaded, int writez, int testz,
+                              int keycolour, int depthonly)
+{
+    K_INT32 dx1, dy1, dx2, dy2;         /* the ends from the camera, 24.8   */
+    long long D1, D2, E1, E2;           /* depth and offset, exact, 2^38    */
+    K_INT32 sx1, sx2, spn, x0;          /* screen columns, 16.16            */
+    K_INT32 ID1, ID2, IDa, IDmax;       /* 1/d at the ends and at xa, 2^pk  */
+    K_INT32 sTV1, sTV2, TVa;            /* t/d, 2^tk                        */
+    int p1, p2, pk, plane, fits;
+#define SEGLEN 16
+    K_INT32 Z, dZ, YT, dYT, YB, dYB;
+    K_INT32 sYT, sYB, sID, sTV;         /* at the start of each segment */
+    K_INT32 gYT, gYB, gID, gTV;         /* from one segment to the next */
+    K_INT32 dID, dTV;
+    int zk;                             /* depth = sID >> zk */
+    int tsh;                            /* column = (sTV << tsh) / sID */
+    int yshift, rsh;
+    const unsigned char *texbase;
+    int xa, xb, x, seg;
+
+    /*
+     * Depth and sideways offset of both ends.  The game's positions are
+     * whole world units and its view direction comes from a 16.16 table, so
+     * with positions in 24.8 and the direction in 2.30 these four widening
+     * multiplies are exact.
+     */
+    dx1 = (wx1 << 8) - qcx;  dy1 = (wy1 << 8) - qcy;
+    dx2 = (wx2 << 8) - qcx;  dy2 = (wy2 << 8) - qcy;
+    D1 = (long long)qfx * dx1 + (long long)qfy * dy1;
+    E1 = (long long)qfx * dy1 - (long long)qfy * dx1;
+    D2 = (long long)qfx * dx2 + (long long)qfy * dy2;
+    E2 = (long long)qfx * dy2 - (long long)qfy * dx2;
+
+    /*
+     * Clip to the near plane and, so that the screen positions stay within
+     * 16.16, to two side planes at |e| = 4d - a 152 degree field, well clear
+     * of any view the game can show.  An end outside a plane is moved along
+     * the quad to where it crosses, texture coordinate and all, and its
+     * depth and offset are recomputed from the moved point: that keeps the
+     * ends and their 1/d consistent to the last bit, which the reseeding
+     * below relies on.
+     */
+    for (plane = 0; plane < 3; plane++) {
+        long long g1, g2;
+
+        if (plane == 0) {
+            g1 = D1 - ((long long)neardist << 38);
+            g2 = D2 - ((long long)neardist << 38);
+        } else if (plane == 1) {
+            g1 = (D1 << 2) - E1;
+            g2 = (D2 << 2) - E2;
+        } else {
+            g1 = (D1 << 2) + E1;
+            g2 = (D2 << 2) + E2;
+        }
+        if (g1 < 0 && g2 < 0)
+            return;
+        if (g1 < 0 || g2 < 0) {
+            K_INT32 f;
+
+            if (g1 < 0) {
+                f = plane_frac(g1, g2);
+                dx1 += mulshr(dx2 - dx1, f, 16);
+                dy1 += mulshr(dy2 - dy1, f, 16);
+                t0  += mulshr(t1 - t0, f, 16);
+                D1 = (long long)qfx * dx1 + (long long)qfy * dy1;
+                E1 = (long long)qfx * dy1 - (long long)qfy * dx1;
+            } else {
+                f = plane_frac(g2, g1);
+                dx2 += mulshr(dx1 - dx2, f, 16);
+                dy2 += mulshr(dy1 - dy2, f, 16);
+                t1  += mulshr(t0 - t1, f, 16);
+                D2 = (long long)qfx * dx2 + (long long)qfy * dy2;
+                E2 = (long long)qfx * dy2 - (long long)qfy * dx2;
+            }
+        }
+    }
+    /* Rounding the moved point to 1/256 unit can leave it a hair short of
+       the near plane, or over the side planes; nothing below minds that, but
+       a depth of zero or less would. */
+    if (D1 <= 0 || D2 <= 0)
+        return;
+
+    /*
+     * 1/d at both ends, at a power of two scale that puts the nearer one in
+     * [2^28, 2^29], and the screen column of each: e/d from a 64/32 divide,
+     * times the projection.  p is the bit length of D less one, so D >> (p-31)
+     * has 32 significant bits and 2^63 over that is 1/d to 32 bits; the
+     * offset is cut down alongside, and |e| <= 4d after clipping keeps its
+     * 32 bits in range.
+     */
+    p1 = bitlen64((unsigned long long)D1) - 1;
+    p2 = bitlen64((unsigned long long)D2) - 1;
+    pk = (p1 < p2 ? p1 : p2) - 9;
+    zk = pk - 24;
+    if (zk < 0 || p1 < 34 || p2 < 34)   /* nearer than 2^-4 units: never */
+        return;
+    {
+        int i;
+        for (i = 0; i < 2; i++) {
+            long long D = i ? D2 : D1, E = i ? E2 : E1;
+            int p = i ? p2 : p1, sh = p - 31, r = sh + 25 - pk;
+            K_UINT32 dn = ushr64((unsigned long long)D, sh);
+            K_UINT32 q = udiv64(0x7fffffff, 0xffffffff, dn);
+            K_INT32 id, en, e16, sx;
+
+            /* r is at least 3, so this rounds to at most 2^29. */
+            id = r >= 32 ? 0
+               : (K_INT32)ushr64((unsigned long long)q + (1UL << (r - 1)), r);
+            en = shr64(E, sh + 3);
+            e16 = divsh(en, dn, 19, &fits);
+            sx = qpcx + mulshr(qpx, e16, 16);
+            if (i) { ID2 = id; sx2 = sx; } else { ID1 = id; sx1 = sx; }
+        }
+    }
+
+    if (sx1 > sx2) {
+        K_INT32 s;
+        s = sx1; sx1 = sx2; sx2 = s;
+        s = ID1; ID1 = ID2; ID2 = s;
+        s = t0;  t0  = t1;  t1  = s;
+    }
+    spn = sx2 - sx1;
+    if (spn <= 0 || sx2 <= (VIEW_LEFT << 16) || sx1 >= (VIEW_RIGHT << 16))
+        return;
+
+    /* ceil(sx - 0.5): the columns whose centres the quad covers. */
+    xa = (sx1 + 32767) >> 16;
+    xb = (sx2 + 32767) >> 16;
+    if (xa < VIEW_LEFT) xa = VIEW_LEFT;
+    if (xb > VIEW_RIGHT) xb = VIEW_RIGHT;
+    if (xa >= xb) return;
+    x0 = (xa << 16) + 32768 - sx1;      /* first column centre past sx1 */
+
+    texbase = walseg[texnum];
+    IDmax = ID1 > ID2 ? ID1 : ID2;
+
+    /*
+     * 1/d is linear in screen x, and the depth value, the top row and the
+     * bottom row are each an affine function of 1/d - so all three are linear
+     * in x and can be walked with one 32 bit add apiece.  Only the texture
+     * column needs a real perspective divide, and that is still done once per
+     * 16 column segment and interpolated in between.
+     *
+     * The per column steps come from the two ends: their difference over
+     * the span in columns.  A quad narrower than a column has no use for a
+     * step and may not be able to hold one; divsh() leaves those at zero.
+     * The per segment steps are the same over sixteen columns, rounded on
+     * their own so the error of a column step is not multiplied up.
+     */
+    fits = 1;
+    dID = divsh(ID2 - ID1, (K_UINT32)spn, 16, &fits);
+    gID = divsh(ID2 - ID1, (K_UINT32)spn, 20, &fits);
+    IDa = ID1 + mulshr(dID, x0, 16);
+    dZ  = zk ? (dID + (1L << (zk - 1))) >> zk : dID;
+
+    /*
+     * The texture column's perspective pair, t/d and 1/d, gets a scale of
+     * its own: t/d at the two ends, exact from t and 1/d, is cut to 29 bits
+     * so it keeps eight or nine significant digits however far the wall and
+     * however many texels it spans, and the divide's shift makes up the
+     * difference.
+     */
+    {
+        long long TV1 = (long long)t0 * ID1, TV2 = (long long)t1 * ID2;
+        unsigned long long a1 = (unsigned long long)(TV1 < 0 ? -TV1 : TV1);
+        unsigned long long a2 = (unsigned long long)(TV2 < 0 ? -TV2 : TV2);
+
+        tsh = bitlen64(a1 > a2 ? a1 : a2) - 29;
+        if (tsh < 0) tsh = 0;
+        sTV1 = shr64(TV1, tsh);
+        sTV2 = shr64(TV2, tsh);
+    }
+    dTV = divsh(sTV2 - sTV1, (K_UINT32)spn, 16, &fits);
+    gTV = divsh(sTV2 - sTV1, (K_UINT32)spn, 20, &fits);
+    TVa = sTV1 + mulshr(dTV, x0, 16);
+
+    /*
+     * Rows.  Each row accumulator has to survive as a 32 bit value over the
+     * whole span, and a wall at the near plane reaches about 64 x proj_y
+     * rows off screen with the camera at the top or bottom of its range,
+     * which is fine in 16.16 at 240 lines but not at 1080.  Only the whole
+     * part of a row is ever used, so the fraction gives way instead: the
+     * row scale is the largest up to 16 bits that keeps the furthest row
+     * the quad can reach, plus one segment step, under 2^30.  The top and
+     * bottom are bounded together because draw_span() subtracts them.
+     */
+    {
+        K_INT32 k = (qtopk < 0 ? -qtopk : qtopk) + (qbotk < 0 ? -qbotk : qbotk);
+        K_INT32 rows = shr64((long long)k * IDmax, pk + 8);
+        K_INT32 step = shr64((long long)k * (gID < 0 ? -gID : gID), pk + 8);
+        K_INT32 need = (horizon_row < 0 ? -horizon_row : horizon_row) + rows + step + 2;
+
+        yshift = __builtin_clz((K_UINT32)need) - 2;
+        if (yshift > 16) yshift = 16;
+        if (yshift < 4)
+            return;
+    }
+    rsh = pk + 8 - yshift;              /* 24.8 rows/(1/d) times 2^pk (1/d) */
+
+    sYT = (horizon_row << yshift) + mulshr(qtopk, IDa, rsh);
+    sYB = (horizon_row << yshift) + mulshr(qbotk, IDa, rsh);
+    dYT = mulshr(qtopk, dID, rsh);
+    dYB = mulshr(qbotk, dID, rsh);
+    gYT = mulshr(qtopk, gID, rsh);
+    gYB = mulshr(qbotk, gID, rsh);
+    sID = IDa;
+    sTV = TVa;
+
+    for (seg = xa; seg < xb; seg += SEGLEN,
+         sYT += gYT, sYB += gYB, sID += gID, sTV += gTV) {
+        int xe = seg + SEGLEN;
+        K_INT32 tcur, tinc;
+        int n;
+
+        if (xe > xb) xe = xb;
+        n = xe - seg;
+
+        Z = zk ? (sID + (1L << (zk - 1))) >> zk : sID;
+        if (Z <= 0 || Z + dZ * (n - 1) <= 0)
+            continue;
+
+        YT = sYT;
+        YB = sYB;
+
+        /* tcur is a texture column that is about to be floored to a whole
+           texel, so truncating it is exactly right and rounding it to nearest
+           would pick the wrong texel just below a boundary.  tinc is a step
+           that gets added up, so that one does want rounding. */
+        tcur = tcdiv(sTV, sID, tsh);
+        tinc = 0;
+        if (n > 1) {
+            K_INT32 d = tcdiv(sTV + dTV * (n - 1), sID + dID * (n - 1), tsh) - tcur;
+            int m = n - 1;
+
+            tinc = (d + (d >= 0 ? m / 2 : -(m / 2))) / m;
+        }
+
+        for (x = seg; x < xe;
+             x++, tcur += tinc, Z += dZ, YT += dYT, YB += dYB) {
+            if (Z <= 0) continue;
+            if (testz && Z <= zbuf[x]) continue;
+            if (writez) zbuf[x] = Z;
+            if (depthonly) continue;
+
+            draw_span(amiga_chunky + x, texbase + (((tcur >> 16) & 63) << 6),
+                      YT, YB, yshift, shaded, keycolour);
+        }
+    }
+#undef SEGLEN
+}
+#endif /* __HAVE_68881__ */
 
 /* ------------------------------------------------------------- scene setup */
 
 void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
                   double aspwv, double asphv, int yy) {
     unsigned char ceilcol, floorcol;
-    int i, y, split, hr, full;
+    int y, split, hr, full;
     double cx, f;
 
     if (!amiga_chunky) return;
 
+    /* sintable is already a unit circle in 16.16; renormalising it is a
+       soft-float sqrt and two divides for a change in the last bit. */
     cam_fx = sintable[(angs + 512) & 2047] / 65536.0;
     cam_fy = sintable[angs & 2047] / 65536.0;
-    {
-        double len = sqrt(cam_fx*cam_fx + cam_fy*cam_fy);
-        if (len > 1e-9) { cam_fx /= len; cam_fy /= len; }
-    }
 
     cam_ex = posxs;
     cam_ey = posys;
@@ -1205,6 +1560,9 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     proj_y  = 160.0 * amiga_mode.ppuy * f;
     proj_cx = cx;
     horizon_row = hr;
+#ifndef __HAVE_68881__
+    quad_frame_setup();
+#endif
 
     /* Flat ceiling above the horizon, flat floor below - the same two colours
        the OpenGL path clears and fills with. */
@@ -1231,8 +1589,7 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
             memset(row, y < split ? ceilcol : floorcol, w);
     }
 
-    for (i = 0; i < VW; i++)
-        zbuf[i] = 0;
+    memset(zbuf + clip_x0, 0, (size_t)(clip_x1 - clip_x0) * sizeof(K_INT32));
 }
 
 void R_DrawWall(K_INT32 x1, K_INT32 y1, K_INT32 x2, K_INT32 y2,
@@ -1241,10 +1598,16 @@ void R_DrawWall(K_INT32 x1, K_INT32 y1, K_INT32 x2, K_INT32 y2,
     /* graphx.c sets `shaded` for the brighter of the two wall orientations;
        the OpenGL path multiplies the other one by 0.9, which in this palette
        is one step down the brightness ramp. */
-    draw_upright_quad((double)x1, (double)y1, (double)x2, (double)y2,
-                      j, v0 * 64.0, v1 * 64.0,
-                      shaded ? 0 : 1,
-                      1, 1, 0, transparent);
+    {
+        K_INT32 t0 = 0, t1 = 64L << 16;
+        if (v0 != 0.0 || v1 != 1.0) {
+            t0 = fxround(dscale2(v0, 22));
+            t1 = fxround(dscale2(v1, 22));
+        }
+        draw_upright_quad(x1, y1, x2, y2, j, t0, t1,
+                          shaded ? 0 : 1,
+                          1, 1, 0, transparent);
+    }
 }
 
 void R_EndWalls(void) {
@@ -1259,8 +1622,15 @@ void R_DrawBillboard(K_INT32 x1, K_INT32 y1, K_INT32 x2, K_INT32 y2,
                      K_INT16 j, double v0, double v1,
                      K_INT16 ang, K_INT16 playerang) {
     if (ang == 0) {
-        draw_upright_quad((double)x1, (double)y1, (double)x2, (double)y2,
-                          j, v0 * 64.0, v1 * 64.0, 0, 0, 1, 1, 0);
+        {
+            K_INT32 t0 = 0, t1 = 64L << 16;
+            if (v0 != 0.0 || v1 != 1.0) {
+                t0 = fxround(dscale2(v0, 22));
+                t1 = fxround(dscale2(v1, 22));
+            }
+            draw_upright_quad(x1, y1, x2, y2, j, t0, t1,
+                              0, 0, 1, 1, 0);
+        }
         return;
     }
 
