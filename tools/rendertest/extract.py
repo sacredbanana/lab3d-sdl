@@ -38,6 +38,7 @@ WANTED = {
     "mulshr",
     "divsh",
     "plane_frac",
+    "lerp64",
     "draw_upright_quad",
     "softtri",
     "R_DrawFloorSprite",

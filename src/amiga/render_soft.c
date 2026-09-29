@@ -1217,10 +1217,11 @@ static K_INT32 mulshr(K_INT32 a, K_INT32 b, int sh) {
 }
 
 /*
- * (n << sh) / d, truncated toward zero, for d > 0 and 0 <= sh <= 32.  When
+ * (n << sh) / d, rounded to nearest, for d > 0 and 0 <= sh <= 32.  When
  * the quotient would not fit in 31 bits it returns 0 and clears *fits: the
- * callers ask that of a per column step only for a quad narrower than a
- * column, which never adds the step to anything.
+ * callers ask that of a step only for a quad too narrow to use it.  Steps
+ * are added up across the quad, so truncating them would make every
+ * segment drift the same way.
  */
 static K_INT32 divsh(K_INT32 n, K_UINT32 d, int sh, int *fits) {
     K_UINT32 t = n < 0 ? (K_UINT32)-n : (K_UINT32)n, hi, lo, q;
@@ -1228,11 +1229,14 @@ static K_INT32 divsh(K_INT32 n, K_UINT32 d, int sh, int *fits) {
     hi = sh ? t >> (32 - sh) : 0;
     lo = sh < 32 ? t << sh : 0;
     if (hi >= d >> 1) { *fits = 0; return 0; }
+    lo += d >> 1;
+    hi += lo < (d >> 1);                /* the carry */
     q = udiv64(hi, lo, d);
+    if (q > 0x7fffffff) { *fits = 0; return 0; }
     return n < 0 ? -(K_INT32)q : (K_INT32)q;
 }
 
-/* -g1 / (g2 - g1) in 0.16, for g1 < 0 <= g2: how far along a segment from
+/* -g1 / (g2 - g1) in 2.30, for g1 < 0 <= g2: how far along a segment from
    an end outside a plane to one inside it the plane cuts. */
 static K_INT32 plane_frac(long long g1, long long g2) {
     unsigned long long num = (unsigned long long)-g1;
@@ -1243,8 +1247,23 @@ static K_INT32 plane_frac(long long g1, long long g2) {
     if (s < 0) s = 0;
     n32 = ushr64(num, s);
     d32 = ushr64(den, s);
-    if (!d32 || n32 >= d32) return 65536;
-    return (K_INT32)udiv64(n32 >> 16, n32 << 16, d32);
+    if (!d32 || n32 >= d32) return 1L << 30;
+    return (K_INT32)udiv64(n32 >> 2, n32 << 30, d32);
+}
+
+/* a + (b - a) * f for f in 2.30, 0 <= f <= 1, rounded, and |b - a| < 2^62:
+   the difference is taken in halves so the product needs no more than two
+   32 by 32 bit multiplies. */
+static long long lerp64(long long a, long long b, K_INT32 f) {
+    long long d = b - a;
+    int neg = d < 0;
+    unsigned long long m = neg ? (unsigned long long)-d : (unsigned long long)d;
+    K_UINT32 mh = (K_UINT32)(m >> 32), ml = (K_UINT32)m;
+    unsigned long long hi = (unsigned long long)mh * (K_UINT32)f;
+    unsigned long long lo = (unsigned long long)ml * (K_UINT32)f;
+    unsigned long long p = (hi << 2) + ((lo + (1ULL << 29)) >> 30);
+
+    return neg ? a - (long long)p : a + (long long)p;
 }
 
 static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2,
@@ -1286,10 +1305,11 @@ static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2
      * Clip to the near plane and, so that the screen positions stay within
      * 16.16, to two side planes at |e| = 4d - a 152 degree field, well clear
      * of any view the game can show.  An end outside a plane is moved along
-     * the quad to where it crosses, texture coordinate and all, and its
-     * depth and offset are recomputed from the moved point: that keeps the
-     * ends and their 1/d consistent to the last bit, which the reseeding
-     * below relies on.
+     * the quad to where it crosses, texture coordinate and all, with its
+     * depth and offset interpolated at their full 2^38 scale.  Rounding the
+     * moved point to 24.8 instead would put it a hair off the plane, and at
+     * the near plane a hair is a large fraction of the depth: a 1/256 unit
+     * there moves the rows of a close wall by several texels.
      */
     for (plane = 0; plane < 3; plane++) {
         long long g1, g2;
@@ -1311,34 +1331,29 @@ static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2
 
             if (g1 < 0) {
                 f = plane_frac(g1, g2);
-                dx1 += mulshr(dx2 - dx1, f, 16);
-                dy1 += mulshr(dy2 - dy1, f, 16);
-                t0  += mulshr(t1 - t0, f, 16);
-                D1 = (long long)qfx * dx1 + (long long)qfy * dy1;
-                E1 = (long long)qfx * dy1 - (long long)qfy * dx1;
+                t0 += mulshr(t1 - t0, f, 30);
+                E1 = lerp64(E1, E2, f);
+                D1 = plane ? lerp64(D1, D2, f) : (long long)neardist << 38;
             } else {
                 f = plane_frac(g2, g1);
-                dx2 += mulshr(dx1 - dx2, f, 16);
-                dy2 += mulshr(dy1 - dy2, f, 16);
-                t1  += mulshr(t0 - t1, f, 16);
-                D2 = (long long)qfx * dx2 + (long long)qfy * dy2;
-                E2 = (long long)qfx * dy2 - (long long)qfy * dx2;
+                t1 += mulshr(t0 - t1, f, 30);
+                E2 = lerp64(E2, E1, f);
+                D2 = plane ? lerp64(D2, D1, f) : (long long)neardist << 38;
             }
         }
     }
-    /* Rounding the moved point to 1/256 unit can leave it a hair short of
-       the near plane, or over the side planes; nothing below minds that, but
-       a depth of zero or less would. */
+    /* Rounding can leave a moved end a hair over a side plane; nothing below
+       minds that, but a depth of zero or less would. */
     if (D1 <= 0 || D2 <= 0)
         return;
 
     /*
      * 1/d at both ends, at a power of two scale that puts the nearer one in
-     * [2^28, 2^29], and the screen column of each: e/d from a 64/32 divide,
+     * [2^28, 2^29], and the screen column of each: e times that same 1/d,
      * times the projection.  p is the bit length of D less one, so D >> (p-31)
      * has 32 significant bits and 2^63 over that is 1/d to 32 bits; the
      * offset is cut down alongside, and |e| <= 4d after clipping keeps its
-     * 32 bits in range.
+     * 32 bits in range.  One divide per end, for both.
      */
     p1 = bitlen64((unsigned long long)D1) - 1;
     p2 = bitlen64((unsigned long long)D2) - 1;
@@ -1353,14 +1368,21 @@ static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2
             int p = i ? p2 : p1, sh = p - 31, r = sh + 25 - pk;
             K_UINT32 dn = ushr64((unsigned long long)D, sh);
             K_UINT32 q = udiv64(0x7fffffff, 0xffffffff, dn);
-            K_INT32 id, en, e16, sx;
+            K_INT32 id, en, e28, sx;
+            K_UINT32 ea, m;
 
             /* r is at least 3, so this rounds to at most 2^29. */
             id = r >= 32 ? 0
                : (K_INT32)ushr64((unsigned long long)q + (1UL << (r - 1)), r);
+            /* e/d in 3.28, which is 8 en / dn, or en q / 2^32: the top half
+               of one mulu.l.  The projection multiplies it by some hundreds
+               of columns, so 16 fraction bits here would leave the column
+               good to only a few thousandths and move the edge columns. */
             en = shr64(E, sh + 3);
-            e16 = divsh(en, dn, 19, &fits);
-            sx = qpcx + mulshr(qpx, e16, 16);
+            ea = en < 0 ? (K_UINT32)-en : (K_UINT32)en;
+            m = (K_UINT32)(((unsigned long long)ea * q + 0x80000000UL) >> 32);
+            e28 = en < 0 ? -(K_INT32)m : (K_INT32)m;
+            sx = qpcx + mulshr(qpx, e28, 28);
             if (i) { ID2 = id; sx2 = sx; } else { ID1 = id; sx1 = sx; }
         }
     }
@@ -1397,11 +1419,13 @@ static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2
      * the span in columns.  A quad narrower than a column has no use for a
      * step and may not be able to hold one; divsh() leaves those at zero.
      * The per segment steps are the same over sixteen columns, rounded on
-     * their own so the error of a column step is not multiplied up.
+     * their own so the error of a column step is not multiplied up.  The
+     * column step is the segment step rounded to a sixteenth of it, which
+     * spares a divide, unless the quad is too narrow for that one to fit.
      */
     fits = 1;
-    dID = divsh(ID2 - ID1, (K_UINT32)spn, 16, &fits);
     gID = divsh(ID2 - ID1, (K_UINT32)spn, 20, &fits);
+    dID = fits ? (gID + 8) >> 4 : divsh(ID2 - ID1, (K_UINT32)spn, 16, &fits);
     IDa = ID1 + mulshr(dID, x0, 16);
     dZ  = zk ? (dID + (1L << (zk - 1))) >> zk : dID;
 
@@ -1422,8 +1446,9 @@ static void draw_upright_quad(K_INT32 wx1, K_INT32 wy1, K_INT32 wx2, K_INT32 wy2
         sTV1 = shr64(TV1, tsh);
         sTV2 = shr64(TV2, tsh);
     }
-    dTV = divsh(sTV2 - sTV1, (K_UINT32)spn, 16, &fits);
+    fits = 1;
     gTV = divsh(sTV2 - sTV1, (K_UINT32)spn, 20, &fits);
+    dTV = fits ? (gTV + 8) >> 4 : divsh(sTV2 - sTV1, (K_UINT32)spn, 16, &fits);
     TVa = sTV1 + mulshr(dTV, x0, 16);
 
     /*

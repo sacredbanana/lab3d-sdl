@@ -41,7 +41,7 @@ Current behaviour, for reference:
 |---|---|---|
 | `softtri` | every pixel | ~0.0017% differ, zero away from a boundary |
 | `floor` | every pixel | ~0.07% differ |
-| `wall` | every pixel, plus the depth buffer | ~0.007% differ; depth within 0.35% relative, 8 absolute |
+| `wall` | every pixel, plus the depth buffer | ~0.015% differ; depth within 0.35% relative, 8 absolute |
 | `castray` | one ray at a time, same angle both sides | same wall, face and texture; hit point within 0.007 cells |
 | `raycast` | the whole visibility pass | walls lost are at most ~0.1 px wide on a 360 px view |
 
@@ -53,6 +53,21 @@ outside the triangle, so the values there blow up, the scale collapses and
 precision is lost in the middle of the triangle where it is the only thing
 that matters. It showed up as two wrong pixels in 137 million. Sizing the
 scale from the step instead fixed it and made the common case 3x better too.
+
+They caught another when `draw_upright_quad`'s setup went from doubles to
+integers. The cut fraction at a clip plane was taken in 0.16 and the moved end
+rounded to 1/256 unit, which at the near plane, sixteen units away, is enough
+to move a close wall's rows by several texels; and the screen column came from
+e/d in 16.16 before the projection multiplied it by a few hundred, so edge
+columns came and went. `wall` rose from ~0.01% to ~0.1% with a relative depth
+error of 1 - a column only one side had claimed. Interpolating the clipped
+end's depth and offset at their full scale, carrying e/d to 28 bits and
+rounding the steps rather than truncating them fixed it; taking e/d as a
+multiply by the reciprocal already there, and each column step from its
+segment step, took four `divu.l` out of the setup, so the fix left the 020
+build slightly faster rather than slower (`bench68k.sh benchframe`). What is left is
+nearly all whole columns picking the neighbouring texel where the reference
+lands within a few 65536ths of the boundary.
 
 ## What the ray caster tests assert, and what they only report
 
