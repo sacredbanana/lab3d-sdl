@@ -1,7 +1,24 @@
+Short:        Ken's Labyrinth 3D shooter for 68020+
+Author:       Ken Silverman, Jan Lonnberg, Cameron Armstrong
+Uploader:     Cameron Armstrong <cameronscottarmstrong@gmail.com>
+Type:         game/shoot
+Version:      4.3.0
+Architecture: m68k-amigaos >= 3.0
+Requires:     68020+, asl.library V38+
+
 Ken's Labyrinth for AmigaOS 3.x
 ===============================
 
-This is LAB3D/SDL's Amiga port.  It is the same game as the desktop versions,
+Ken's Labyrinth is a first-person shooter for MS-DOS, written by Ken
+Silverman and published by Epic MegaGames in 1993, in the same year as Doom
+and a year after Wolfenstein 3D.  You find your way through three episodes
+of textured mazes full of hideous monsters, keys, locked doors, potions and
+secrets, all with a cartoonish sense of humour.  Ken wrote it while still at
+school, and went on to write the Build engine behind Duke Nukem 3D, Shadow
+Warrior and Blood.  He later released the full game and its source code for
+free, which is what makes this port possible.
+
+This is LAB3D/SDL's Amiga port. It is the same game as the desktop versions,
 but it uses no SDL and no OpenGL: the labyrinth is drawn by a software
 renderer, and the display, sound and input go straight through
 intuition.library, graphics.library, cybergraphics.library, audio.device or
@@ -26,12 +43,13 @@ Which executable?
 
   Kens-Labyrinth.020      68020/68EC020 with no FPU (software floating point)
   Kens-Labyrinth.020fpu   68020/68030 with a 68881 or 68882
-  Kens-Labyrinth.040      68040
-  Kens-Labyrinth.060      68060
+  Kens-Labyrinth.040      68040 (FPU built-in)
+  Kens-Labyrinth.060      68060 (FPU built-in)
 
 The renderer and the ray caster work in fixed point, so the FPU builds are no
 longer the large step up they once were - what floating point is left runs
-once a frame rather than once a pixel.  Pick the build that matches your CPU;
+once a frame rather than once a pixel. An FPU build will significantly improve
+the performance of Adlib music emulation. Pick the build that matches your CPU;
 an FPU build will not run at all on a machine that has no FPU.
 
 Keep the gamedata drawer next to whichever executable you use.
@@ -89,8 +107,12 @@ Controls
 --------
 
 Keyboard, mouse and joystick all work, and all of them can be rebound from
-Setup -> Configure Input.  The joystick is read from port 1, and a CD32 pad's
+Setup -> Configure Input. The joystick is read from port 1, and a CD32 pad's
 extra buttons show up as buttons 0 to 6.
+
+The default keyboard controls are the arrow keys to move, shift to sprint,
+space to open doors / interact with objects, left ctrl to shoot, F1->F4 to
+switch weapons.
 
 
 Sound
@@ -105,24 +127,18 @@ Setup -> Sound output picks how the game reaches the speakers:
                   output.  The actual resolution with other AHI drivers
                   depends on their hardware and configuration.
 
-Automatic selects Paula on 020 and 030 machines to leave more CPU time for the
-game.  If you have a sound card in a slower machine, choose AHI explicitly. If
-ahi.device cannot be opened the game falls back to Paula and says so.
+Automatically selects Paula on 020 and 030 machines to leave more CPU time
+for the game. If you have a sound card in a slower machine, choose AHI
+explicitly. If ahi.device cannot be opened the game falls back to Paula an
+says so.
 
 Setup -> Sample rate selects the output rate (22050 Hz by default). Digital
 sound effects retain their original timing at every output rate.
 
 Setup -> Music -> MOD sampled music avoids live Adlib synthesis and needs no
 FPU. Music and game sound effects are mixed together through either Paula or
-AHI. The music volume controls still work; Effects can be disabled separately.
-The saved setting is [Music] enable = 3 on the Amiga.
-
-Keep the entire gamedata drawer together. Each version's mods drawer contains
-its unique tracks; byte-identical tracks live once in gamedata/shared/mods or
-gamedata/shared/Ken1/mods and gamedata/shared/Ken2/mods. All tracks needed by
-versions 1.0, 1.1, 2.0 and 2.1 are included. The build script copies them
-automatically. A missing or invalid MOD silences that track and logs its path;
-effects keep working, and the next available track can still play.
+AHI. If you have an FPU, switch to Adlib emulation for the authentic MS-DOS
+music.
 
 These are twelve-channel MOD files with short samples of the original Adlib
 instruments and percussion, rendered by the game's own Adlib emulator. Their
@@ -144,6 +160,12 @@ The built-in player supports these supplied modules, including their note,
 sample offset, volume, speed and loop commands. A third-party player must
 support 12CH MODs.
 
+Keep the entire gamedata drawer together. Each version's mods drawer contains
+its unique tracks; byte-identical tracks live once in gamedata/shared/mods or
+gamedata/shared/Ken1/mods and gamedata/shared/Ken2/mods. All tracks needed by
+versions 1.0, 1.1, 2.0 and 2.1 are included. The build script copies them
+automatically. A missing or invalid MOD silences that track and logs its path;
+effects keep working, and the next available track can still play.
 
 
 Performance
@@ -161,22 +183,25 @@ If the game is too slow:
   * Use a smaller screen mode; 320x200 is a third less work than 360x240.
   * On a native screen, scaling up costs chunky-to-planar time for every
     pixel of the screen, not just of the render.  Render size Off, or a
-    lores screen mode, is the fastest way to play there.
-
-
-Not included
-------------
-
-Texture filtering, hi-res replacement textures and the stereoscopic 3D mode
-all need hardware the Amiga does not have, and are not present.  Music is
-Adlib emulation or nothing; there is no General MIDI output.  Demo files can
-be recorded uncompressed (-recordx) and played back, but gzip-compressed
-demos are not supported.
+    lores screen mode, or reduced colour depth is the fastest way to play
+    there.
 
 
 Credits
 -------
 
-Ken's Labyrinth is by Ken Silverman, published by Epic MegaGames.
-LAB3D/SDL is by Jan Lonnberg and contributors.
-See the main README for the full credit list and the licence.
+"Ken's Labyrinth" Copyright (c) 1992-1993 Ken Silverman
+Ken Silverman's official web site: "http://www.advsys.net/ken"
+
+Ken's Labyrinth was published by Epic MegaGames.
+LAB3D/SDL is by Jan Lonnberg and contributors; the Amiga port is by
+Cameron Armstrong.  See the main README for the full credit list.
+
+
+Licence
+-------
+
+Ken Silverman's licence allows derivative works of the Ken's Labyrinth source
+to be distributed only through the Internet and free of charge, with no
+commercial exploitation.  For that reason this archive must not be put on
+Aminet CD-ROMs or any other media that are sold.

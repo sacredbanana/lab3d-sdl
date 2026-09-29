@@ -319,9 +319,10 @@ needed:
 
 This produces all four CPU variants in `dist/amiga/` along with a ready-to-copy
 `dist/amiga/Kens-Labyrinth/` drawer containing the executables, the game data
-and a readme. `CLEAN=1 ./build-amiga.sh` wipes the build directory first,
-`DEBUG=1 ./build-amiga.sh` makes a debug build, and naming variants builds only
-those:
+and `Kens-Labyrinth.readme`, which is also copied next to `Kens-Labyrinth.lha`
+for uploading to Aminet. `CLEAN=1 ./build-amiga.sh` wipes the build directory
+first, `DEBUG=1 ./build-amiga.sh` makes a debug build, and naming variants
+builds only those:
 
 ```
 ./build-amiga.sh 060

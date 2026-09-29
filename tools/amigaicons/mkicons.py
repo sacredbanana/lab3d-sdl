@@ -13,7 +13,8 @@ to copy them:
     Kens-Labyrinth.info     drawer   the "KEN'S LABYRINTH" floppy
     Kens-Labyrinth.0xx.info tool     the green monster in front of the red
                                      brick wall, stack 32768
-    README.info             project  a page of text, default tool MultiView
+    Kens-Labyrinth.readme.info
+                            project  a page of text, default tool MultiView
 
 --preview DIR also writes a PNG of each icon, normal and selected side by
 side, for checking the art without booting an Amiga.
@@ -462,7 +463,7 @@ def main(argv):
     pal = game_palette()
     monster = monster_picture(walls, pal)
     # The drawer's window holds three columns, 190 pixels apart: the four
-    # executables in two rows, the README top right.  Topaz 8 draws
+    # executables in two rows, the readme top right.  Topaz 8 draws
     # "Kens-Labyrinth.020fpu" 168 pixels wide in one line, centred under its
     # icon, so the first icon starts far enough in for the label to fit;
     # proportional fonts (AmiKit) wrap it at the dot onto a second line,
@@ -475,9 +476,10 @@ def main(argv):
         # The drawer icon sits beside the drawer, in the parent directory.
         "Kens-Labyrinth": (floppy_picture(walls, pal),
                            dict(kind=WBDRAWER, drawer=(10, 30, 620, 290))),
-        "README": (readme, dict(kind=WBPROJECT, stack=4096,
-                                default_tool="SYS:Utilities/MultiView",
-                                pos=(column(2, len(readme[0])), 14))),
+        "Kens-Labyrinth.readme": (
+            readme, dict(kind=WBPROJECT, stack=4096,
+                         default_tool="SYS:Utilities/MultiView",
+                         pos=(column(2, len(readme[0])), 14))),
     }
     for i, name in enumerate(EXECUTABLES):
         icons[name] = (monster, dict(kind=WBTOOL, stack=STACK,
