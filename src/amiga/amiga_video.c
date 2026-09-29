@@ -590,6 +590,7 @@ static int amiga_alloc_frame(const amiga_videomode *m) {
     amiga_chunky = AllocVec((ULONG)m->vieww * m->viewh, MEMF_ANY | MEMF_CLEAR);
     if (!amiga_chunky)
         return -1;
+    amiga_bar_stale = 1;
 
     bandbuf  = NULL;
     bandrows = 0;
@@ -988,6 +989,7 @@ void amiga_clear_leftovers(void) {
 
     if (!amiga_chunky) return;
 
+    amiga_bar_stale = 1;
     if (ovl_last.all) {
         memset(amiga_chunky, 0, (size_t)amiga_mode.vieww * amiga_mode.viewh);
         dirty_now.all = 1;
@@ -1006,6 +1008,7 @@ void amiga_clear_leftovers(void) {
 void amiga_video_invalidate(void) {
     if (amiga_chunky)
         memset(amiga_chunky, 0, (size_t)amiga_mode.vieww * amiga_mode.viewh);
+    amiga_bar_stale = 1;
     dirty_now.all = dirty_last.all = 1;
     ovl_now.n = ovl_last.n = 0;
     ovl_now.all = ovl_last.all = 0;

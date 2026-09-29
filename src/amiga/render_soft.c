@@ -98,6 +98,22 @@ static void clip_to_frame(void) {
     clip_y1 = VH;
 }
 
+/*
+ * The status bar is composited once and then kept.  While it is up,
+ * R_BeginScene() keeps the labyrinth off the rows it covers, so nothing
+ * needs drawing there again - not the flat fill, not the walls, not the
+ * conversion to the screen - until the overlay under it changes or someone
+ * else writes to those rows, which sets amiga_bar_stale.
+ *
+ * bar_after_scene records whether the last scene was followed by
+ * ShowStatusBar(); only then does the next scene leave the bar rows alone,
+ * and bar_kept says it did, so a scene drawn without the bar (the intro,
+ * say) is never left showing an old one.
+ */
+int amiga_bar_stale = 1;
+static int bar_after_scene, bar_kept;
+static int bar_shown_vis = -1;      /* statusbaryvisible the frame holds */
+
 extern void amiga_build_penmap(void);
 extern int  amiga_num_pens(void);
 extern const UBYTE *amiga_penmap(void);
@@ -350,6 +366,7 @@ void R_ClearScreen(void) {
         memset(amiga_chunky, 0, (size_t)VW * VH);
         amiga_mark_all_dirty();
     }
+    amiga_bar_stale = 1;
 }
 
 /* --------------------------------------------------------------- textures */
@@ -577,12 +594,17 @@ void ShowPartialOverlay(int x, int y, int w, int h, int statusbar) {
     if (y < 0) { h += y; y = 0; }
     if (w <= 0 || h <= 0) return;
 
+    /* Anything that lands on the kept status bar means drawing it again. */
+    if (y + h > 240 - statusbaryvisible) amiga_bar_stale = 1;
+
     blit_overlay(x, y + visiblescreenyoffset, x, y, w, h);
 }
 
 void UploadPartialOverlay(int x, int y, int w, int h) {
     if (!ClipToBuffer(&x, &y, &w, &h))
         return;
+    /* The bar's part of the overlay changed; ShowStatusBar() shows it. */
+    if (y + h + 1 > statusbaryoffset) amiga_bar_stale = 1;
     if (menuing) return;
     ShowPartialOverlay(x - 1, y - 1, w + 2, h + 2, 0);
 }
@@ -646,6 +668,7 @@ void amiga_restore_menu(void) {
         memcpy(amiga_chunky + (size_t)r * VW + held.fx0,
                held.frame + (size_t)(r - held.fy0) * fw, fw);
     amiga_mark_dirty(held.fx0, held.fy0, held.fx1, held.fy1, 1);
+    amiga_bar_stale = 1;
 }
 
 void amiga_release_menu(void) {
@@ -660,9 +683,16 @@ void UploadOverlay(void) {
 }
 
 void ShowStatusBar(void) {
+    bar_after_scene = 1;
+    if (bar_kept && !amiga_bar_stale && bar_shown_vis == statusbaryvisible)
+        return;     /* still on the frame from last time */
+
     mixing = 1;
     ShowPartialOverlay(20, statusbaryoffset, 320, statusbaryvisible, 1);
     mixing = 0;
+
+    amiga_bar_stale = 0;
+    bar_shown_vis = statusbaryvisible;
 }
 
 void SetVisibleScreenOffset(K_UINT16 offset) {
@@ -1156,6 +1186,19 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
         /* The overlays drew into the border last frame; put it back. */
         amiga_clear_leftovers();
     }
+
+    /* With the status bar up, and ShowStatusBar() following the scene as it
+       did last time, the rows under it are its: leave them be, and the bar
+       need not be composited again. */
+    bar_kept = 0;
+    if (bar_after_scene && statusbaryvisible > 0) {
+        int top = unit_row(view_bottom() - statusbaryvisible);
+
+        if (top < clip_y1) clip_y1 = top;
+        if (clip_y1 < clip_y0) clip_y1 = clip_y0;
+        bar_kept = 1;
+    }
+    bar_after_scene = 0;
     amiga_mark_dirty(clip_x0, clip_y0, clip_x1, clip_y1, 0);
 
     proj_x  = 180.0 * amiga_mode.ppux * f;
@@ -1179,7 +1222,7 @@ void R_BeginScene(K_UINT16 posxs, K_UINT16 posys, K_INT16 poszs, K_INT16 angs,
     if (full) {
         memset(amiga_chunky, ceilcol, (size_t)split * VW);
         memset(amiga_chunky + (size_t)split * VW, floorcol,
-               (size_t)(VH - split) * VW);
+               (size_t)(clip_y1 - split) * VW);
     } else {
         int w = clip_x1 - clip_x0, stride = VW;
         unsigned char *row = amiga_chunky + (size_t)clip_y0 * stride + clip_x0;
@@ -1637,9 +1680,11 @@ void R_DrawSprite2D(K_INT16 x, K_INT16 y, K_INT16 siz, K_INT16 ang,
         softtri(sxv, syv, tu, tv, 0, 2, 3, j, 0);
         clip_x0 = c0; clip_x1 = c1; clip_y0 = r0; clip_y1 = r1;
 
-        if (minx > -1.0e6 && maxx < 1.0e6 && miny > -1.0e6 && maxy < 1.0e6)
+        if (minx > -1.0e6 && maxx < 1.0e6 && miny > -1.0e6 && maxy < 1.0e6) {
             amiga_mark_dirty((int)floor(minx), (int)floor(miny),
                              (int)ceil(maxx), (int)ceil(maxy), 1);
+            if (maxy > r1) amiga_bar_stale = 1;   /* reached below the view */
+        }
     }
 }
 

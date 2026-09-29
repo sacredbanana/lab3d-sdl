@@ -14,6 +14,8 @@
 
 #include "amiga/amiga_sys.h"
 
+#include <ctype.h>
+
 #include "lab3d.h"
 #include "amiga/amiga_video.h"
 #include "amiga/amiga_audio.h"

@@ -97,6 +97,11 @@ void amiga_mark_all_dirty(void);
 /* Black out last frame's overlay writes; called before the view is drawn. */
 void amiga_clear_leftovers(void);
 
+/* The status bar is composited once and kept on the frame (render_soft.c);
+   whoever overwrites or blanks the rows it sits on sets this so it is drawn
+   again. */
+extern int amiga_bar_stale;
+
 /* Blank the whole frame and send all of it next time, e.g. after the view
    size changed and the old picture is still sitting in the new border. */
 void amiga_video_invalidate(void);
