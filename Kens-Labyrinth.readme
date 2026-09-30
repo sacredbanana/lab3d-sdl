@@ -1,26 +1,27 @@
-Short: Ken's Labyrinth 3D shooter for 68020+
+Short: Ken's Labyrinth 3D shooter Amiga port
 Author: Ken Silverman, Jan Lonnberg, Cameron Armstrong
 Uploader: Cameron Armstrong <cameronscottarmstrong@gmail.com>
 Type: game/shoot
 Version: 4.4.0
 Architecture: m68k-amigaos >= 3.0
 Requires: 68020+, asl.library V38+
+Replaces: game/shoot/Kens-Labyrinth.lha
 
 Ken's Labyrinth for AmigaOS 3.x
 ===============================
 
 Ken's Labyrinth is a first-person shooter for MS-DOS, written by Ken
 Silverman and published by Epic MegaGames in 1993, in the same year as Doom
-and a year after Wolfenstein 3D.  You find your way through three episodes
+and a year after Wolfenstein 3D. You find your way through three episodes
 of textured mazes full of hideous monsters, keys, locked doors, potions and
-secrets, all with a cartoonish sense of humour.  Ken wrote it while still at
+secrets, all with a cartoonish sense of humour. Ken wrote it while still at
 school, and went on to write the Build engine behind Duke Nukem 3D, Shadow
-Warrior and Blood.  He later released the full game and its source code for
+Warrior and Blood. He later released the full game and its source code for
 free, which is what makes this port possible.
 
 The launcher also offers Walken, the pre-release Ken finished in September
-1992, a year before the game came out.  It has ten boards, one weapon and no
-doors yet, and it is included as a piece of history.  See Walken below.
+1992, a year before the game came out. It has ten boards, one weapon and no
+doors yet, and it is included as a piece of history. See Walken below.
 
 This is LAB3D/SDL's Amiga port. It is the same game as the desktop versions,
 but it uses no SDL and no OpenGL: the labyrinth is drawn by a software
@@ -33,7 +34,7 @@ Requirements
 ------------
 
   * AmigaOS 3.0 or later (V39+).
-  * A 68020 or better.  A 68EC020 with no FPU works.
+  * An overclocked 68020 or better. A system with no FPU works but will be slow.
   * About 3 MB of free RAM.
   * asl.library V38 or later, for the screen mode requester.
   * Optional: CyberGraphX or Picasso96, for RTG screen modes.  Without it the
